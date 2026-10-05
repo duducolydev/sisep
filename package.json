@@ -1,0 +1,19 @@
+{
+  "name": "sisep",
+  "private": true,
+  "version": "0.0.0",
+  "description": "SISEP — Système d'Information et de Suivi-Évaluation du PHASAOC (ANSD)",
+  "scripts": {
+    "dev": "pnpm --filter @sisep/web dev",
+    "build": "pnpm --filter @sisep/web build",
+    "test": "pnpm --filter @sisep/web test",
+    "lint": "pnpm --filter @sisep/web lint"
+  },
+  "packageManager": "pnpm@10.30.3",
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.101.4"
+  }
+}

@@ -1,0 +1,18 @@
+Ne pas donner la possibilité d'ajouter des sous-activités
+Budget : RSE est super-admin
+Ajouter une rubrique Ressources humaines pour suivre les recrutements de l'équipe technique :
+- Infos de base
+- Durée - fin contrats
+- Rappels/alertes de fin de contrat
+- Ajouter un tableau de bord de suivi : profils, spécialités, sexes, 
+- Suivi global de l'effectif des enquêteurs : sexe, par opération, activité
+
+Composantes : 
+- ajouter une vue d'ensemble (graphiques)
+- Joindre des docs
+
+Permettre de définir les étapes
+
+Ajouter un module de gestion des documents
+
+

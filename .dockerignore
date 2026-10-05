@@ -1,0 +1,6 @@
+**/node_modules
+**/dist
+apps/api/vendor
+apps/api/var/cache
+apps/api/var/log
+.git

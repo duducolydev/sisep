@@ -1,0 +1,118 @@
+@import 'tailwindcss';
+@import './styles/fonts.css';
+@import './styles/tokens.css';
+
+html {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-texte);
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-titre);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+/*
+ * Tout montant, taux, code hiérarchique ou date s'affiche en chiffres
+ * tabulaires, sans exception (§ 9.3 du brief).
+ */
+.chiffres {
+  font-family: var(--font-chiffres);
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * Tailwind v4 a retiré `cursor: pointer` des boutons dans son preflight (il
+ * applique désormais le défaut navigateur, `cursor: default`) : sans cette
+ * règle, aucun bouton de l'application n'indique qu'il est cliquable. Rétabli
+ * globalement, hors état désactivé — snippet de migration officiel v3 → v4.
+ */
+@layer base {
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+/* Focus visible au clavier — § 8.3, RGAA AA. Repris tel quel de la maquette. */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Barre de défilement thématisée — reprise telle quelle de la maquette. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 99px;
+  border: 3px solid var(--color-bg);
+}
+
+/* Garde-fou mouvement réduit — reprise telle quelle de la maquette. */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* Entrée de page au changement de route — § maquette .page.on / @keyframes fade.
+   Neutralisée par le garde-fou prefers-reduced-motion ci-dessus. */
+@keyframes entree-page {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.entree-page {
+  animation: entree-page 0.22s ease;
+}
+
+/*
+ * Chrome/Safari imposent un fond opaque (bleu/jaune pâle) sur les champs
+ * auto-remplis, par-dessus tout style CSS — y compris bg-transparent. Le
+ * délai de transition énorme empêche ce fond de s'appliquer visuellement.
+ * Générique, sans forcer de couleur de texte : le reste de l'app est en
+ * thème clair, où le texte noir imposé par l'autofill reste lisible.
+ */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:autofill {
+  transition: background-color 9999s ease-in-out 0s;
+}
+
+/*
+ * /connexion est en thème sombre (§ page dédiée) : le texte forcé par
+ * l'autofill (souvent noir, ou currentColor ignoré par l'état autofill de
+ * Chrome) devient illisible sur fond sombre — forcé en blanc explicitement,
+ * scopé à cette page pour ne pas affecter les formulaires clairs de l'app.
+ */
+.page-connexion input:-webkit-autofill,
+.page-connexion input:-webkit-autofill:hover,
+.page-connexion input:-webkit-autofill:focus,
+.page-connexion input:autofill {
+  -webkit-text-fill-color: #fff;
+  caret-color: #fff;
+}

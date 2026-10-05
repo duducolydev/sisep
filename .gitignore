@@ -1,0 +1,5 @@
+node_modules
+
+# Comptes de démonstration et paramètres d'accès — jamais versionnés,
+# même en environnement de démo (voir docs/comptes-acces.md).
+docs/comptes-acces.md

@@ -1,0 +1,15 @@
+framework:
+    mailer:
+        dsn: '%env(MAILER_DSN)%'
+        # Expéditeur appliqué à tout message qui n'en fixe pas : une seule
+        # source de vérité pour l'adresse d'envoi, pilotée par l'environnement
+        # (l'adresse de service SISEP en production, null://null en local).
+        headers:
+            From: '%env(MAILER_EXPEDITEUR_NOM)% <%env(MAILER_EXPEDITEUR_ADRESSE)%>'
+
+# Aucun courriel ne part pendant les tests : le transport en mémoire de
+# Symfony les collecte pour que MailerAssertionsTrait puisse les inspecter.
+when@test:
+    framework:
+        mailer:
+            dsn: 'null://null'

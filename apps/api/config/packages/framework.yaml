@@ -1,0 +1,23 @@
+# see https://symfony.com/doc/current/reference/configuration/framework.html
+framework:
+    secret: '%env(APP_SECRET)%'
+
+    # Note that the session will be started ONLY if you read or write from it.
+    # Cookie httpOnly + Secure + SameSite=Lax, durée 8 h glissante (§ 7.1 du
+    # brief). cookie_secure: auto n'active Secure que sur une requête HTTPS —
+    # nécessaire en dev/Docker où l'API tourne en clair, sans affaiblir la
+    # prod dès qu'elle est servie derrière TLS.
+    session:
+        cookie_httponly: true
+        cookie_secure: auto
+        cookie_samesite: lax
+        cookie_lifetime: 28800
+
+    #esi: true
+    #fragments: true
+
+when@test:
+    framework:
+        test: true
+        session:
+            storage_factory_id: session.storage.factory.mock_file

@@ -1,0 +1,73 @@
+services:
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: sisep
+      MYSQL_USER: sisep
+      MYSQL_PASSWORD: "!ChangeMe!"
+      MYSQL_ROOT_PASSWORD: "!ChangeMeRoot!"
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_0900_ai_ci
+    ports:
+      # Mappé sur 3307 côté hôte pour ne pas entrer en conflit avec une
+      # éventuelle instance MySQL locale déjà présente sur le poste.
+      - "3307:3306"
+    volumes:
+      - sisep_db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p!ChangeMeRoot!"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build:
+      context: ./apps/api
+    restart: unless-stopped
+    environment:
+      APP_ENV: dev
+      # Désactivé : sur un bind-mount Windows, la revérification de
+      # fraîcheur du conteneur Symfony (~200 ressources stat-ées à CHAQUE
+      # requête en mode debug) coûtait plusieurs secondes par appel. Après
+      # une modification de code backend, relancer :
+      #   docker compose exec api php bin/console cache:clear
+      APP_DEBUG: "0"
+      DATABASE_URL: "mysql://sisep:!ChangeMe!@db:3306/sisep?serverVersion=8.0.37&charset=utf8mb4"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./apps/api:/app
+      - sisep_api_vendor:/app/vendor
+      # Le cache Symfony (dev) est lu/écrit à chaque requête pour vérifier sa
+      # fraîcheur (des centaines de fichiers) ; sur un bind-mount Windows
+      # cette I/O est très lente. Volume nommé = I/O native, comme vendor/.
+      - sisep_api_var:/app/var
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    environment:
+      VITE_API_URL: "http://localhost:8000/api/v1"
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./apps/web:/workspace/apps/web
+      - ./packages/shared:/workspace/packages/shared
+      - sisep_web_node_modules:/workspace/apps/web/node_modules
+      - sisep_shared_node_modules:/workspace/packages/shared/node_modules
+      - sisep_root_node_modules:/workspace/node_modules
+    depends_on:
+      - api
+
+volumes:
+  sisep_db_data:
+  sisep_api_vendor:
+  sisep_api_var:
+  sisep_web_node_modules:
+  sisep_shared_node_modules:
+  sisep_root_node_modules:

@@ -1,0 +1,69 @@
+/*
+ * Jetons de couleur, typographie et formes — § 9.2 et § 9.3 du brief.
+ * Portés tels quels depuis sisep-template-bleu.html, source de vérité visuelle.
+ */
+@theme {
+  --color-bg: #F3EFE6;
+  --color-surface: #FFFDF9;
+  --color-border: #E3DCCC;
+  --color-nested: #FCFAF5;
+  --color-hover: #FAF7F0;
+  --color-text: #0E1F2E;
+  --color-muted: #6E6A60;
+  --color-eyebrow: #B8802E;
+  --color-track: #DCD5C5;
+  --color-accent: #155E93;
+  --color-accent-d: #0F4C78;
+  --color-accent-bg: #E3EDF5;
+  --color-accent-clair: #4A90C2;
+  --color-accent-clair-bg: #DEF0FB;
+  --color-ok: #155E93;
+  --color-ok-bg: #E3EDF5;
+  --color-warn: #8A5E15;
+  --color-warn-bg: #FBF0DE;
+  --color-bad: #8C3A2B;
+  --color-bad-bg: #F7EAE6;
+  --color-eyebrow-bg: #FAF1DE;
+  /* Vert distinct de --color-ok (identique à --color-accent dans la maquette de référence) — nécessaire pour distinguer visuellement "Terminée" de "En cours" dans le module Projets. */
+  --color-success: #2E7D46;
+  --color-success-bg: #E7F1E5;
+  /*
+   * Palette des 5 statuts calculés du module Projets — validée par
+   * scripts/validate_palette.js (skill dataviz) : la première tentative
+   * (muted/accent/bad/warn/success) échouait le seuil de distinction en
+   * vision normale entre "En retard" (warn) et "À risque" (bad), à peine
+   * 9,9 ΔE — indiscernables même sans daltonisme. "En retard" reprend donc
+   * --color-eyebrow (déjà dans la palette, jamais utilisé en fond de
+   * pastille) au lieu de --color-warn ; "Planifiée" n'était pas assez
+   * saturé pour rester distinct de --color-accent une fois testé, d'où ce
+   * jeton dédié plutôt que --color-muted (qui reste le gris de texte
+   * générique ailleurs dans l'app).
+   */
+  /* Teintes catégorielles des graphiques : séparées en teinte ET en clarté,
+     le couple qui reste lisible sous daltonisme. Distinctes des couleurs de
+     statut, qui sont réservées et ne servent jamais de série. */
+  --color-serie-1: #155E93;
+  --color-serie-2: #B8802E;
+
+  --color-statut-planifiee: #96691A;
+  --color-statut-planifiee-bg: #F5EEDC;
+
+  /* Sidebar sombre — § 9.2, distincte de la palette claire du contenu. */
+  --color-navbg: #0E1F2E;
+  --color-navfg: #CFCABD;
+  --color-navstrong: #FFFDF9;
+  --color-navmuted: #7B786E;
+  --color-navborder: rgba(255, 255, 255, .10);
+  --color-navhover: rgba(255, 255, 255, .06);
+
+  --font-titre: 'Bricolage Grotesque', sans-serif;
+  --font-texte: 'Public Sans', sans-serif;
+  --font-chiffres: 'IBM Plex Mono', monospace;
+
+  --radius-controle: 8px;
+  --radius-carte: 10px;
+  --radius-barre: 5px;
+
+  --shadow-carte: 0 1px 0 rgba(14, 31, 46, .05), 0 8px 22px -18px rgba(14, 31, 46, .5);
+  --shadow-modal: 0 40px 80px -40px rgba(0, 0, 0, .6);
+}
