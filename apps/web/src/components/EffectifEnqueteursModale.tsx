@@ -24,6 +24,8 @@ export function EffectifEnqueteursModale({ effectif, onFermer }: EffectifEnquete
   const [activite, setActivite] = useState(effectif?.activite.uuid ?? '')
   const [libelle, setLibelle] = useState(effectif?.libelle ?? '')
   const [annee, setAnnee] = useState(String(effectif?.annee ?? new Date().getFullYear()))
+  const [dateDebut, setDateDebut] = useState(effectif?.dateDebut ?? '')
+  const [dateFin, setDateFin] = useState(effectif?.dateFin ?? '')
   const [femmes, setFemmes] = useState(String(effectif?.nombreFemmes ?? 0))
   const [hommes, setHommes] = useState(String(effectif?.nombreHommes ?? 0))
   const [enCours, setEnCours] = useState(false)
@@ -37,6 +39,11 @@ export function EffectifEnqueteursModale({ effectif, onFermer }: EffectifEnquete
 
       return
     }
+    if (dateDebut !== '' && dateFin !== '' && dateFin < dateDebut) {
+      setErreur('La date de fin ne peut pas précéder la date de début.')
+
+      return
+    }
 
     setErreur(null)
     setEnCours(true)
@@ -44,6 +51,8 @@ export function EffectifEnqueteursModale({ effectif, onFermer }: EffectifEnquete
       activite,
       annee: Number(annee),
       libelle: libelle.trim() === '' ? null : libelle.trim(),
+      dateDebut: dateDebut === '' ? null : dateDebut,
+      dateFin: dateFin === '' ? null : dateFin,
       nombreFemmes: Number(femmes) || 0,
       nombreHommes: Number(hommes) || 0,
     }
@@ -106,6 +115,32 @@ export function EffectifEnqueteursModale({ effectif, onFermer }: EffectifEnquete
               onChange={(e) => setAnnee(e.target.value)}
               className="chiffres rounded-[var(--radius-controle)] border border-border px-3 py-2"
             />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="flex flex-col gap-1">
+            <label htmlFor="effectif-debut">Début de mobilisation (optionnel)</label>
+            <input
+              id="effectif-debut"
+              type="date"
+              value={dateDebut}
+              disabled={enCours}
+              onChange={(e) => setDateDebut(e.target.value)}
+              className="chiffres rounded-[var(--radius-controle)] border border-border px-3 py-2"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="effectif-fin">Fin de mobilisation (optionnel)</label>
+            <input
+              id="effectif-fin"
+              type="date"
+              value={dateFin}
+              disabled={enCours}
+              onChange={(e) => setDateFin(e.target.value)}
+              className="chiffres rounded-[var(--radius-controle)] border border-border px-3 py-2"
+            />
+            <p className="text-xs text-muted">À renseigner dès que le calendrier de collecte est arrêté.</p>
           </div>
         </div>
 

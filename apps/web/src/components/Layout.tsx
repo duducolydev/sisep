@@ -68,6 +68,12 @@ const ICONES: Record<string, ReactNode> = {
       <path d="M19 20c0-2.6-1.2-4.4-3-5.2" />
     </svg>
   ),
+  documents: (
+    <svg {...iconProps}>
+      <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+      <path d="M14 3v5h5M9 13h6M9 17h4" />
+    </svg>
+  ),
   administration: (
     <svg {...iconProps}>
       <circle cx="12" cy="12" r="3.2" />
@@ -128,6 +134,7 @@ export function Layout() {
       ? [{ to: '/indicateurs', label: 'Indicateurs de performance', icone: 'indicateurs' as const, compte: indicateurs?.donnees.length }]
       : []),
     { to: '/initiatives', label: 'Projets', icone: 'diligences', compte: initiatives?.donnees.length },
+    { to: '/documents', label: 'Documents', icone: 'documents' },
   ]
 
   const liensActeurs: LienNav[] = [

@@ -46,6 +46,18 @@ class EffectifEnqueteurs
     #[ORM\Column(type: 'integer', options: ['unsigned' => true])]
     private int $nombreHommes = 0;
 
+    /**
+     * Période de mobilisation des enquêteurs, distincte de l'année : une
+     * collecte peut tenir en trois semaines comme chevaucher deux exercices.
+     * Nullable parce que l'UGP renseigne l'effectif dès la programmation,
+     * souvent avant d'avoir arrêté le calendrier (demande du 05/10/2026).
+     */
+    #[ORM\Column(name: 'date_debut', type: 'date_immutable', nullable: true)]
+    private ?\DateTimeImmutable $dateDebut = null;
+
+    #[ORM\Column(name: 'date_fin', type: 'date_immutable', nullable: true)]
+    private ?\DateTimeImmutable $dateFin = null;
+
     public function __construct(Activite $activite, int $annee)
     {
         $this->initialiserUuid();
@@ -97,6 +109,42 @@ class EffectifEnqueteurs
     {
         $this->nombreFemmes = max(0, $femmes);
         $this->nombreHommes = max(0, $hommes);
+    }
+
+    public function getDateDebut(): ?\DateTimeImmutable
+    {
+        return $this->dateDebut;
+    }
+
+    public function getDateFin(): ?\DateTimeImmutable
+    {
+        return $this->dateFin;
+    }
+
+    /**
+     * Les deux bornes bougent ensemble : une fin seule n'a pas de sens, et
+     * c'est ici que l'ordre des dates se vérifie une fois pour toutes.
+     *
+     * @throws \InvalidArgumentException si la fin précède le début
+     */
+    public function definirPeriode(?\DateTimeImmutable $debut, ?\DateTimeImmutable $fin): void
+    {
+        if (null !== $debut && null !== $fin && $fin < $debut) {
+            throw new \InvalidArgumentException('La date de fin ne peut pas précéder la date de début.');
+        }
+
+        $this->dateDebut = $debut;
+        $this->dateFin = $fin;
+    }
+
+    /** Durée de mobilisation en jours, calculée et jamais stockée. Null tant que les deux bornes ne sont pas connues. */
+    public function dureeEnJours(): ?int
+    {
+        if (null === $this->dateDebut || null === $this->dateFin) {
+            return null;
+        }
+
+        return (int) $this->dateDebut->diff($this->dateFin)->days;
     }
 
     public function effectifTotal(): int

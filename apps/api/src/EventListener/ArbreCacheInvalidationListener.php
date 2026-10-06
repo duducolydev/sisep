@@ -8,6 +8,7 @@ use App\Entity\Activite;
 use App\Entity\Depense;
 use App\Entity\Dotation;
 use App\Entity\Engagement;
+use App\Entity\EtapeActivite;
 use App\Entity\Realisation;
 use App\Entity\SousActivite;
 use Doctrine\Bundle\DoctrineBundle\Attribute\AsDoctrineListener;
@@ -21,13 +22,15 @@ use Symfony\Contracts\Cache\TagAwareCacheInterface;
  * toute écriture budgétaire" (à propos de /arbre, cf. ArbreReader). Purge au
  * postFlush — jamais avant, pour ne pas invalider sur un flush qui échoue
  * en base — et seulement si une Dotation, un Engagement, une Dépense, une
- * Réalisation, une Activité ou une Sous-activité a réellement été créée,
- * modifiée ou supprimée dans ce flush. La Réalisation compte aussi : l'arbre
- * affiche l'avancement des sous-activités (niveaux ≥ 4), pas seulement
- * l'exécution budgétaire. Activité/Sous-activité comptent pour la même
- * raison : l'arbre affiche aussi leur `statut` (§ 4.2 — cycle de vie saisi,
- * distinct de l'avancement), qui peut changer sans passer par une
- * Réalisation (ex. clôture via activites.valider).
+ * Étape, une Activité ou une Sous-activité a réellement été créée, modifiée
+ * ou supprimée dans ce flush. L'Étape compte aussi : l'arbre affiche
+ * l'avancement d'une activité, désormais déduit de ses étapes (§ 6 du CR du
+ * 22/09/2026), pas seulement l'exécution budgétaire. Activité/Sous-activité
+ * comptent pour la même raison : l'arbre affiche aussi leur `statut`
+ * (§ 4.2 — cycle de vie saisi, distinct de l'avancement), qui peut changer
+ * sans passer par une étape (ex. clôture via activites.valider). La
+ * Réalisation reste listée pour les données historiques : plus aucune n'est
+ * créée, mais une reprise de données peut encore en toucher.
  */
 #[AsDoctrineListener(event: Events::onFlush)]
 #[AsDoctrineListener(event: Events::postFlush)]
@@ -55,6 +58,7 @@ final class ArbreCacheInvalidationListener
                 || $entite instanceof Engagement
                 || $entite instanceof Depense
                 || $entite instanceof Realisation
+                || $entite instanceof EtapeActivite
                 || $entite instanceof Activite
                 || $entite instanceof SousActivite
             ) {

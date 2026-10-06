@@ -6,6 +6,7 @@ namespace App\Tests\Functional;
 
 use App\Entity\Activite;
 use App\Entity\Composante;
+use App\Entity\EtapeActivite;
 use App\Entity\Indicateur;
 use App\Entity\Permission;
 use App\Entity\Projet;
@@ -35,7 +36,7 @@ final class PorteeIndicateurEtAvancementHttpTest extends WebTestCase
 
     private EntityManagerInterface $em;
 
-    public function testUnPointFocalSaisitLavancementDeSesPropresSousActivites(): void
+    public function testUnPointFocalRenseigneLesEtapesDeSesPropresActivites(): void
     {
         [$client, $fixture] = $this->demarrer();
 
@@ -43,21 +44,21 @@ final class PorteeIndicateurEtAvancementHttpTest extends WebTestCase
             $this->connecter($client, $fixture['focalDsid']->getEmail());
 
             $client->request(
-                'POST',
-                \sprintf('/api/v1/sous-activites/%s/realisations', $fixture['sousActiviteDsid']->getUuid()->toRfc4122()),
+                'PATCH',
+                \sprintf('/api/v1/etapes/%s', $fixture['etapeDsid']->getUuid()->toRfc4122()),
                 server: ['CONTENT_TYPE' => 'application/json'],
-                content: json_encode(['avancement' => 65, 'dateConstat' => '2026-06-01', 'commentaire' => 'RAS'], \JSON_THROW_ON_ERROR),
+                content: json_encode(['avancement' => 65, 'dateMiseAJour' => '2026-06-01', 'observation' => 'RAS'], \JSON_THROW_ON_ERROR),
             );
-            self::assertResponseStatusCodeSame(201, 'Un point focal DSID doit pouvoir saisir un constat sur sa propre sous-activité.');
+            self::assertResponseIsSuccessful('Un point focal DSID doit pouvoir renseigner une étape de sa propre activité.');
             self::assertSame(65, $this->corps($client)['avancement']);
 
             $client->request(
-                'POST',
-                \sprintf('/api/v1/sous-activites/%s/realisations', $fixture['sousActiviteDpee']->getUuid()->toRfc4122()),
+                'PATCH',
+                \sprintf('/api/v1/etapes/%s', $fixture['etapeDpee']->getUuid()->toRfc4122()),
                 server: ['CONTENT_TYPE' => 'application/json'],
-                content: json_encode(['avancement' => 50, 'dateConstat' => '2026-06-01'], \JSON_THROW_ON_ERROR),
+                content: json_encode(['avancement' => 50, 'dateMiseAJour' => '2026-06-01'], \JSON_THROW_ON_ERROR),
             );
-            self::assertResponseStatusCodeSame(403, 'Un point focal DSID ne doit jamais saisir de constat pour la DPEE.');
+            self::assertResponseStatusCodeSame(403, 'Un point focal DSID ne doit jamais renseigner une étape de la DPEE.');
         } finally {
             $this->rollback();
         }
@@ -164,11 +165,15 @@ final class PorteeIndicateurEtAvancementHttpTest extends WebTestCase
         $this->em->persist($activiteDsid);
         $sousActiviteDsid = new SousActivite($activiteDsid, 'Sous-activité DSID');
         $this->em->persist($sousActiviteDsid);
+        $etapeDsid = new EtapeActivite($activiteDsid, 'Étape DSID', 1);
+        $this->em->persist($etapeDsid);
 
         $activiteDpee = new Activite($sousComposante, 'CAV.1.2', 'Activité DPEE', $dpee);
         $this->em->persist($activiteDpee);
         $sousActiviteDpee = new SousActivite($activiteDpee, 'Sous-activité DPEE');
         $this->em->persist($sousActiviteDpee);
+        $etapeDpee = new EtapeActivite($activiteDpee, 'Étape DPEE', 1);
+        $this->em->persist($etapeDpee);
 
         $indicateurDsid = new Indicateur(
             $projet, 'IND-DSID', 'Indicateur DSID', TypeIndicateur::IRI, '%', SensIndicateur::CROISSANT,
@@ -192,6 +197,8 @@ final class PorteeIndicateurEtAvancementHttpTest extends WebTestCase
             'dsid' => $dsid,
             'sousActiviteDsid' => $sousActiviteDsid,
             'sousActiviteDpee' => $sousActiviteDpee,
+            'etapeDsid' => $etapeDsid,
+            'etapeDpee' => $etapeDpee,
             'indicateurDsid' => $indicateurDsid,
             'indicateurSansResponsable' => $indicateurSansResponsable,
         ]];

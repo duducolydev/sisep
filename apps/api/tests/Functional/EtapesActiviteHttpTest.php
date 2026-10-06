@@ -17,6 +17,7 @@ use App\Enum\TypeStructure;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 /**
@@ -205,6 +206,34 @@ final class EtapesActiviteHttpTest extends WebTestCase
         }
     }
 
+    public function testLeTerrainJointUnJustificatifAUneEtapeDeSaStructure(): void
+    {
+        [$client, $fixture] = $this->demarrer();
+
+        try {
+            $this->connecter($client, $fixture['suiviEvaluation']->getEmail());
+            $etapeDsid = $this->ajouterEtape($client, $fixture['activiteDsid']->getUuid()->toRfc4122(), 'Collecte');
+            $etapeDpee = $this->ajouterEtape($client, $fixture['activiteDpee']->getUuid()->toRfc4122(), 'Collecte DPEE');
+
+            $this->connecter($client, $fixture['focalDsid']->getEmail());
+            $client->request('POST', "/api/v1/etapes/{$etapeDsid}/pieces-jointes", files: ['fichier' => $this->fichierTest()]);
+            self::assertResponseStatusCodeSame(201, 'Le justificatif accompagne le renseignement : même droit que renseigner.');
+
+            $piecesJointes = $this->corps($client)['piecesJointes'];
+            self::assertCount(1, $piecesJointes);
+            self::assertSame('pv-collecte.pdf', $piecesJointes[0]['nomFichier']);
+
+            $client->request('GET', "/api/v1/pieces-jointes/{$piecesJointes[0]['uuid']}/telecharger");
+            self::assertResponseIsSuccessful('La pièce jointe doit être téléchargeable par qui peut voir l\'activité.');
+
+            // La portée s'applique au dépôt comme au renseignement.
+            $client->request('POST', "/api/v1/etapes/{$etapeDpee}/pieces-jointes", files: ['fichier' => $this->fichierTest()]);
+            self::assertResponseStatusCodeSame(403, 'Un point focal DSID ne dépose rien sur une étape de la DPEE.');
+        } finally {
+            $this->rollback();
+        }
+    }
+
     public function testLeTerrainNeDecoupePlusEnSousActivites(): void
     {
         [$client, $fixture] = $this->demarrer();
@@ -226,6 +255,25 @@ final class EtapesActiviteHttpTest extends WebTestCase
         } finally {
             $this->rollback();
         }
+    }
+
+    private function ajouterEtape(KernelBrowser $client, string $activiteUuid, string $libelle): string
+    {
+        $client->request('POST', "/api/v1/activites/{$activiteUuid}/etapes", server: ['CONTENT_TYPE' => 'application/json'], content: json_encode([
+            'libelle' => $libelle,
+        ], \JSON_THROW_ON_ERROR));
+        self::assertResponseStatusCodeSame(201);
+
+        return $this->corps($client)['uuid'];
+    }
+
+    private function fichierTest(): UploadedFile
+    {
+        $chemin = tempnam(sys_get_temp_dir(), 'sisep_etape_');
+        self::assertNotFalse($chemin);
+        file_put_contents($chemin, 'procès-verbal de collecte');
+
+        return new UploadedFile($chemin, 'pv-collecte.pdf', 'application/pdf', null, true);
     }
 
     /** @param list<string> $etapes */
@@ -276,6 +324,8 @@ final class EtapesActiviteHttpTest extends WebTestCase
 
         $dsid = new Structure('DSID-ET', 'Direction des systèmes d\'information', TypeStructure::DIRECTION_ANSD);
         $this->em->persist($dsid);
+        $dpee = new Structure('DPEE-ET', 'Direction de la prévision', TypeStructure::PARTENAIRE_NATIONAL);
+        $this->em->persist($dpee);
 
         $focalDsid = new Utilisateur('focal.dsid.etapes@example.test', 'temp', 'Sarr', 'Ibrahima');
         $focalDsid->setMotDePasseHash($hasher->hashPassword($focalDsid, self::MOT_DE_PASSE));
@@ -295,6 +345,8 @@ final class EtapesActiviteHttpTest extends WebTestCase
         $this->em->persist($sousComposante);
         $activiteDsid = new Activite($sousComposante, 'CET.1.1', 'Activité DSID', $dsid);
         $this->em->persist($activiteDsid);
+        $activiteDpee = new Activite($sousComposante, 'CET.1.2', 'Activité DPEE', $dpee);
+        $this->em->persist($activiteDpee);
 
         $this->em->flush();
 
@@ -302,6 +354,7 @@ final class EtapesActiviteHttpTest extends WebTestCase
             'focalDsid' => $focalDsid,
             'suiviEvaluation' => $suiviEvaluation,
             'activiteDsid' => $activiteDsid,
+            'activiteDpee' => $activiteDpee,
         ]];
     }
 

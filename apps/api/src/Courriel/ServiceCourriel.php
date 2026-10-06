@@ -99,6 +99,55 @@ final class ServiceCourriel
         return $this->envoyer($invite->getEmail(), $sujet, 'Invitation à saisir un indicateur', $corps);
     }
 
+    /**
+     * Digest des contrats qui arrivent à terme — un courriel récapitulatif
+     * par destinataire, jamais un courriel par contrat : l'UGP suit une
+     * centaine d'agents, et une alerte par ligne rendrait la boîte
+     * inutilisable le jour où dix contrats tombent ensemble.
+     *
+     * @param list<array{nomComplet: string, fonction: string, dateFin: string, jours: int}> $contrats
+     */
+    public function echeancesContrats(string $destinataire, array $contrats): bool
+    {
+        $lignes = '';
+        foreach ($contrats as $contrat) {
+            $jours = $contrat['jours'];
+            $delai = match (true) {
+                $jours < 0 => \sprintf('échu depuis %d jour(s)', abs($jours)),
+                0 === $jours => "échoit aujourd'hui",
+                default => \sprintf('dans %d jour(s)', $jours),
+            };
+            $lignes .= \sprintf(
+                '<tr><td style="padding:6px 16px 6px 0;border-top:1px solid #e3e5e8">%s</td>'
+                .'<td style="padding:6px 16px 6px 0;border-top:1px solid #e3e5e8;color:#5b6472">%s</td>'
+                .'<td style="padding:6px 0;border-top:1px solid #e3e5e8;font-family:monospace">%s</td>'
+                .'<td style="padding:6px 0 6px 16px;border-top:1px solid #e3e5e8">%s</td></tr>',
+                $this->proteger($contrat['nomComplet']),
+                $this->proteger($contrat['fonction']),
+                $this->proteger($contrat['dateFin']),
+                $this->proteger($delai),
+            );
+        }
+
+        $nombre = \count($contrats);
+        $bouton = $this->bouton($this->urlWeb.'/ressources-humaines', 'Ouvrir le suivi RH');
+
+        $corps = <<<HTML
+            <p>Bonjour,</p>
+            <p>{$nombre} contrat(s) du personnel technique arrivent à échéance.</p>
+            <table role="presentation" style="border-collapse:collapse;margin:16px 0;font-size:14px">
+              <tr><th align="left" style="padding:0 16px 6px 0">Agent</th><th align="left" style="padding:0 16px 6px 0">Fonction</th><th align="left" style="padding:0 0 6px">Fin</th><th align="left" style="padding:0 0 6px 16px">Échéance</th></tr>
+              {$lignes}
+            </table>
+            <p>Un renouvellement se saisit comme un nouveau contrat : la période précédente reste visible dans l'historique de l'agent.</p>
+            {$bouton}
+            HTML;
+
+        $sujet = \sprintf('%d contrat(s) du PHASAOC arrivent à échéance', $nombre);
+
+        return $this->envoyer($destinataire, $sujet, 'Échéances de contrat', $corps);
+    }
+
     public function motDePasseChange(Utilisateur $utilisateur, \DateTimeImmutable $maintenant): bool
     {
         $nom = $this->proteger($utilisateur->getNomComplet());

@@ -9,10 +9,10 @@ use App\Entity\Composante;
 use App\Entity\Depense;
 use App\Entity\Dotation;
 use App\Entity\Engagement;
+use App\Entity\EtapeActivite;
 use App\Entity\Exercice;
 use App\Entity\Permission;
 use App\Entity\Projet;
-use App\Entity\Realisation;
 use App\Entity\Role;
 use App\Entity\SousActivite;
 use App\Entity\SousComposante;
@@ -84,8 +84,14 @@ final class ArbreAgregatsHttpTest extends WebTestCase
 
             $sousActivite = new SousActivite($activite1, 'Sous-activité test');
             $this->em->persist($sousActivite);
-            $realisation = new Realisation($sousActivite, 40, new \DateTimeImmutable('2026-06-01'), $utilisateur);
-            $this->em->persist($realisation);
+            // L'avancement vient des étapes (§ 6 du CR du 22/09/2026) : deux
+            // étapes à 60 % et 20 % donnent 40 % de progression d'activité.
+            $etape1 = new EtapeActivite($activite1, 'Étape 1', 1);
+            $etape1->renseigner(60, null, null, new \DateTimeImmutable('2026-06-01'));
+            $etape2 = new EtapeActivite($activite1, 'Étape 2', 2);
+            $etape2->renseigner(20, null, null, new \DateTimeImmutable('2026-06-01'));
+            $this->em->persist($etape1);
+            $this->em->persist($etape2);
 
             $this->em->flush();
 
@@ -113,7 +119,7 @@ final class ArbreAgregatsHttpTest extends WebTestCase
             self::assertSame(1_000_000, $noeudActivite1['notifie']);
             self::assertSame(600_000, $noeudActivite1['engage']);
             self::assertSame(400_000, $noeudActivite1['depense']);
-            self::assertSame(40, $noeudActivite1['avancement'], "L'avancement de l'activité doit reprendre celui de son unique sous-activité.");
+            self::assertSame(40, $noeudActivite1['avancement'], "L'avancement de l'activité doit être la moyenne de ses étapes.");
             self::assertCount(1, $noeudActivite1['sousActivites']);
 
             unset($activite2, $activite3);

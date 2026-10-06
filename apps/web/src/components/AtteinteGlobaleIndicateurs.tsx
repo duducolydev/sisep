@@ -75,7 +75,7 @@ export function AtteinteGlobaleIndicateurs({ indicateurs }: AtteinteGlobaleIndic
             />
             <Bar dataKey="taux" radius={3} maxBarSize={20} isAnimationActive={false}>
               {lignes.map((l) => (
-                <Cell key={l.uuid} fill={l.taux < 0 ? 'var(--color-bad)' : l.taux >= 100 ? 'var(--color-ok)' : 'var(--color-accent)'} />
+                <Cell key={l.uuid} fill={l.taux < 0 ? 'var(--color-bad)' : l.taux >= 100 ? 'var(--color-success)' : 'var(--color-accent)'} />
               ))}
               <LabelList
                 dataKey="taux"
@@ -95,7 +95,7 @@ export function AtteinteGlobaleIndicateurs({ indicateurs }: AtteinteGlobaleIndic
           En cours
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-ok" aria-hidden="true" />
+          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-success" aria-hidden="true" />
           Cible atteinte ou dépassée
         </span>
         {yATdesRegresses && (

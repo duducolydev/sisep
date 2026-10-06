@@ -117,15 +117,14 @@ final class ActiviteCrudHttpTest extends WebTestCase
             ], \JSON_THROW_ON_ERROR));
             self::assertResponseStatusCodeSame(403, 'Un point focal ne doit jamais pouvoir créer de composante, quelle que soit sa structure.');
 
-            // --- ... mais peut saisir une réalisation sur la sous-activité de sa structure ---
+            // --- La saisie de réalisations n'existe plus (§ 6 du CR du 22/09/2026) ---
+            // L'avancement se renseigne désormais étape par étape ; la route est
+            // retirée, pas seulement interdite. Voir EtapesActiviteHttpTest.
             $client->request('POST', \sprintf('/api/v1/sous-activites/%s/realisations', $sousActiviteCreee['uuid']), server: ['CONTENT_TYPE' => 'application/json'], content: json_encode([
                 'avancement' => 65,
                 'dateConstat' => '2026-07-01',
             ], \JSON_THROW_ON_ERROR));
-            self::assertResponseStatusCodeSame(201);
-            /** @var array{avancement: int} $sousActiviteMaj */
-            $sousActiviteMaj = json_decode((string) $client->getResponse()->getContent(), true, flags: \JSON_THROW_ON_ERROR);
-            self::assertSame(65, $sousActiviteMaj['avancement']);
+            self::assertResponseStatusCodeSame(404, 'La saisie de réalisations a été retirée au profit des étapes.');
 
             // --- Le coordonnateur supprime (logiquement) l'activité ---
             $client->request('POST', '/api/v1/auth/connexion', server: ['CONTENT_TYPE' => 'application/json'], content: json_encode(['email' => 'coordo.crud@example.test', 'motDePasse' => $motDePasse], \JSON_THROW_ON_ERROR));

@@ -6,6 +6,7 @@ namespace App\Tests\Functional;
 
 use App\Entity\Activite;
 use App\Entity\Composante;
+use App\Entity\EtapeActivite;
 use App\Entity\Exercice;
 use App\Entity\Permission;
 use App\Entity\Projet;
@@ -72,9 +73,9 @@ final class ArbreCacheHttpTest extends WebTestCase
     }
 
     /**
-     * Régression : une réalisation saisie (avancement d'une sous-activité)
-     * n'invalidait pas le cache /arbre, alors que l'arbre affiche
-     * l'avancement des sous-activités à partir de niveaux=4 (§ 6.2, § 4.6).
+     * Régression : un avancement saisi n'invalidait pas le cache /arbre,
+     * alors que l'arbre affiche la progression d'une activité, désormais
+     * déduite de ses étapes (§ 6.2, § 4.6, § 6 du CR du 22/09/2026).
      */
     public function testLarbreRefleteUnAvancementSaisiApresUnPremierAppelMisEnCache(): void
     {
@@ -84,31 +85,31 @@ final class ArbreCacheHttpTest extends WebTestCase
             $this->connecter($client, $fixture['gestionnaire']->getEmail());
             $projetUuid = $fixture['projet']->getUuid()->toRfc4122();
             $activiteUuid = $fixture['activite']->getUuid()->toRfc4122();
-            $sousActiviteUuid = $fixture['sousActivite']->getUuid()->toRfc4122();
+            $etapeUuid = $fixture['etape']->getUuid()->toRfc4122();
 
             // Premier appel : peuple le cache avec un avancement à 0.
             $client->request('GET', "/api/v1/projets/{$projetUuid}/arbre?exercice=2026&niveaux=4");
             self::assertResponseIsSuccessful();
-            $avant = $this->trouverSousActivite($this->corps($client)['composantes'], $activiteUuid, $sousActiviteUuid);
+            $avant = $this->trouverActivite($this->corps($client)['composantes'], $activiteUuid);
             self::assertSame(0, $avant['avancement'] ?? null);
 
-            // Écriture d'une réalisation : doit purger le cache /arbre.
+            // Renseignement d'une étape : doit purger le cache /arbre.
             $client->request(
-                'POST',
-                "/api/v1/sous-activites/{$sousActiviteUuid}/realisations",
+                'PATCH',
+                "/api/v1/etapes/{$etapeUuid}",
                 server: ['CONTENT_TYPE' => 'application/json'],
-                content: json_encode(['avancement' => 40, 'dateConstat' => '2026-06-01'], \JSON_THROW_ON_ERROR),
+                content: json_encode(['avancement' => 40, 'dateMiseAJour' => '2026-06-01'], \JSON_THROW_ON_ERROR),
             );
-            self::assertResponseStatusCodeSame(201);
+            self::assertResponseIsSuccessful();
 
             // Deuxième appel : doit refléter le nouvel avancement, pas la réponse mise en cache.
             $client->request('GET', "/api/v1/projets/{$projetUuid}/arbre?exercice=2026&niveaux=4");
             self::assertResponseIsSuccessful();
-            $apres = $this->trouverSousActivite($this->corps($client)['composantes'], $activiteUuid, $sousActiviteUuid);
+            $apres = $this->trouverActivite($this->corps($client)['composantes'], $activiteUuid);
             self::assertSame(
                 40,
                 $apres['avancement'] ?? null,
-                "Le cache de l'arbre doit être invalidé après la saisie d'une réalisation (§ 6.2 du brief).",
+                "Le cache de l'arbre doit être invalidé après le renseignement d'une étape (§ 6.2 du brief).",
             );
         } finally {
             $this->rollback();
@@ -203,6 +204,8 @@ final class ArbreCacheHttpTest extends WebTestCase
         $this->em->persist($activite);
         $sousActivite = new SousActivite($activite, 'Sous-activité cache');
         $this->em->persist($sousActivite);
+        $etape = new EtapeActivite($activite, 'Étape cache', 1);
+        $this->em->persist($etape);
 
         $this->em->flush();
 
@@ -212,6 +215,7 @@ final class ArbreCacheHttpTest extends WebTestCase
             'composante' => $composante,
             'activite' => $activite,
             'sousActivite' => $sousActivite,
+            'etape' => $etape,
         ]];
     }
 
@@ -244,6 +248,26 @@ final class ArbreCacheHttpTest extends WebTestCase
         }
 
         self::fail("Composante {$uuid} introuvable dans la réponse.");
+    }
+
+    /**
+     * @param list<array<string, mixed>> $composantes
+     *
+     * @return array<string, mixed>
+     */
+    private function trouverActivite(array $composantes, string $activiteUuid): array
+    {
+        foreach ($composantes as $c) {
+            foreach ($c['sousComposantes'] ?? [] as $sc) {
+                foreach ($sc['activites'] ?? [] as $a) {
+                    if ($a['uuid'] === $activiteUuid) {
+                        return $a;
+                    }
+                }
+            }
+        }
+
+        self::fail("Activité {$activiteUuid} introuvable dans la réponse.");
     }
 
     /**

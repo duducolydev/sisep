@@ -83,8 +83,8 @@ export function ArbreExecution({ composantes, tauxAttendu }: ArbreExecutionProps
             Disponible
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="inline-block h-2.5 w-2.5 rounded-sm bg-ok" aria-hidden="true" />
-            Avancement physique
+            <span className="inline-block h-2.5 w-2.5 rounded-sm bg-success" aria-hidden="true" />
+            Progression des étapes
           </span>
           {tauxAttendu !== null && tauxAttendu !== undefined && (
             <span className="flex items-center gap-1.5">
@@ -261,7 +261,7 @@ function LigneActivite({
           <span className="truncate">{activite.libelle}</span>
         </button>
         <Pastille statut={activite.statut} />
-        <MiniBarreAvancement avancement={activite.avancement ?? null} libelle="Avancement physique moyen des sous-activités" />
+        <MiniBarreAvancement avancement={activite.avancement ?? null} libelle="Progression moyenne des étapes" />
         <BarreExecution notifie={activite.notifie} engage={activite.engage} depense={activite.depense} rythmeAttendu={tauxAttendu} />
         <Link
           to={`/composantes/activites/${activite.uuid}`}
@@ -298,13 +298,22 @@ function LigneSousActivite({ sousActivite, onOuvrir }: { sousActivite: NoeudSous
       >
         <span className="truncate text-muted">{sousActivite.libelle}</span>
         <Pastille statut={sousActivite.statut} />
-        <MiniBarreAvancement avancement={sousActivite.avancement} libelle="Avancement" />
+        <BarreExecution notifie={sousActivite.notifie} engage={sousActivite.engage} depense={sousActivite.depense} />
       </button>
     </li>
   )
 }
 
-/** Avancement physique (§ 2.2) — toujours en vert, pour ne jamais se confondre avec le bleu de l'exécution budgétaire. */
+/**
+ * Progression déduite des étapes (§ 2.2) — en vert, pour ne jamais se
+ * confondre avec le bleu de l'exécution budgétaire.
+ *
+ * `--color-success` et non `--color-ok` : ce dernier vaut exactement
+ * `--color-accent` (#155E93) dans la maquette de référence, si bien que la
+ * barre de progression et la barre budgétaire étaient rigoureusement de la
+ * même couleur — écart ΔE nul, mesuré — alors que la légende les présentait
+ * comme distinctes.
+ */
 function MiniBarreAvancement({ avancement, libelle }: { avancement: number | null; libelle: string }) {
   if (avancement === null) {
     return <span className="chiffres text-xs text-muted">—</span>
@@ -313,7 +322,7 @@ function MiniBarreAvancement({ avancement, libelle }: { avancement: number | nul
   return (
     <span className="flex items-center gap-2" title={`${libelle} : ${avancement}%`}>
       <span className="h-1.5 w-16 shrink-0 overflow-hidden rounded-[var(--radius-barre)] bg-track">
-        <span className="block h-full bg-ok" style={{ width: `${avancement}%` }} />
+        <span className="block h-full bg-success" style={{ width: `${avancement}%` }} />
       </span>
       <span className="chiffres shrink-0 text-xs text-muted">{avancement}%</span>
     </span>

@@ -13,8 +13,8 @@ use App\Enum\PeriodeTrimestre;
 use App\Enum\StatutRapport;
 use App\Http\ProblemResponseFactory;
 use App\Http\RapportPeriodiqueNormalizer;
+use App\Rapport\DestinatairesRelanceResolver;
 use App\Repository\ExerciceRepository;
-use App\Repository\PointFocalRepository;
 use App\Repository\ProjetRepository;
 use App\Repository\RapportPeriodiqueRepository;
 use App\Repository\StructureRepository;
@@ -49,7 +49,7 @@ final class RapportController
         private readonly ExerciceRepository $exercices,
         private readonly ProjetRepository $projets,
         private readonly StructureRepository $structures,
-        private readonly PointFocalRepository $pointsFocaux,
+        private readonly DestinatairesRelanceResolver $destinataires,
         private readonly RapportPeriodiqueNormalizer $normalizer,
         private readonly ServiceCourriel $courriels,
         private readonly EntityManagerInterface $em,
@@ -180,7 +180,7 @@ final class RapportController
             if (null === $structure) {
                 continue;
             }
-            $destinataires = $this->destinatairesRelance($structure);
+            $destinataires = $this->destinataires->pour($structure);
             foreach ($this->rapports->findBy(['structure' => $structure, 'statut' => StatutRapport::ATTENDU]) as $rapport) {
                 if (!$rapport->estEnRetard($maintenant)) {
                     continue;
@@ -207,31 +207,6 @@ final class RapportController
         // enregistrée, le compte de courriels dit seulement ce qui a
         // effectivement pu être notifié.
         return new JsonResponse(['relances' => $relances, 'courriels' => $courriels, 'sansDestinataire' => $sansDestinataire]);
-    }
-
-    /**
-     * Adresses à relancer pour une structure : ses points focaux d'abord
-     * (ce sont eux qui transmettent le rapport), l'adresse générique de la
-     * structure en dernier recours. Doublons écartés, une structure pouvant
-     * avoir plusieurs points focaux partageant une boîte.
-     *
-     * @return list<string>
-     */
-    private function destinatairesRelance(Structure $structure): array
-    {
-        $adresses = [];
-        foreach ($this->pointsFocaux->findBy(['structure' => $structure]) as $pointFocal) {
-            $email = $pointFocal->getEmail();
-            if (null !== $email && '' !== $email) {
-                $adresses[] = $email;
-            }
-        }
-
-        if ([] === $adresses && null !== $structure->getEmail() && '' !== $structure->getEmail()) {
-            $adresses[] = $structure->getEmail();
-        }
-
-        return array_values(array_unique($adresses));
     }
 
     private function trouver(string $uuid): RapportPeriodique

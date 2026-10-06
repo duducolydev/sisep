@@ -24,6 +24,21 @@ class ExerciceRepository extends ServiceEntityRepository
         return $this->findOneBy(['projet' => $projet, 'annee' => $annee]);
     }
 
+    /**
+     * Exercice à afficher quand l'utilisateur n'en demande aucun : l'année en
+     * cours, et le plus récent seulement si elle n'existe pas.
+     *
+     * Le repli précédent — toujours le plus récent — ouvrait l'application
+     * sur la dernière année du projet (2028), vide de toute écriture : le
+     * budget, l'arbre et les exports affichaient zéro tant qu'on n'avait pas
+     * choisi une année à la main.
+     */
+    public function courantOuPlusRecent(Projet $projet): ?Exercice
+    {
+        return $this->trouverParAnnee($projet, (int) date('Y'))
+            ?? $this->findOneBy(['projet' => $projet], ['annee' => 'DESC']);
+    }
+
     /** @return list<Exercice> */
     public function lister(Projet $projet): array
     {

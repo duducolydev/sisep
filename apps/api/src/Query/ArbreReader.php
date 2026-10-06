@@ -110,7 +110,7 @@ final class ArbreReader
         if ($niveaux >= 4 && [] !== $activiteIds) {
             $sousActivitesParActivite = $this->regrouperParCle(
                 $this->connection->fetchAllAssociative(
-                    'SELECT sa.uuid, sa.activite_id, sa.libelle, sa.statut, sa.avancement, sa.echeance, v.notifie, v.engage, v.depense
+                    'SELECT sa.uuid, sa.activite_id, sa.libelle, sa.statut, sa.echeance, v.notifie, v.engage, v.depense
                      FROM sous_activites sa
                      LEFT JOIN v_execution_sous_activite v ON v.sous_activite_id = sa.id AND v.exercice_id = ?
                      WHERE sa.activite_id IN ('.$this->placeholders($activiteIds).') AND sa.supprime_le IS NULL
@@ -176,22 +176,24 @@ final class ArbreReader
             'libelle' => $a['libelle'],
             'statut' => $a['statut'],
             'structureResponsable' => ['uuid' => $a['structure_uuid'], 'sigle' => $a['structure_sigle']],
+            // Ne dépend plus des sous-activités : une activité peut être
+            // structurée en étapes sans porter la moindre ligne budgétaire,
+            // donc l'avancement est servi dès le niveau 3.
+            'avancement' => null !== $a['progression'] ? (int) round((float) $a['progression']) : null,
             ...$this->montants($a),
         ];
 
         if ($niveaux >= 4) {
+            // La sous-activité est devenue une maille purement budgétaire
+            // (§ 6 du CR du 22/09/2026) : plus d'avancement exposé ici, la
+            // colonne sous_activites.avancement n'étant plus alimentée.
             $noeud['sousActivites'] = array_map(fn (array $sa) => [
                 'uuid' => $sa['uuid'],
                 'libelle' => $sa['libelle'],
                 'statut' => $sa['statut'],
-                'avancement' => (int) $sa['avancement'],
                 'echeance' => $sa['echeance'],
                 ...$this->montants($sa),
             ], $sousActivites);
-
-            $noeud['avancement'] = [] === $sousActivites ? null : (int) round(
-                array_sum(array_map(static fn (array $sa) => (int) $sa['avancement'], $sousActivites)) / \count($sousActivites),
-            );
         }
 
         return $noeud;
@@ -218,9 +220,16 @@ final class ArbreReader
             $parametresPortee = $structureIds;
         }
 
+        // `progression` est la moyenne de l'avancement des étapes actives,
+        // en SQL plutôt qu'en PHP : ProgressionActiviteCalculator dit la même
+        // chose sur un objet Activite, mais l'arbre lit des lignes brutes et
+        // ne doit pas hydrater une entité par activité. Aucune étape →
+        // AVG() renvoie NULL, jamais 0 (même règle que le calculateur).
         $sql = 'SELECT a.id, a.uuid, a.sous_composante_id, a.code, a.libelle, a.statut, a.ordre,
                         s.uuid AS structure_uuid, s.sigle AS structure_sigle,
-                        v.notifie, v.engage, v.depense
+                        v.notifie, v.engage, v.depense,
+                        (SELECT AVG(e.avancement) FROM etapes_activite e
+                          WHERE e.activite_id = a.id AND e.supprime_le IS NULL) AS progression
                  FROM activites a
                  JOIN structures s ON s.id = a.structure_responsable_id
                  LEFT JOIN v_execution_activite v ON v.activite_id = a.id AND v.exercice_id = ?

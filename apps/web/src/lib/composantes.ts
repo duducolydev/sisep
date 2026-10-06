@@ -9,12 +9,15 @@ export interface Structure {
   type: string
 }
 
+/** Maille purement budgétaire depuis le CR du 22/09/2026 : plus d'avancement, l'arbre n'en expose plus. */
 export interface NoeudSousActivite {
   uuid: string
   libelle: string
   statut: string
-  avancement: number
   echeance: string | null
+  notifie: number | null
+  engage: number | null
+  depense: number | null
 }
 
 export interface NoeudActivite {
@@ -26,6 +29,7 @@ export interface NoeudActivite {
   notifie: number | null
   engage: number | null
   depense: number | null
+  /** Progression déduite des étapes (moyenne des niveaux atteints, en %) — `null` si l'activité n'en a aucune. */
   avancement?: number | null
   sousActivites?: NoeudSousActivite[]
 }
@@ -135,22 +139,6 @@ export interface CreerSousActiviteEntree {
 
 export function creerSousActivite(entree: CreerSousActiviteEntree) {
   return apiClient.post<SousActiviteDetail>('/sous-activites', entree)
-}
-
-export interface SaisirRealisationEntree {
-  avancement: number
-  dateConstat: string
-  commentaire?: string
-}
-
-/** POST /sous-activites/:uuid/realisations (§ 6.2) — met à jour l'avancement physique constaté. */
-export function saisirRealisation(sousActiviteUuid: string, entree: SaisirRealisationEntree) {
-  return apiClient.post<{ uuid: string; avancement: number }>(`/sous-activites/${sousActiviteUuid}/realisations`, entree)
-}
-
-/** Clôturer (statut 'terminee') exige activites.valider, distinct de activites.modifier — § 7.2. */
-export function modifierStatutSousActivite(sousActiviteUuid: string, statut: string) {
-  return apiClient.patch<SousActiviteDetail>(`/sous-activites/${sousActiviteUuid}`, { statut })
 }
 
 export function modifierStatutActivite(activiteUuid: string, statut: string) {

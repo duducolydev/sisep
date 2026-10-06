@@ -52,13 +52,13 @@ final class ArbreController
         return $projet;
     }
 
-    /** Résout l'exercice demandé (ou le plus récent) pour un projet — factorisé, utilisé par arbre/décaissement/synthèse/alertes. */
+    /** Résout l'exercice demandé (ou celui de l'année en cours) — factorisé, utilisé par arbre/décaissement/synthèse/alertes. */
     private function exerciceOuErreur(Projet $projet, Request $request): Exercice|Response
     {
         $annee = $request->query->get('exercice');
         $exercice = null !== $annee
-            ? $this->exercices->findOneBy(['projet' => $projet, 'annee' => (int) $annee])
-            : $this->exercices->findOneBy(['projet' => $projet], ['annee' => 'DESC']);
+            ? $this->exercices->trouverParAnnee($projet, (int) $annee)
+            : $this->exercices->courantOuPlusRecent($projet);
 
         if (null === $exercice) {
             return ProblemResponseFactory::creer(422, 'Exercice introuvable', 'Aucun exercice ne correspond à ce projet.');

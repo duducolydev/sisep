@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams, Link } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
-import { activiteQueryOptions, modifierStatutActivite, modifierStatutSousActivite } from '@/lib/composantes'
+import { activiteQueryOptions, modifierStatutActivite } from '@/lib/composantes'
 import { formaterDate, formaterFcfa, formaterTaux } from '@/lib/format'
 import { annulerEngagement, validerDepense, validerEngagement, type Dotation, type Engagement } from '@/lib/budget'
 import { ApiError } from '@/lib/api-client'
@@ -12,7 +12,6 @@ import { Pastille } from '@/components/Pastille'
 import { SaisirDotationModale } from '@/components/SaisirDotationModale'
 import { SaisirEngagementModale } from '@/components/SaisirEngagementModale'
 import { SaisirDepenseModale } from '@/components/SaisirDepenseModale'
-import { AvancementInline } from '@/components/AvancementInline'
 import { ValiderClotureBouton } from '@/components/ValiderClotureBouton'
 import { Squelette } from '@/components/Squelette'
 import { EtapesActivite } from '@/components/EtapesActivite'
@@ -79,9 +78,11 @@ export function ActiviteDetail() {
         <div className="mt-2 flex items-center gap-3">
           <span className="chiffres text-muted">{activite.code}</span>
           <Pastille statut={activite.statut} />
+          {/* La clôture se juge sur la progression déduite des étapes : l'ancien
+              avancement, alimenté par les réalisations, ne l'est plus. */}
           <ValiderClotureBouton
             statut={activite.statut}
-            avancement={activite.avancement ?? null}
+            avancement={activite.progression === null ? null : Math.round(activite.progression * 100)}
             structureResponsableUuid={activite.structureResponsable.uuid}
             onValider={async () => {
               await modifierStatutActivite(activite.uuid, 'terminee')
@@ -102,7 +103,7 @@ export function ActiviteDetail() {
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <div className="h-2 w-40 overflow-hidden rounded-[var(--radius-barre)] bg-track">
               <div
-                className={activite.progression === 1 ? 'h-full bg-ok' : 'h-full bg-accent'}
+                className={activite.progression === 1 ? 'h-full bg-success' : 'h-full bg-accent'}
                 style={{ width: `${Math.round(activite.progression * 100)}%` }}
               />
             </div>
@@ -209,22 +210,6 @@ export function ActiviteDetail() {
                   </div>
                   <div className="flex items-center gap-3">
                     <Pastille statut={sa.statut} />
-                    <AvancementInline
-                      avancement={sa.avancement}
-                      sousActiviteUuid={sa.uuid}
-                      activiteUuid={activite.uuid}
-                      structureResponsableUuid={sa.structureResponsable?.uuid ?? activite.structureResponsable.uuid}
-                    />
-                    <ValiderClotureBouton
-                      statut={sa.statut}
-                      avancement={sa.avancement}
-                      structureResponsableUuid={sa.structureResponsable?.uuid ?? activite.structureResponsable.uuid}
-                      onValider={async () => {
-                        await modifierStatutSousActivite(sa.uuid, 'terminee')
-                        await queryClient.invalidateQueries({ queryKey: ['activite', uuid] })
-                        await queryClient.invalidateQueries({ queryKey: ['arbre'] })
-                      }}
-                    />
                   </div>
                 </div>
 

@@ -227,8 +227,8 @@ final class ActiviteController
         $annee = $request->query->get('exercice');
 
         return null !== $annee
-            ? $this->exercices->findOneBy(['projet' => $projet, 'annee' => (int) $annee])
-            : $this->exercices->findOneBy(['projet' => $projet], ['annee' => 'DESC']);
+            ? $this->exercices->trouverParAnnee($projet, (int) $annee)
+            : $this->exercices->courantOuPlusRecent($projet);
     }
 
     /**

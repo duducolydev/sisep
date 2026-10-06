@@ -5,10 +5,7 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Dto\CreerSousActiviteRequest;
-use App\Dto\SaisirRealisationRequest;
-use App\Entity\Realisation;
 use App\Entity\SousActivite;
-use App\Entity\Utilisateur;
 use App\Enum\StatutActivite;
 use App\Http\ProblemResponseFactory;
 use App\Http\SousActiviteNormalizer;
@@ -156,42 +153,14 @@ final class SousActiviteController
         return new Response(status: 204);
     }
 
-    /** POST /sous-activites/:uuid/realisations { avancement, dateConstat, commentaire } — § 6.2 du brief. */
-    #[Route('/{uuid}/realisations', name: 'app_sous_activite_realisation_creer', methods: ['POST'])]
-    public function saisirRealisation(string $uuid, Request $request): Response
-    {
-        $sousActivite = $this->trouver($uuid);
-
-        if (!$this->security->isGranted('activites.modifier', $sousActivite)) {
-            throw new AccessDeniedException();
-        }
-
-        /** @var SaisirRealisationRequest $donnees */
-        $donnees = $this->serializer->deserialize($request->getContent(), SaisirRealisationRequest::class, 'json');
-        if (($erreur = $this->validerOuErreur($donnees, $this->validator)) !== null) {
-            return $erreur;
-        }
-
-        $utilisateur = $this->security->getUser();
-        if (!$utilisateur instanceof Utilisateur) {
-            throw new AccessDeniedException();
-        }
-
-        $realisation = new Realisation(
-            $sousActivite,
-            $donnees->avancement,
-            new \DateTimeImmutable($donnees->dateConstat),
-            $utilisateur,
-        );
-        $realisation->setCommentaire($donnees->commentaire);
-
-        // Déclenche RealisationListener::onFlush, qui met à jour
-        // sous_activite.avancement dans la même transaction (§ 4.6).
-        $this->em->persist($realisation);
-        $this->em->flush();
-
-        return new JsonResponse($this->normalizer->normaliser($sousActivite), 201);
-    }
+    /*
+     * La saisie de réalisations a été retirée avec le passage au suivi par
+     * étapes (§ 6 du CR du 22/09/2026) : l'avancement d'une activité
+     * se déduit désormais de ses EtapeActivite, et la sous-activité n'est
+     * plus qu'une maille budgétaire. Les réalisations déjà enregistrées sont
+     * conservées telles quelles — ce sont des données historiques, dont la
+     * suppression est interdite — mais aucune nouvelle ne peut être saisie.
+     */
 
     private function trouver(string $uuid): SousActivite
     {

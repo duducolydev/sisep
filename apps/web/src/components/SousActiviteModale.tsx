@@ -2,12 +2,9 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router'
 import { Modale } from './Modale'
 import { Pastille } from './Pastille'
-import { AvancementInline } from './AvancementInline'
-import { ValiderClotureBouton } from './ValiderClotureBouton'
 import { Squelette } from './Squelette'
-import { activiteQueryOptions, modifierStatutSousActivite } from '@/lib/composantes'
+import { activiteQueryOptions } from '@/lib/composantes'
 import { formaterDate } from '@/lib/format'
-import { queryClient } from '@/lib/query-client'
 
 interface SousActiviteModaleProps {
   activiteUuid: string
@@ -38,32 +35,12 @@ export function SousActiviteModale({ activiteUuid, sousActiviteUuid, onFermer }:
             <dd>{sousActivite.structureResponsable?.sigle ?? activite.structureResponsable.sigle}</dd>
 
             <dt className="text-muted">Statut</dt>
-            <dd className="flex items-center gap-2">
+            <dd>
               <Pastille statut={sousActivite.statut} />
-              <ValiderClotureBouton
-                statut={sousActivite.statut}
-                avancement={sousActivite.avancement}
-                structureResponsableUuid={sousActivite.structureResponsable?.uuid ?? activite.structureResponsable.uuid}
-                onValider={async () => {
-                  await modifierStatutSousActivite(sousActivite.uuid, 'terminee')
-                  await queryClient.invalidateQueries({ queryKey: ['activite', activiteUuid] })
-                  await queryClient.invalidateQueries({ queryKey: ['arbre'] })
-                }}
-              />
             </dd>
 
             <dt className="text-muted">Échéance</dt>
             <dd className="chiffres">{sousActivite.echeance ? formaterDate(sousActivite.echeance) : 'Sans échéance'}</dd>
-
-            <dt className="text-muted">Avancement</dt>
-            <dd>
-              <AvancementInline
-                avancement={sousActivite.avancement}
-                sousActiviteUuid={sousActivite.uuid}
-                activiteUuid={activite.uuid}
-                structureResponsableUuid={sousActivite.structureResponsable?.uuid ?? activite.structureResponsable.uuid}
-              />
-            </dd>
           </dl>
 
           <Link to={`/composantes/activites/${activite.uuid}`} className="text-sm text-accent" onClick={onFermer}>

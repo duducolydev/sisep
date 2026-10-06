@@ -246,6 +246,7 @@ export function RessourcesHumaines() {
                 <th className="px-4 py-3 font-semibold">Opération</th>
                 <th className="px-4 py-3 font-semibold">Vague</th>
                 <th className="px-4 py-3 font-semibold">Année</th>
+                <th className="px-4 py-3 font-semibold">Mobilisation</th>
                 <th className="px-4 py-3 text-right font-semibold">Femmes</th>
                 <th className="px-4 py-3 text-right font-semibold">Hommes</th>
                 <th className="px-4 py-3 text-right font-semibold">Total</th>
@@ -261,6 +262,11 @@ export function RessourcesHumaines() {
                   </td>
                   <td className="px-4 py-3 text-muted">{e.libelle ?? '—'}</td>
                   <td className="chiffres px-4 py-3">{e.annee}</td>
+                  <td className="chiffres px-4 py-3 text-muted">
+                    {e.dateDebut === null && e.dateFin === null
+                      ? 'Non programmée'
+                      : `${e.dateDebut ? formaterDate(e.dateDebut) : '?'} → ${e.dateFin ? formaterDate(e.dateFin) : '?'}`}
+                  </td>
                   <td className="chiffres px-4 py-3 text-right">{e.nombreFemmes}</td>
                   <td className="chiffres px-4 py-3 text-right">{e.nombreHommes}</td>
                   <td className="chiffres px-4 py-3 text-right font-semibold">{e.effectifTotal}</td>

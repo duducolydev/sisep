@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Modale } from './Modale'
 import { Bouton } from './Bouton'
 import { ComboboxSimple } from './ComboboxSimple'
-import { creerPersonnel, modifierPersonnel, type Personnel, type Sexe } from '@/lib/rh'
+import { creerPersonnel, exerciceParDefaut, modifierPersonnel, type Personnel, type Sexe } from '@/lib/rh'
 import { structuresQueryOptions } from '@/lib/composantes'
 import { budgetExecutionQueryOptions } from '@/lib/budget'
 import { ApiError } from '@/lib/api-client'
@@ -30,12 +30,28 @@ export function PersonnelModale({ personnel, onFermer }: PersonnelModaleProps) {
   const [telephone, setTelephone] = useState(personnel?.telephone ?? '')
   const [structure, setStructure] = useState(personnel?.structure?.uuid ?? '')
   const [activite, setActivite] = useState(personnel?.activite?.uuid ?? '')
+  // Dates du contrat en cours, saisies ici parce que c'est l'information que
+  // l'UGP a sous la main au moment où elle crée la fiche. L'écran des
+  // contrats reste le seul endroit où l'on renouvelle.
+  const periodeDefaut = exerciceParDefaut()
+  const [dateDebut, setDateDebut] = useState(personnel?.contratCourant?.dateDebut ?? periodeDefaut.dateDebut)
+  const [dateFin, setDateFin] = useState(personnel?.contratCourant?.dateFin ?? periodeDefaut.dateFin)
   const [enCours, setEnCours] = useState(false)
   const [erreur, setErreur] = useState<string | null>(null)
 
   async function enregistrer() {
     if (nom.trim() === '' || prenom.trim() === '' || fonction.trim() === '') {
       setErreur('Le nom, le prénom et la fonction sont requis.')
+
+      return
+    }
+    if (dateDebut === '') {
+      setErreur('La date de début de contrat est requise.')
+
+      return
+    }
+    if (dateFin !== '' && dateFin < dateDebut) {
+      setErreur('La date de fin ne peut pas précéder la date de début.')
 
       return
     }
@@ -53,6 +69,7 @@ export function PersonnelModale({ personnel, onFermer }: PersonnelModaleProps) {
       telephone: telephone.trim() === '' ? null : telephone.trim(),
       structure: structure === '' ? null : structure,
       activite: activite === '' ? null : activite,
+      contrat: { dateDebut, dateFin: dateFin === '' ? null : dateFin },
     }
 
     try {
@@ -181,6 +198,32 @@ export function PersonnelModale({ personnel, onFermer }: PersonnelModaleProps) {
                 </option>
               ))}
             </select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="flex flex-col gap-1">
+            <label htmlFor="rh-contrat-debut">Début de contrat</label>
+            <input
+              id="rh-contrat-debut"
+              type="date"
+              value={dateDebut}
+              disabled={enCours}
+              onChange={(e) => setDateDebut(e.target.value)}
+              className="chiffres rounded-[var(--radius-controle)] border border-border px-3 py-2"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="rh-contrat-fin">Fin de contrat</label>
+            <input
+              id="rh-contrat-fin"
+              type="date"
+              value={dateFin}
+              disabled={enCours}
+              onChange={(e) => setDateFin(e.target.value)}
+              className="chiffres rounded-[var(--radius-controle)] border border-border px-3 py-2"
+            />
+            <p className="text-xs text-muted">Laisser vide pour un contrat sans terme.</p>
           </div>
         </div>
 

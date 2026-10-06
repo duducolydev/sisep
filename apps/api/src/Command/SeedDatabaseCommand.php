@@ -9,7 +9,10 @@ use App\Entity\Composante;
 use App\Entity\Depense;
 use App\Entity\Dotation;
 use App\Entity\Engagement;
+use App\Entity\EtapeActivite;
+use App\Entity\EtapeGabarit;
 use App\Entity\Exercice;
+use App\Entity\GabaritEtapes;
 use App\Entity\Indicateur;
 use App\Entity\IndicateurValeur;
 use App\Entity\Parametre;
@@ -18,7 +21,6 @@ use App\Entity\PieceJointe;
 use App\Entity\PointFocal;
 use App\Entity\Projet;
 use App\Entity\RapportPeriodique;
-use App\Entity\Realisation;
 use App\Entity\Role;
 use App\Entity\SousActivite;
 use App\Entity\SousComposante;
@@ -168,12 +170,19 @@ final class SeedDatabaseCommand extends Command
     private function viderLesTables(): void
     {
         $this->connection->executeStatement('SET FOREIGN_KEY_CHECKS = 0');
+        // Toute table dont les lignes pointent vers un id remis à zéro par le
+        // TRUNCATE doit y figurer : une table oubliée ne lève aucune erreur
+        // (FOREIGN_KEY_CHECKS est désactivé), ses lignes se retrouvent juste
+        // rattachées à la mauvaise activité au reseed suivant.
         foreach ([
             'journal_activite', 'contrats', 'personnels', 'effectifs_enqueteurs',
             'invitations_indicateurs', 'indicateur_desagregations', 'indicateur_valeurs', 'indicateurs',
+            'livrables', 'etapes_activite', 'etapes_gabarit', 'gabarits_etapes',
+            'notes_initiative', 'taches_initiative', 'initiative_activite_responsables',
+            'initiative_activites', 'initiatives',
             'realisations', 'depenses', 'engagements', 'dotations', 'sous_activites', 'activites',
             'sous_composantes', 'composantes', 'exercices', 'projets',
-            'rapports_periodiques', 'pieces_jointes', 'points_focaux',
+            'rapports_periodiques', 'pieces_jointes_visibilite_agents', 'pieces_jointes', 'points_focaux',
             'utilisateur_roles', 'role_permissions', 'roles', 'permissions',
             'utilisateurs', 'structures', 'parametres',
         ] as $table) {
@@ -212,6 +221,7 @@ final class SeedDatabaseCommand extends Command
             ['admin.parametres', 'admin', 'Gérer les paramètres'],
             ['admin.utilisateurs', 'admin', 'Gérer les comptes utilisateurs'],
             ['journal.consulter', 'journal', "Consulter le journal d'activité"],
+            ['documents.gerer', 'documents', 'Déposer et retirer des documents de la bibliothèque'],
             ['exports.generer', 'exports', 'Générer un export'],
             ['initiatives.gerer', 'initiatives', 'Gérer le suivi des projets'],
             ['rh.consulter', 'rh', 'Consulter le suivi des ressources humaines'],
@@ -247,15 +257,26 @@ final class SeedDatabaseCommand extends Command
             'budget.engagement.valider', 'budget.depense.valider', 'indicateurs.consulter', 'indicateurs.valider',
             'indicateurs.inviter', 'structures.gerer', 'points_focaux.gerer', 'admin.roles', 'admin.parametres',
             'admin.utilisateurs', 'journal.consulter', 'exports.generer', 'initiatives.gerer',
-            'rh.consulter', 'rh.gerer',
+            'rh.consulter', 'rh.gerer', 'documents.gerer',
         ]);
 
+        // Dérogation assumée à la séparation saisie/validation (§ 7.2),
+        // décidée après la réunion du 22/09/2026 : le responsable
+        // suivi-évaluation tient le budget de bout en bout dans les faits,
+        // l'UGP n'ayant pas deux agents distincts à y consacrer. Elle est
+        // bornée et traçable — journal_activite retient qui a saisi, modifié
+        // et validé chaque dotation, engagement et dépense, avec l'état
+        // avant et après, et l'écran du budget expose ce fil. Aucun autre
+        // rôle opérationnel ne cumule les deux : le gestionnaire budgétaire
+        // saisit sans valider, le coordonnateur valide sans saisir.
         $suiviEvaluation = new Role('responsable_suivi_evaluation', 'Responsable suivi-évaluation', true);
         $accorder($suiviEvaluation, $permissions, [
             'activites.consulter', 'activites.creer', 'activites.modifier', 'activites.valider',
+            'budget.engagement.saisir', 'budget.engagement.valider',
+            'budget.depense.saisir', 'budget.depense.valider',
             'indicateurs.consulter', 'indicateurs.definir', 'indicateurs.saisir', 'indicateurs.inviter',
             'journal.consulter', 'exports.generer', 'initiatives.gerer', 'admin.parametres',
-            'rh.consulter', 'rh.gerer',
+            'rh.consulter', 'rh.gerer', 'documents.gerer',
         ]);
 
         $gestionnaireBudgetaire = new Role('gestionnaire_budgetaire', 'Gestionnaire budgétaire', true);
@@ -436,6 +457,14 @@ final class SeedDatabaseCommand extends Command
         return [$projet, $exercice, $exercicesSupplementaires];
     }
 
+    /** Code de la composante déduit de celui de la sous-composante : « 1.2 » → « 1 ». */
+    private function codeComposante(string $codeSousComposante): string
+    {
+        $position = strpos($codeSousComposante, '.');
+
+        return false === $position ? $codeSousComposante : substr($codeSousComposante, 0, $position);
+    }
+
     private function mapperStatut(string $st): StatutActivite
     {
         return match ($st) {
@@ -475,11 +504,16 @@ final class SeedDatabaseCommand extends Command
 
         $gestionnaire = $utilisateurs['gestionnaire_budgetaire'];
         $coordonnateur = $utilisateurs['coordonnateur'];
-        $suiviEvaluation = $utilisateurs['suivi_evaluation'];
+        $gabaritEtapes = $this->semerGabaritEtapes();
 
         foreach ($activitesData as $a) {
             if (!isset($composantes[$a['comp']])) {
-                $composante = new Composante($projet, $a['comp'], $a['compt']);
+                // Code repris du PTBA (« 1 », pas « C1 ») : c'est celui que
+                // porte le classeur, et dont dérivent ceux des niveaux
+                // inférieurs (« 1.2 », « 1.2.1 »). Un code différent ici
+                // ferait créer une seconde composante à l'import du PTBA
+                // réel, qui ne reconnaîtrait pas la sienne.
+                $composante = new Composante($projet, $this->codeComposante($a['sc']), $a['compt']);
                 $composante->setOrdre($ordreComposante++);
                 $this->em->persist($composante);
                 $composantes[$a['comp']] = $composante;
@@ -499,7 +533,9 @@ final class SeedDatabaseCommand extends Command
             $activite->setStatut($this->mapperStatut($a['st']));
 
             $echeances = [];
+            $avancements = [];
             foreach ($a['sa'] as $index => $sa) {
+                $avancements[] = (int) $sa['av'];
                 $echeance = \DateTimeImmutable::createFromFormat('d/m/Y', $sa['ech']) ?: null;
                 if (null !== $echeance) {
                     $echeances[] = ['date' => $echeance, 'fait' => 'fait' === $sa['st']];
@@ -511,11 +547,6 @@ final class SeedDatabaseCommand extends Command
                 $sousActivite->setEcheance($echeance);
                 $sousActivite->setOrdre($index);
                 $this->em->persist($sousActivite);
-
-                // Déclenche RealisationListener::onFlush, qui met à jour
-                // sous_activite.avancement — c'est le "trigger applicatif" du § 4.6.
-                $realisation = new Realisation($sousActivite, $sa['av'], new \DateTimeImmutable('today'), $suiviEvaluation);
-                $this->em->persist($realisation);
 
                 // Ligne chiffrée du PTBA au niveau sous-activité (ex. RGPH-5, EHCVM) — § 6.2.
                 $this->creerBudgetSiPresent($sousActivite, $exercice, $sa['budget'] ?? null, $gestionnaire, $coordonnateur);
@@ -532,6 +563,8 @@ final class SeedDatabaseCommand extends Command
                 }
             }
 
+            $this->semerEtapes($activite, $gabaritEtapes, $avancements);
+
             $this->em->persist($activite);
             $activites[$a['code']] = $activite;
 
@@ -541,6 +574,54 @@ final class SeedDatabaseCommand extends Command
         }
 
         return [$activites, \count($composantes), \count($sousComposantes), $sousActivitesCount];
+    }
+
+    /**
+     * Gabarit d'étapes de démonstration — il sert deux fois : il peuple
+     * l'écran d'administration des gabarits, et c'est lui qui fournit les
+     * libellés des étapes instanciées sur chaque activité.
+     */
+    private function semerGabaritEtapes(): GabaritEtapes
+    {
+        $gabarit = new GabaritEtapes("Cycle standard d'une activité");
+        $gabarit->setDescription('Découpage normalisé par l\'UGP (§ 6 du CR du 22/09/2026) : quatre phases, applicables à toute activité du PTBA.');
+        $this->em->persist($gabarit);
+
+        foreach (['Préparation', 'Mise en œuvre', 'Suivi', 'Restitution'] as $ordre => $libelle) {
+            $this->em->persist(new EtapeGabarit($gabarit, $libelle, $ordre + 1));
+        }
+
+        return $gabarit;
+    }
+
+    /**
+     * Étapes d'une activité, copiées du gabarit puis renseignées de façon à
+     * ce que leur moyenne reproduise l'avancement des sous-activités du PTBA
+     * — le document source ne décrit pas le terrain phase par phase, donc on
+     * remplit les phases dans l'ordre : les premières à 100 %, une partielle,
+     * les suivantes à 0 %. La progression affichée reste celle des données
+     * réelles, sans inventer de détail qui n'y figure pas.
+     *
+     * @param list<int> $avancements avancement de chaque sous-activité, en %
+     */
+    private function semerEtapes(Activite $activite, GabaritEtapes $gabarit, array $avancements): void
+    {
+        if ([] === $avancements) {
+            return;
+        }
+
+        $moyenne = array_sum($avancements) / \count($avancements);
+        $libelles = array_map(static fn (EtapeGabarit $e) => $e->getLibelle(), $gabarit->getEtapes()->toArray());
+        $reste = $moyenne * \count($libelles) / 100;
+
+        foreach ($libelles as $index => $libelle) {
+            $etape = new EtapeActivite($activite, $libelle, $index + 1);
+            $niveau = (int) round(min(100, max(0, ($reste - $index) * 100)));
+            if ($niveau > 0) {
+                $etape->renseigner($niveau, null, null, new \DateTimeImmutable('today'));
+            }
+            $this->em->persist($etape);
+        }
     }
 
     /**
@@ -703,7 +784,10 @@ final class SeedDatabaseCommand extends Command
                 $ind['source'],
             );
             $indicateur->setPrecisionLibelle($ind['precision']);
-            $indicateur->setComposante($composantesParCode[$ind['comp']] ?? null);
+            // La maquette note les composantes « C1 » là où le PTBA les
+            // code « 1 » : seul le second est stocké, le premier reste un
+            // repère de lecture dans le fichier de données.
+            $indicateur->setComposante($composantesParCode[ltrim($ind['comp'], 'C')] ?? null);
             // Structure responsable (§ 4.4) : seuls les indicateurs dont la
             // source nomme explicitement une structure en portent une — pas
             // de responsable inventé pour les autres (§ 10, exactitude des
@@ -804,6 +888,9 @@ final class SeedDatabaseCommand extends Command
             ['rapport.echeance_jours', '15', 'Délai (jours) après la fin du trimestre pour transmettre le rapport périodique'],
             ['initiatives.seuil_duree_risque', '0.6667', 'Fraction de la durée d\'une activité de projet écoulée à partir de laquelle une faible progression déclenche "à risque"'],
             ['initiatives.seuil_ecart_risque', '-0.20', 'Écart progression / durée écoulée en-deçà duquel une activité de projet passe "à risque"'],
+            ['alertes.destinataires', '', 'Adresses destinataires des alertes planifiées, séparées par des virgules (vide : les comptes coordonnateur et suivi-évaluation)'],
+            ['alertes.contrat_jours', '30,15,7,0', "Jours restants déclenchant une alerte d'échéance de contrat"],
+            ['alertes.relance_intervalle_jours', '7', 'Délai minimal (jours) entre deux relances automatiques du même rapport'],
         ];
 
         foreach ($definitions as [$code, $valeur, $description]) {

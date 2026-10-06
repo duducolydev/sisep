@@ -33,6 +33,16 @@ class PieceJointe
     #[ORM\Column(length: 255)]
     private string $nomFichier;
 
+    /**
+     * Intitulé donné par la personne qui dépose le document, distinct du nom
+     * de fichier : « Rapport d'avancement T2 » se cherche, « doc_v3_final.pdf »
+     * non. Nullable, et de fait renseigné seulement par la bibliothèque
+     * documentaire — un justificatif joint à une étape ou à une valeur
+     * d'indicateur se désigne par ce qu'il accompagne.
+     */
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $libelle = null;
+
     #[ORM\Column(length: 500)]
     private string $chemin;
 
@@ -114,6 +124,16 @@ class PieceJointe
     public function getEntiteId(): int
     {
         return $this->entiteId;
+    }
+
+    public function getLibelle(): ?string
+    {
+        return $this->libelle;
+    }
+
+    public function setLibelle(?string $libelle): void
+    {
+        $this->libelle = $libelle;
     }
 
     public function getNomFichier(): string

@@ -20,6 +20,7 @@ services:
         resource: '../src/'
         exclude:
             - '../src/DataFixtures/donnees_demonstration.php' # fichier de données, pas une classe de service
+            - '../src/DataFixtures/operations_personnel.php' # idem : table de rattachement, pas un service
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones

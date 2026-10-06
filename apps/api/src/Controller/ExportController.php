@@ -153,7 +153,7 @@ final class ExportController
         $anneeBrute = $request->query->get('exercice');
         $exercice = \is_string($anneeBrute) && '' !== $anneeBrute
             ? $this->exercices->trouverParAnnee($projet, (int) $anneeBrute)
-            : $this->exercices->findOneBy(['projet' => $projet], ['annee' => 'DESC']);
+            : $this->exercices->courantOuPlusRecent($projet);
 
         return $exercice ?? ProblemResponseFactory::creer(422, 'Exercice introuvable', 'Aucun exercice ne correspond à ce projet.');
     }

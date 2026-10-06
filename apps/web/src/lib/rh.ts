@@ -22,6 +22,17 @@ export const COULEURS_SEXE: Record<Sexe, string> = {
 /** Au PHASAOC, tout le personnel technique est sous contrat de prestation (confirmé par l'UGP) : la saisie part de cette valeur. */
 export const TYPE_CONTRAT_PAR_DEFAUT = 'Contrat de prestation'
 
+/**
+ * Faute de dates connues agent par agent, l'UGP a arrêté la convention de
+ * l'exercice complet (demande du 05/10/2026). Calculé sur l'année courante
+ * plutôt que figé sur 2026 : la convention vaudra encore l'an prochain.
+ */
+export function exerciceParDefaut(): { dateDebut: string; dateFin: string } {
+  const annee = new Date().getFullYear()
+
+  return { dateDebut: `${annee}-01-01`, dateFin: `${annee}-12-31` }
+}
+
 export interface Contrat {
   uuid: string
   dateDebut: string
@@ -55,6 +66,11 @@ export interface EffectifEnqueteurs {
   activite: { uuid: string; code: string; libelle: string }
   libelle: string | null
   annee: number
+  /** Période de mobilisation — `null` tant que le calendrier de collecte n'est pas arrêté. */
+  dateDebut: string | null
+  dateFin: string | null
+  /** Déduite des deux bornes, jamais saisie ; `null` si l'une manque. */
+  dureeEnJours: number | null
   nombreFemmes: number
   nombreHommes: number
   /** Déduit de la somme des deux, jamais saisi. */
@@ -97,6 +113,12 @@ export interface PersonnelEntree {
   telephone?: string | null
   structure?: string | null
   activite?: string | null
+  /**
+   * Période du contrat, saisie depuis la fiche de l'agent : à la création
+   * elle ouvre le premier contrat, à la modification elle corrige celui en
+   * cours. Un renouvellement passe par `creerContrat`, qui ajoute une ligne.
+   */
+  contrat?: { dateDebut: string; dateFin?: string | null }
 }
 
 export function creerPersonnel(entree: PersonnelEntree) {
@@ -135,6 +157,8 @@ export interface EffectifEntree {
   activite: string
   annee: number
   libelle?: string | null
+  dateDebut?: string | null
+  dateFin?: string | null
   nombreFemmes?: number
   nombreHommes?: number
 }

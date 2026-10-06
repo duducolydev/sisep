@@ -104,7 +104,8 @@ final class RessourcesHumainesController
         }
 
         $personnel = new Personnel($nom, $prenom, $sexe, $fonction);
-        $erreur = $this->appliquer($personnel, $donnees);
+        $erreur = $this->appliquer($personnel, $donnees)
+            ?? $this->appliquerContratDepuisFiche($personnel, $donnees);
         if (null !== $erreur) {
             return $erreur;
         }
@@ -144,7 +145,8 @@ final class RessourcesHumainesController
             $personnel->setSexe($sexe);
         }
 
-        $erreur = $this->appliquer($personnel, $donnees);
+        $erreur = $this->appliquer($personnel, $donnees)
+            ?? $this->appliquerContratDepuisFiche($personnel, $donnees);
         if (null !== $erreur) {
             return $erreur;
         }
@@ -290,7 +292,11 @@ final class RessourcesHumainesController
         }
 
         $effectif = new EffectifEnqueteurs($activite, $annee);
-        $this->appliquerEffectif($effectif, $donnees);
+        $erreur = $this->appliquerEffectif($effectif, $donnees);
+        if (null !== $erreur) {
+            return $erreur;
+        }
+
         $this->em->persist($effectif);
         $this->em->flush();
 
@@ -320,7 +326,11 @@ final class RessourcesHumainesController
             $effectif->setAnnee($annee);
         }
 
-        $this->appliquerEffectif($effectif, $donnees);
+        $erreur = $this->appliquerEffectif($effectif, $donnees);
+        if (null !== $erreur) {
+            return $erreur;
+        }
+
         $this->em->flush();
 
         return new JsonResponse($this->normalizer->normaliserEffectif($effectif));
@@ -380,6 +390,43 @@ final class RessourcesHumainesController
         return null;
     }
 
+    /**
+     * Période contractuelle saisie depuis la fiche de l'agent, sous la clé
+     * `contrat` — l'UGP veut les dates sous les yeux au moment où elle crée
+     * ou corrige un agent (demande du 05/10/2026), sans passer par l'écran
+     * des contrats.
+     *
+     * À la création, elle ouvre le premier contrat. À la modification, elle
+     * corrige celui en cours — ce n'est pas un renouvellement : renouveler
+     * reste POST /personnels/{uuid}/contrats, qui ajoute une ligne et
+     * conserve la précédente (§ 10 du CR du 22/09/2026).
+     *
+     * @param array<string, mixed> $donnees
+     */
+    private function appliquerContratDepuisFiche(Personnel $personnel, array $donnees): ?Response
+    {
+        if (!\array_key_exists('contrat', $donnees) || !\is_array($donnees['contrat'])) {
+            return null;
+        }
+
+        /** @var array<string, mixed> $periode */
+        $periode = $donnees['contrat'];
+        $debut = $this->chaineOuNull($periode, 'dateDebut');
+        $contrat = $personnel->getContratCourant();
+
+        if (null === $contrat) {
+            if (null === $debut) {
+                return ProblemResponseFactory::creer(422, 'Données invalides', 'La date de début de contrat est requise.');
+            }
+            $contrat = new Contrat($personnel, new \DateTimeImmutable($debut));
+            $this->em->persist($contrat);
+        } elseif (null !== $debut) {
+            $contrat->setDateDebut(new \DateTimeImmutable($debut));
+        }
+
+        return $this->appliquerContrat($contrat, $periode);
+    }
+
     /** @param array<string, mixed> $donnees */
     private function appliquerContrat(Contrat $contrat, array $donnees): ?Response
     {
@@ -406,7 +453,7 @@ final class RessourcesHumainesController
     }
 
     /** @param array<string, mixed> $donnees */
-    private function appliquerEffectif(EffectifEnqueteurs $effectif, array $donnees): void
+    private function appliquerEffectif(EffectifEnqueteurs $effectif, array $donnees): ?Response
     {
         if (\array_key_exists('libelle', $donnees)) {
             $effectif->setLibelle($this->chaineOuNull($donnees, 'libelle'));
@@ -417,6 +464,33 @@ final class RessourcesHumainesController
                 (int) ($donnees['nombreHommes'] ?? $effectif->getNombreHommes()),
             );
         }
+
+        // Les deux bornes sont posées ensemble : l'entité refuse une fin
+        // antérieure au début, et une borne absente du corps garde sa valeur.
+        if (\array_key_exists('dateDebut', $donnees) || \array_key_exists('dateFin', $donnees)) {
+            $debut = \array_key_exists('dateDebut', $donnees)
+                ? $this->dateOuNull($donnees, 'dateDebut')
+                : $effectif->getDateDebut();
+            $fin = \array_key_exists('dateFin', $donnees)
+                ? $this->dateOuNull($donnees, 'dateFin')
+                : $effectif->getDateFin();
+
+            try {
+                $effectif->definirPeriode($debut, $fin);
+            } catch (\InvalidArgumentException $e) {
+                return ProblemResponseFactory::creer(422, 'Données invalides', $e->getMessage());
+            }
+        }
+
+        return null;
+    }
+
+    /** @param array<string, mixed> $donnees */
+    private function dateOuNull(array $donnees, string $champ): ?\DateTimeImmutable
+    {
+        $valeur = $this->chaineOuNull($donnees, $champ);
+
+        return null === $valeur ? null : new \DateTimeImmutable($valeur);
     }
 
     /** @param array<string, mixed> $donnees */

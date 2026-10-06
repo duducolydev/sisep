@@ -4,10 +4,12 @@ import { useSearchParams } from 'react-router'
 import { arbreQueryOptions, projetCourantQueryOptions, structuresQueryOptions } from '@/lib/composantes'
 import { filtrerArbre, type FiltresArbre } from '@/lib/arbre-filtrage'
 import { ArbreExecution } from '@/components/ArbreExecution'
+import { VueEnsembleComposantes } from '@/components/VueEnsembleComposantes'
 import { usePeut, useUtilisateurCourant } from '@/lib/use-permissions'
 import { CreerActiviteModale } from '@/components/CreerActiviteModale'
 import { IconePlus, IconeComposante, IconeStatut, IconeStructure, IconeRecherche } from '@/components/Icones'
 import { Squelette } from '@/components/Squelette'
+import { SelecteurExercice } from '@/components/SelecteurExercice'
 
 const STATUTS = [
   { valeur: 'planifiee', libelle: 'Planifiée' },
@@ -24,7 +26,10 @@ export function Composantes() {
   const { data: utilisateur } = useUtilisateurCourant()
 
   const { data: projet } = useQuery(projetCourantQueryOptions())
-  const { data: arbre, isLoading, isError } = useQuery(arbreQueryOptions(projet?.uuid))
+  // L'exercice vit dans l'URL comme les autres filtres : un lien vers une
+  // année précise doit être partageable (§ 8.1).
+  const exercice = searchParams.get('exercice') ? Number(searchParams.get('exercice')) : undefined
+  const { data: arbre, isLoading, isError } = useQuery(arbreQueryOptions(projet?.uuid, 4, exercice))
   const { data: structures } = useQuery(structuresQueryOptions())
 
   const mesActivites = searchParams.get('mes') === '1'
@@ -164,6 +169,8 @@ export function Composantes() {
           />
         </div>
 
+        <SelecteurExercice projetUuid={projet?.uuid} />
+
         {utilisateur?.structureUuid && (
           <button
             type="button"
@@ -180,7 +187,14 @@ export function Composantes() {
 
       {isLoading && <Squelette lignes={4} />}
       {isError && <p className="text-bad">Impossible de charger l'arbre. Réessayez.</p>}
-      {arbre && <ArbreExecution composantes={composantesFiltrees} tauxAttendu={arbre.tauxAttendu} />}
+      {arbre && (
+        <>
+          {/* Les graphiques suivent les filtres ci-dessus : résumer un périmètre
+              différent de celui de l'arbre en dessous serait trompeur. */}
+          <VueEnsembleComposantes composantes={composantesFiltrees} tauxAttendu={arbre.tauxAttendu} />
+          <ArbreExecution composantes={composantesFiltrees} tauxAttendu={arbre.tauxAttendu} />
+        </>
+      )}
 
       {modaleOuverte && projet && (
         <CreerActiviteModale

@@ -9,6 +9,8 @@ use App\Dto\RenseignerEtapeRequest;
 use App\Entity\Activite;
 use App\Entity\EtapeActivite;
 use App\Entity\Livrable;
+use App\Entity\PieceJointe;
+use App\Entity\Utilisateur;
 use App\Http\EtapeActiviteNormalizer;
 use App\Http\ProblemResponseFactory;
 use App\Repository\ActiviteRepository;
@@ -17,6 +19,8 @@ use App\Repository\GabaritEtapesRepository;
 use App\Repository\LivrableRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -25,6 +29,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Serializer\SerializerInterface;
+use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 /**
@@ -45,6 +50,8 @@ final class EtapeActiviteController
 {
     use ApiControllerHelpersTrait;
 
+    private const TAILLE_MAX_OCTETS = 10 * 1024 * 1024;
+
     public function __construct(
         private readonly ActiviteRepository $activites,
         private readonly EtapeActiviteRepository $etapes,
@@ -55,6 +62,8 @@ final class EtapeActiviteController
         private readonly Security $security,
         private readonly SerializerInterface $serializer,
         private readonly ValidatorInterface $validator,
+        private readonly Filesystem $filesystem,
+        #[Autowire('%kernel.project_dir%')] private readonly string $projectDir,
     ) {
     }
 
@@ -250,6 +259,58 @@ final class EtapeActiviteController
         $this->em->flush();
 
         return new Response(status: 204);
+    }
+
+    /**
+     * Pièce justificative attachée à une étape (§ 6 du CR du
+     * 22/09/2026). Joindre un justificatif fait partie du renseignement, pas
+     * de la structuration : activites.modifier suffit donc, comme pour le
+     * niveau atteint. Même stockage et même limite que les autres pièces
+     * jointes de l'application (10 Mo, disque local).
+     */
+    #[Route('/etapes/{uuid}/pieces-jointes', name: 'app_etape_piece_jointe_creer', methods: ['POST'], requirements: ['uuid' => '[0-9a-fA-F-]{36}'])]
+    public function creerPieceJointe(string $uuid, Request $request): Response
+    {
+        $etape = $this->trouverEtape($uuid);
+        $this->exigerPermission($this->security, 'activites.modifier', $etape);
+
+        $utilisateur = $this->security->getUser();
+        if (!$utilisateur instanceof Utilisateur) {
+            return ProblemResponseFactory::creer(401, 'Authentification requise');
+        }
+
+        $fichier = $request->files->get('fichier');
+        if (null === $fichier) {
+            return ProblemResponseFactory::creer(422, 'Fichier manquant', 'Le champ "fichier" (multipart) est requis.');
+        }
+        if (!$fichier->isValid()) {
+            return ProblemResponseFactory::creer(422, 'Fichier invalide', "Le fichier n'a pas pu être reçu (dépassement d'une limite serveur ou envoi interrompu).");
+        }
+        $tailleOctets = (int) $fichier->getSize();
+        if ($tailleOctets > self::TAILLE_MAX_OCTETS) {
+            return ProblemResponseFactory::creer(422, 'Fichier trop volumineux', 'La taille maximale est de 10 Mo.');
+        }
+
+        $repertoire = $this->projectDir.'/var/uploads/etapes';
+        $this->filesystem->mkdir($repertoire);
+        $nomStocke = Uuid::v4()->toRfc4122().'-'.$fichier->getClientOriginalName();
+        $nomOriginal = $fichier->getClientOriginalName();
+        $mime = $fichier->getClientMimeType() ?? 'application/octet-stream';
+        $fichier->move($repertoire, $nomStocke);
+
+        $pieceJointe = new PieceJointe(
+            'etape_activite',
+            (int) $etape->getId(),
+            $nomOriginal,
+            'var/uploads/etapes/'.$nomStocke,
+            $mime,
+            $tailleOctets,
+            $utilisateur,
+        );
+        $this->em->persist($pieceJointe);
+        $this->em->flush();
+
+        return new JsonResponse($this->normalizer->normaliser($etape), 201);
     }
 
     private function trouverActivite(string $uuid): Activite

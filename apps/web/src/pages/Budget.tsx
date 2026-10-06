@@ -6,6 +6,7 @@ import { projetCourantQueryOptions } from '@/lib/composantes'
 import { formaterFcfa, formaterTaux } from '@/lib/format'
 import { urlExportBudget } from '@/lib/exports'
 import { usePeut } from '@/lib/use-permissions'
+import { JournalBudgetaire } from '@/components/JournalBudgetaire'
 import { BarreExecution } from '@/components/BarreExecution'
 import { CourbeDecaissement } from '@/components/CourbeDecaissement'
 import { BarresMontantsExecution } from '@/components/BarresMontantsExecution'
@@ -31,6 +32,7 @@ export function Budget() {
   const { data: decaissement } = useQuery(decaissementQueryOptions(projet?.uuid))
   const { data: executionPluriannuelle } = useQuery(executionPluriannuelleQueryOptions(projet?.uuid))
   const peutExporter = usePeut('exports.generer')
+  const peutConsulterJournal = usePeut('journal.consulter')
 
   const activitesFiltrees = useMemo(() => {
     const rechercheLC = recherche.trim().toLowerCase()
@@ -288,6 +290,14 @@ export function Budget() {
           </div>
         )}
       </section>
+
+      {/* Réservé à qui détient journal.consulter : lire qui a validé une
+          dépense est un droit d'audit, pas un droit d'écran. */}
+      {peutConsulterJournal && (
+        <section className="mt-6">
+          <JournalBudgetaire />
+        </section>
+      )}
     </div>
   )
 }

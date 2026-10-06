@@ -19,15 +19,18 @@ Vite + TypeScript (`apps/web`), monorepo pnpm (`packages/shared`).
   historique. Suppression physique interdite sur activités, engagements,
   dépenses, valeurs d'indicateurs.
 - Séparer saisie et validation : jamais le même rôle ne détient
-  `budget.*.saisir` et `budget.*.valider` (§ 7.2). **Dérogations assumées**,
-  décidées après la réunion du 22/09/2026 : le rôle `administrateur`, qui
-  détient toutes les permissions, les cumule aujourd'hui ; le rôle
-  `responsable_suivi_evaluation` les cumulera lorsque le chantier « budget »
-  sera livré. Leur contrepartie est la traçabilité : `journal_activite`
-  intercepte déjà toute écriture sur dotations, engagements et dépenses,
-  avec l'état avant et après. Ces rôles ne doivent pas être attribués à
-  quelqu'un qui traite réellement des écritures budgétaires. Aucun autre
-  rôle ne peut cumuler les deux.
+  `budget.*.saisir` et `budget.*.valider` (§ 7.2). **Deux dérogations
+  assumées**, décidées après la réunion du 22/09/2026 : les rôles
+  `administrateur` et `responsable_suivi_evaluation` cumulent les deux.
+  Trois contreparties, toutes en place : le serveur refuse qu'une même
+  personne valide l'écriture qu'elle a saisie, quelles que soient ses
+  permissions (`DepenseValidationService`, `EngagementValidationService`) ;
+  `journal_activite` intercepte toute écriture sur dotations, engagements et
+  dépenses avec l'état avant et après ; et ce fil est consultable depuis
+  l'écran du budget (`GET /journal/budget`), pas seulement dans
+  l'administration. Aucun autre rôle ne peut cumuler les deux : le
+  gestionnaire budgétaire saisit sans valider, le coordonnateur valide sans
+  saisir.
 - Portée par structure en plus de la permission (`UtilisateurRole.structure`),
   appliquée comme filtre de requête (Doctrine SQL Filter) et non comme
   contrôle après lecture.
@@ -47,9 +50,15 @@ Vite + TypeScript (`apps/web`), monorepo pnpm (`packages/shared`).
 - Ne pas utiliser MySQL `ENUM` natif pour les statuts métier : `VARCHAR` +
   enum PHP natif (`enumType:` sur la colonne) + contrainte `CHECK` ajoutée à
   la main dans la migration (décision actée, § 4 du brief).
-- Ne pas modifier `sous_activite.avancement` directement : c'est
-  `App\EventListener\RealisationListener` (déclenché à l'insertion d'une
-  `Realisation`) qui le fait.
+- Ne pas réintroduire la saisie de réalisations (retirée au CR du
+  22/09/2026) : l'avancement se renseigne étape par étape
+  (`EtapeActivite`), et la progression d'une activité est la moyenne de ses
+  étapes — `App\Activite\ProgressionActiviteCalculator` sur une entité, la
+  même moyenne en SQL dans `ArbreReader`. `sous_activite.avancement`,
+  `Realisation` et `RealisationListener` ne subsistent que pour les données
+  historiques : rien n'y écrit plus, et l'arbre ne les expose plus. La
+  sous-activité est désormais la seule maille budgétaire du PTBA, créée par
+  l'UGP (`activites.creer`).
 
 ## Commandes
 

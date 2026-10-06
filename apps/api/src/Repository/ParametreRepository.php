@@ -38,6 +38,14 @@ class ParametreRepository extends ServiceEntityRepository
         return null !== $parametre ? (int) $parametre->getValeur() : $defaut;
     }
 
+    /** Même défense que valeurFlottante() — utilisé pour les listes d'adresses et de seuils d'alerte. */
+    public function valeurTexte(string $code, string $defaut = ''): string
+    {
+        $parametre = $this->findOneBy(['code' => $code]);
+
+        return null !== $parametre ? $parametre->getValeur() : $defaut;
+    }
+
     /** @return list<Parametre> */
     public function listerToutes(): array
     {

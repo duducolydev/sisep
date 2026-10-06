@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Bouton } from './Bouton'
 import { IconeBouton, IconeAnnuler, IconeModifier, IconePlus, IconeSupprimer, IconeTrombone } from './Icones'
@@ -12,6 +12,7 @@ import {
   creerLivrable,
   supprimerEtape,
   supprimerLivrable,
+  televerserPieceJointeEtape,
   type EtapeActivite,
 } from '@/lib/etapes'
 import { urlTelechargerPieceJointe } from '@/lib/exports'
@@ -146,7 +147,7 @@ export function EtapesActivite({ activiteUuid, peutStructurer, peutRenseigner }:
                   <div className="flex items-center gap-2">
                     <div className="h-2 w-24 overflow-hidden rounded-[var(--radius-barre)] bg-track">
                       <div
-                        className={etape.avancement === 100 ? 'h-full bg-ok' : 'h-full bg-accent'}
+                        className={etape.avancement === 100 ? 'h-full bg-success' : 'h-full bg-accent'}
                         style={{ width: `${etape.avancement}%` }}
                       />
                     </div>
@@ -224,18 +225,19 @@ export function EtapesActivite({ activiteUuid, peutStructurer, peutRenseigner }:
                 </ul>
               )}
 
-              {etape.piecesJointes.length > 0 && (
-                <ul className="mt-2 flex flex-wrap gap-3 text-sm">
-                  {etape.piecesJointes.map((piece) => (
-                    <li key={piece.uuid} className="flex items-center gap-1.5">
-                      <IconeTrombone />
-                      <a href={urlTelechargerPieceJointe(piece.uuid)} className="truncate text-accent hover:text-accent-d">
-                        {piece.nomFichier}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
+                {etape.piecesJointes.map((piece) => (
+                  <span key={piece.uuid} className="flex items-center gap-1.5">
+                    <IconeTrombone />
+                    <a href={urlTelechargerPieceJointe(piece.uuid)} className="truncate text-accent hover:text-accent-d">
+                      {piece.nomFichier}
+                    </a>
+                  </span>
+                ))}
+                {peutRenseigner && (
+                  <DeposerJustificatif etapeUuid={etape.uuid} enCours={enCours} onDeposer={executer} />
+                )}
+              </div>
 
               {peutStructurer && <AjoutLivrable etapeUuid={etape.uuid} enCours={enCours} onAjouter={executer} />}
             </li>
@@ -251,6 +253,43 @@ export function EtapesActivite({ activiteUuid, peutStructurer, peutRenseigner }:
         />
       )}
     </section>
+  )
+}
+
+/** Dépôt d'une pièce justificative sur une étape (§ 6 du CR) : un simple champ fichier, le justificatif part dès sa sélection. */
+function DeposerJustificatif({
+  etapeUuid,
+  enCours,
+  onDeposer,
+}: {
+  etapeUuid: string
+  enCours: boolean
+  onDeposer: (action: () => Promise<unknown>) => Promise<void>
+}) {
+  const champ = useRef<HTMLInputElement>(null)
+
+  return (
+    <>
+      <input
+        ref={champ}
+        type="file"
+        className="hidden"
+        onChange={(e) => {
+          const fichier = e.target.files?.[0]
+          if (fichier) void onDeposer(() => televerserPieceJointeEtape(etapeUuid, fichier))
+          e.target.value = ''
+        }}
+      />
+      <Bouton
+        variante="discret"
+        taille="mini"
+        icone={<IconeTrombone />}
+        disabled={enCours}
+        onClick={() => champ.current?.click()}
+      >
+        Joindre un justificatif
+      </Bouton>
+    </>
   )
 }
 

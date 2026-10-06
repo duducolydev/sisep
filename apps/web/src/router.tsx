@@ -43,6 +43,9 @@ export const router = createBrowserRouter([
         lazy: () => import('./pages/IndicateurDetail').then((m) => ({ Component: m.IndicateurDetail })),
       },
       { path: 'initiatives', lazy: () => import('./pages/Initiatives').then((m) => ({ Component: m.Initiatives })) },
+      // Pas de garde : la bibliothèque se lit par tous, chaque document
+      // décidant lui-même de sa visibilité côté serveur.
+      { path: 'documents', lazy: () => import('./pages/Documents').then((m) => ({ Component: m.Documents })) },
       {
         path: 'initiatives/:uuid',
         lazy: () => import('./pages/InitiativeDetail').then((m) => ({ Component: m.InitiativeDetail })),

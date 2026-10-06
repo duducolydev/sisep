@@ -48,7 +48,7 @@ final class BudgetController
         $annee = $request->query->get('exercice');
         $exercice = null !== $annee
             ? $this->exercices->trouverParAnnee($projet, (int) $annee)
-            : $this->exercices->findOneBy(['projet' => $projet], ['annee' => 'DESC']);
+            : $this->exercices->courantOuPlusRecent($projet);
         if (null === $exercice) {
             return ProblemResponseFactory::creer(422, 'Exercice introuvable', 'Aucun exercice ne correspond à ce projet.');
         }

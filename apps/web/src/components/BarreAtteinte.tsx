@@ -20,7 +20,7 @@ export function BarreAtteinte({ taux }: BarreAtteinteProps) {
   return (
     <div className="flex items-center gap-2">
       <div className="h-2 w-24 overflow-hidden rounded-[var(--radius-barre)] bg-track">
-        <div className={depasse ? 'h-full bg-ok' : 'h-full bg-accent'} style={{ width: `${largeur}%` }} />
+        <div className={depasse ? 'h-full bg-success' : 'h-full bg-accent'} style={{ width: `${largeur}%` }} />
       </div>
       <span className="chiffres text-sm">{formaterTaux(taux)}</span>
     </div>

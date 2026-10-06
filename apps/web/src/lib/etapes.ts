@@ -114,6 +114,23 @@ export function modifierLivrable(
   return apiClient.patch<EtapeActivite>(`/livrables/${uuid}`, entree)
 }
 
+/** fetch brut multipart — apiClient ne gère pas FormData, même motif que les autres téléversements. */
+export async function televerserPieceJointeEtape(etapeUuid: string, fichier: File): Promise<EtapeActivite> {
+  const donnees = new FormData()
+  donnees.append('fichier', fichier)
+
+  const reponse = await fetch(
+    `${(import.meta.env.VITE_API_URL as string | undefined) ?? '/api/v1'}/etapes/${etapeUuid}/pieces-jointes`,
+    { method: 'POST', credentials: 'include', body: donnees },
+  )
+  if (!reponse.ok) {
+    const probleme = (await reponse.json().catch(() => undefined)) as { detail?: string; title?: string } | undefined
+    throw new Error(probleme?.detail ?? probleme?.title ?? `Erreur ${reponse.status}`)
+  }
+
+  return reponse.json() as Promise<EtapeActivite>
+}
+
 export function supprimerLivrable(uuid: string) {
   return apiClient.delete<void>(`/livrables/${uuid}`)
 }

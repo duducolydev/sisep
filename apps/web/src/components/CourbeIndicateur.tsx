@@ -13,12 +13,21 @@ interface CourbeIndicateurProps {
   tauxAtteinte?: number | null
 }
 
-/** Couleur par seuil d'atteinte, comme la maquette (§ 9.4) : ≥60 % ok, ≥45 % vigilance, sinon critique. */
+/**
+ * Couleur par seuil d'atteinte, comme la maquette (§ 9.4) : ≥60 % tenu,
+ * ≥45 % vigilance, sinon critique.
+ *
+ * Deux substitutions mesurées : --color-ok vaut --color-accent, donc un
+ * point ≥60 % était de la même couleur qu'un point sans taux connu ; et
+ * --color-warn ne se distingue pas de --color-bad en vision normale
+ * (ΔE 9,9), le même écueil que tokens.css documente pour les statuts du
+ * module Projets, résolu de la même façon par --color-eyebrow.
+ */
 function couleurAtteinte(tauxAtteinte: number | null | undefined): string {
   if (tauxAtteinte === null || tauxAtteinte === undefined) return 'var(--color-accent)'
   const pourcent = tauxAtteinte * 100
-  if (pourcent >= 60) return 'var(--color-ok)'
-  if (pourcent >= 45) return 'var(--color-warn)'
+  if (pourcent >= 60) return 'var(--color-success)'
+  if (pourcent >= 45) return 'var(--color-eyebrow)'
 
   return 'var(--color-bad)'
 }

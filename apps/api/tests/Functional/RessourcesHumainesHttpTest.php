@@ -115,6 +115,89 @@ final class RessourcesHumainesHttpTest extends WebTestCase
         }
     }
 
+    public function testLaPeriodeDeContratSeSaisitDepuisLaFicheDeLAgent(): void
+    {
+        [$client, $fixture] = $this->demarrer();
+
+        try {
+            $this->connecter($client, $fixture['coordonnateur']->getEmail());
+
+            // À la création, la période ouvre le premier contrat : l'UGP n'a
+            // pas à enchaîner sur un second écran (demande du 05/10/2026).
+            $client->request('POST', '/api/v1/rh/personnels', server: ['CONTENT_TYPE' => 'application/json'], content: json_encode([
+                'nom' => 'SECK',
+                'prenom' => 'Marie Agathe',
+                'sexe' => 'F',
+                'fonction' => 'Ingénieur Statisticien',
+                'contrat' => ['dateDebut' => '2026-01-01', 'dateFin' => '2026-12-31'],
+            ], \JSON_THROW_ON_ERROR));
+            self::assertResponseStatusCodeSame(201);
+
+            $corps = $this->corps($client);
+            self::assertCount(1, $corps['contrats']);
+            self::assertSame('2026-01-01', $corps['contratCourant']['dateDebut']);
+            self::assertSame('2026-12-31', $corps['contratCourant']['dateFin']);
+            self::assertSame('Contrat de prestation', $corps['contratCourant']['type'], "Le type par défaut s'applique sans être saisi.");
+            $agentUuid = $corps['uuid'];
+
+            // À la modification, elle corrige la période en cours — elle ne
+            // crée pas une seconde ligne : renouveler reste un autre geste.
+            $client->request('PATCH', "/api/v1/rh/personnels/{$agentUuid}", server: ['CONTENT_TYPE' => 'application/json'], content: json_encode([
+                'contrat' => ['dateDebut' => '2026-02-01', 'dateFin' => '2026-11-30'],
+            ], \JSON_THROW_ON_ERROR));
+            self::assertResponseIsSuccessful();
+
+            $corps = $this->corps($client);
+            self::assertCount(1, $corps['contrats'], 'Corriger une période ne doit pas empiler les contrats.');
+            self::assertSame('2026-02-01', $corps['contratCourant']['dateDebut']);
+            self::assertSame('2026-11-30', $corps['contratCourant']['dateFin']);
+
+            // L'ordre des bornes est vérifié côté serveur.
+            $client->request('PATCH', "/api/v1/rh/personnels/{$agentUuid}", server: ['CONTENT_TYPE' => 'application/json'], content: json_encode([
+                'contrat' => ['dateDebut' => '2026-06-01', 'dateFin' => '2026-03-01'],
+            ], \JSON_THROW_ON_ERROR));
+            self::assertResponseStatusCodeSame(422);
+        } finally {
+            $this->rollback();
+        }
+    }
+
+    public function testLaPeriodeDeMobilisationDesEnqueteurs(): void
+    {
+        [$client, $fixture] = $this->demarrer();
+
+        try {
+            $this->connecter($client, $fixture['coordonnateur']->getEmail());
+
+            $client->request('POST', '/api/v1/rh/effectifs-enqueteurs', server: ['CONTENT_TYPE' => 'application/json'], content: json_encode([
+                'activite' => $fixture['activite']->getUuid()->toRfc4122(),
+                'annee' => 2026,
+                'nombreFemmes' => 10,
+                'nombreHommes' => 10,
+            ], \JSON_THROW_ON_ERROR));
+            self::assertResponseStatusCodeSame(201);
+
+            $corps = $this->corps($client);
+            self::assertNull($corps['dateDebut'], "L'effectif se programme avant le calendrier de collecte.");
+            self::assertNull($corps['dureeEnJours'], 'Pas de durée tant qu\'une borne manque — null, jamais 0.');
+            $uuid = $corps['uuid'];
+
+            $client->request('PATCH', "/api/v1/rh/effectifs-enqueteurs/{$uuid}", server: ['CONTENT_TYPE' => 'application/json'], content: json_encode([
+                'dateDebut' => '2026-04-01',
+                'dateFin' => '2026-04-30',
+            ], \JSON_THROW_ON_ERROR));
+            self::assertResponseIsSuccessful();
+            self::assertSame(29, $this->corps($client)['dureeEnJours']);
+
+            $client->request('PATCH', "/api/v1/rh/effectifs-enqueteurs/{$uuid}", server: ['CONTENT_TYPE' => 'application/json'], content: json_encode([
+                'dateFin' => '2026-03-01',
+            ], \JSON_THROW_ON_ERROR));
+            self::assertResponseStatusCodeSame(422, 'Une mobilisation ne peut pas se terminer avant de commencer.');
+        } finally {
+            $this->rollback();
+        }
+    }
+
     public function testLesEcheancesDeContratRemontentDansLeDelaiDemande(): void
     {
         [$client, $fixture] = $this->demarrer();
