@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router'
 import { projetCourantQueryOptions, arbreQueryOptions } from '@/lib/composantes'
 import {
+  filtrerProjets,
   initiativesQueryOptions,
   responsablesEligiblesQueryOptions,
   LIBELLES_STATUT_INITIATIVE,
@@ -113,20 +114,6 @@ export function Initiatives() {
     })
   }, [activites, recherche, statutsSelectionnes, responsablesSelectionnes, lienPtba])
 
-  const kpis = useMemo(() => {
-    const avancements = activitesFiltrees.map((a) => a.avancement).filter((a): a is number => a !== null)
-    const tauxMoyen = avancements.length > 0 ? avancements.reduce((s, a) => s + a, 0) / avancements.length : null
-    const nbProjets = new Set(activitesFiltrees.map((a) => a.initiativeUuid)).size
-
-    return {
-      nbProjets,
-      nbActivites: activitesFiltrees.length,
-      nbEnRetard: activitesFiltrees.filter((a) => a.statut === 'en_retard').length,
-      nbARisque: activitesFiltrees.filter((a) => a.statut === 'a_risque').length,
-      tauxMoyen,
-    }
-  }, [activitesFiltrees])
-
   const tachesFiltrees = useMemo(
     (): TacheAvecContexte[] =>
       activitesFiltrees.flatMap((a) =>
@@ -144,10 +131,33 @@ export function Initiatives() {
 
   const statutsTaches = useMemo(() => tachesFiltrees.map((t) => t.statut), [tachesFiltrees])
 
-  const projetsFiltres = useMemo(() => {
-    const initiativeUuidsFiltrees = new Set(activitesFiltrees.map((a) => a.initiativeUuid))
-    return (initiatives?.donnees ?? []).filter((i) => initiativeUuidsFiltrees.has(i.uuid))
-  }, [initiatives, activitesFiltrees])
+  const projetsFiltres = useMemo(
+    () =>
+      filtrerProjets(initiatives?.donnees ?? [], activitesFiltrees, {
+        recherche,
+        lienPtba,
+        filtresSurActivites: statutsSelectionnes.length > 0 || responsablesSelectionnes.length > 0,
+      }),
+    [initiatives, activitesFiltrees, recherche, lienPtba, statutsSelectionnes, responsablesSelectionnes],
+  )
+
+  // Seuls les projets vides sans activité retenue ont besoin d'une place à
+  // part dans le tableau et le Kanban : les autres y sont déjà, par leurs
+  // activités.
+  const projetsSansActivite = useMemo(() => projetsFiltres.filter((p) => p.activites.length === 0), [projetsFiltres])
+
+  const kpis = useMemo(() => {
+    const avancements = activitesFiltrees.map((a) => a.avancement).filter((a): a is number => a !== null)
+    const tauxMoyen = avancements.length > 0 ? avancements.reduce((s, a) => s + a, 0) / avancements.length : null
+
+    return {
+      nbProjets: projetsFiltres.length,
+      nbActivites: activitesFiltrees.length,
+      nbEnRetard: activitesFiltrees.filter((a) => a.statut === 'en_retard').length,
+      nbARisque: activitesFiltrees.filter((a) => a.statut === 'a_risque').length,
+      tauxMoyen,
+    }
+  }, [activitesFiltrees, projetsFiltres])
 
   const optionsStatut = (Object.entries(LIBELLES_STATUT_INITIATIVE) as [StatutInitiativeActivite, string][]).map(([valeur, libelle]) => ({
     value: valeur,
@@ -292,9 +302,13 @@ export function Initiatives() {
             <p className="text-muted">Aucun projet pour le moment.</p>
           ) : (
             <>
-              {vue === 'cartes' && <VueCartesProjets projets={initiatives.donnees} activitesFiltrees={activitesFiltrees} />}
-              {vue === 'tableau' && <VueTableauActivites activitesFiltrees={activitesFiltrees} />}
-              {vue === 'kanban' && <VueKanbanActivites activitesFiltrees={activitesFiltrees} />}
+              {vue === 'cartes' && <VueCartesProjets projets={projetsFiltres} aucunProjet={initiatives.donnees.length === 0} />}
+              {vue === 'tableau' && (
+                <VueTableauActivites activitesFiltrees={activitesFiltrees} projetsSansActivite={projetsSansActivite} />
+              )}
+              {vue === 'kanban' && (
+                <VueKanbanActivites activitesFiltrees={activitesFiltrees} projetsSansActivite={projetsSansActivite} />
+              )}
             </>
           )}
         </>

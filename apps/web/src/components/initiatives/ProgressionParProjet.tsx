@@ -1,6 +1,7 @@
 import { Bar, BarChart, Cell, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import type { Initiative } from '@/lib/initiatives'
 import { formaterTaux } from '@/lib/format'
+import { hauteurGraphiqueEnBarres } from '@/lib/graphiques'
 
 interface ProgressionParProjetProps {
   projets: Initiative[]
@@ -36,8 +37,8 @@ export function ProgressionParProjet({ projets }: ProgressionParProjetProps) {
 
   return (
     <div>
-      <div style={{ height: lignes.length * HAUTEUR_LIGNE + 24 }}>
-        <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={160}>
+      <div style={{ height: hauteurGraphiqueEnBarres(lignes.length, HAUTEUR_LIGNE) }}>
+        <ResponsiveContainer width="100%" height="100%" minWidth={200}>
           <BarChart data={lignes} layout="vertical" margin={{ top: 8, right: 44, bottom: 0, left: 8 }} barCategoryGap={6}>
             <XAxis
               type="number"

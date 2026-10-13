@@ -1,5 +1,6 @@
 import { Bar, BarChart, Cell, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import type { ActiviteAvecProjet } from '@/lib/initiatives'
+import { hauteurGraphiqueEnBarres } from '@/lib/graphiques'
 
 interface ChargeParResponsableProps {
   activites: ActiviteAvecProjet[]
@@ -36,8 +37,8 @@ export function ChargeParResponsable({ activites }: ChargeParResponsableProps) {
 
   return (
     <div>
-      <div style={{ height: lignes.length * HAUTEUR_LIGNE + 24 }}>
-        <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={140}>
+      <div style={{ height: hauteurGraphiqueEnBarres(lignes.length, HAUTEUR_LIGNE) }}>
+        <ResponsiveContainer width="100%" height="100%" minWidth={200}>
           <BarChart data={lignes} layout="vertical" margin={{ top: 8, right: 24, bottom: 0, left: 8 }} barCategoryGap={6}>
             <XAxis type="number" allowDecimals={false} stroke="var(--color-muted)" fontSize={11} tickLine={false} axisLine={false} />
             <YAxis type="category" dataKey="nom" stroke="var(--color-muted)" fontSize={11} tickLine={false} axisLine={false} width={120} />

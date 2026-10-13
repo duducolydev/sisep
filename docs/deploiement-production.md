@@ -7,6 +7,8 @@ Cette procédure a été répétée en local sur la même composition et les mê
 images : migrations, amorçage, import des trois classeurs, connexion et
 lecture de l'arbre. Ce qui suit n'est donc pas théorique.
 
+**bash deploy/deployer.sh**
+
 ## 0. Ce que vous installez
 
 Trois conteneurs, **un seul port publié** :

@@ -192,3 +192,42 @@ export async function televerserPieceJointeInitiative(
 
   return reponse.json() as Promise<Initiative>
 }
+
+export interface CriteresProjets {
+  recherche: string
+  /** `tous`, `independant` ou `lie`. */
+  lienPtba: string
+  /** Vrai si un filtre porte sur les activités elles-mêmes (statut, responsable). */
+  filtresSurActivites: boolean
+}
+
+/**
+ * Projets à afficher, à partir des activités déjà filtrées.
+ *
+ * Un projet ne se déduit pas de ses activités : un projet qu'on vient de
+ * créer n'en a aucune, et le dériver des activités le faisait disparaître
+ * de toute la page — compteur à zéro, aucune carte, donc aucun moyen de
+ * l'ouvrir pour y ajouter sa première activité.
+ *
+ * Les filtres sur les activités (statut, responsable) peuvent légitimement
+ * masquer un projet : on ne garde alors que ceux qui ont au moins une
+ * activité correspondante. Sans eux, un projet vide reste visible, sous
+ * réserve de la recherche, qui porte alors sur son intitulé.
+ */
+export function filtrerProjets(
+  initiatives: Initiative[],
+  activitesFiltrees: Pick<ActiviteAvecProjet, 'initiativeUuid'>[],
+  criteres: CriteresProjets,
+): Initiative[] {
+  const recherche = criteres.recherche.trim().toLowerCase()
+  const avecActiviteRetenue = new Set(activitesFiltrees.map((a) => a.initiativeUuid))
+
+  return initiatives.filter((i) => {
+    if (criteres.lienPtba === 'independant' && null !== i.lienPtba) return false
+    if (criteres.lienPtba === 'lie' && null === i.lienPtba) return false
+    if (avecActiviteRetenue.has(i.uuid)) return true
+    if (criteres.filtresSurActivites) return false
+
+    return recherche === '' || i.libelle.toLowerCase().includes(recherche)
+  })
+}

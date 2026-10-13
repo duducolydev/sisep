@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import type { ActiviteAvecProjet, Initiative } from '@/lib/initiatives'
+import type { Initiative } from '@/lib/initiatives'
 import { BarreAtteinte } from '@/components/BarreAtteinte'
 import { Pagination } from '@/components/Pagination'
 import { trancherPage } from '@/lib/pagination'
@@ -8,22 +8,30 @@ import { trancherPage } from '@/lib/pagination'
 const TAILLE_PAGE = 9
 
 interface VueCartesProjetsProps {
+  /** Projets déjà filtrés par la page — y compris ceux qui n'ont encore aucune activité. */
   projets: Initiative[]
-  activitesFiltrees: ActiviteAvecProjet[]
+  /** Vrai quand il n'existe aucun projet du tout, pour ne pas parler de filtres qui n'existent pas. */
+  aucunProjet: boolean
 }
 
-/** Grille de cartes par projet (vue historique) — un projet est affiché dès qu'il a au moins une activité correspondant aux filtres, mais sa barre de progression reste calculée sur toutes ses activités (progression réelle, pas tronquée par le filtre). */
-export function VueCartesProjets({ projets, activitesFiltrees }: VueCartesProjetsProps) {
+/**
+ * Grille de cartes par projet. Le filtrage appartient à la page, qui est
+ * seule à connaître la règle : un projet vide reste affiché tant qu'aucun
+ * filtre ne porte sur les activités. La barre de progression est calculée
+ * sur toutes les activités du projet, pas sur celles retenues par le filtre.
+ */
+export function VueCartesProjets({ projets, aucunProjet }: VueCartesProjetsProps) {
   const [page, setPage] = useState(1)
 
-  const initiativeUuidsFiltrees = new Set(activitesFiltrees.map((a) => a.initiativeUuid))
-  const projetsFiltres = projets.filter((i) => initiativeUuidsFiltrees.has(i.uuid))
+  const totalPages = Math.max(1, Math.ceil(projets.length / TAILLE_PAGE))
+  const projetsPage = trancherPage(projets, page, TAILLE_PAGE)
 
-  const totalPages = Math.max(1, Math.ceil(projetsFiltres.length / TAILLE_PAGE))
-  const projetsPage = trancherPage(projetsFiltres, page, TAILLE_PAGE)
-
-  if (projetsFiltres.length === 0) {
-    return <p className="text-muted">Aucun projet ne correspond à ces filtres.</p>
+  if (projets.length === 0) {
+    return (
+      <p className="text-muted">
+        {aucunProjet ? 'Aucun projet pour le moment.' : 'Aucun projet ne correspond à ces filtres.'}
+      </p>
+    )
   }
 
   return (
@@ -47,14 +55,16 @@ export function VueCartesProjets({ projets, activitesFiltrees }: VueCartesProjet
               <div className="mt-3 border-t border-border pt-3">
                 <BarreAtteinte taux={tauxMoyen} />
                 <p className="mt-1 text-xs text-muted">
-                  {i.activites.length} activité{i.activites.length > 1 ? 's' : ''}
+                  {i.activites.length === 0
+                    ? 'Aucune activité — ouvrir le projet pour en ajouter'
+                    : `${i.activites.length} activité${i.activites.length > 1 ? 's' : ''}`}
                 </p>
               </div>
             </Link>
           )
         })}
       </div>
-      <Pagination page={page} totalPages={totalPages} total={projetsFiltres.length} taille={TAILLE_PAGE} onChangerPage={setPage} />
+      <Pagination page={page} totalPages={totalPages} total={projets.length} taille={TAILLE_PAGE} onChangerPage={setPage} />
     </div>
   )
 }
