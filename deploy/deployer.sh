@@ -33,14 +33,30 @@ echec() { printf '\n\033[1;31mERREUR : %s\033[0m\n' "$1" >&2; exit 1; }
 # migration.
 [ -f .env ] || echec "Fichier .env absent. Le créer depuis .env.prod.example et le remplir."
 
-# shellcheck disable=SC1091
-set -a; . ./.env; set +a
+# Lit une valeur de .env sans exécuter le fichier. Le sourcer avec bash fait
+# interpréter chaque ligne comme une commande : la première valeur contenant
+# une espace (« SISEP — PHASAOC ») devient une commande inconnue et le
+# script s'arrête. Docker Compose, lui, lit ce fichier comme des données ;
+# on fait de même, guillemets englobants retirés comme il le fait.
+valeur_env() {
+    local ligne
+    ligne=$(grep -E "^[[:space:]]*$1=" .env | tail -n 1) || true
+    ligne=${ligne#*=}
+    ligne=${ligne%$'\r'}
+    if [[ ${#ligne} -ge 2 && ( $ligne == \"*\" || $ligne == \'*\' ) ]]; then
+        ligne=${ligne:1:${#ligne}-2}
+    fi
+    printf '%s' "$ligne"
+}
 
 for variable in APP_SECRET MYSQL_PASSWORD MYSQL_ROOT_PASSWORD APP_URL_WEB; do
-    [ -n "${!variable:-}" ] || echec "$variable n'est pas renseignée dans .env."
+    [ -n "$(valeur_env "$variable")" ] || echec "$variable n'est pas renseignée dans .env."
 done
 
-PORT="${SISEP_PORT:-8080}"
+MYSQL_ROOT_PASSWORD=$(valeur_env MYSQL_ROOT_PASSWORD)
+APP_URL_WEB=$(valeur_env APP_URL_WEB)
+PORT=$(valeur_env SISEP_PORT)
+PORT=${PORT:-8080}
 if command -v ss >/dev/null 2>&1 && ss -ltn "sport = :$PORT" 2>/dev/null | grep -q LISTEN; then
     if ! $COMPOSE ps --services --filter status=running 2>/dev/null | grep -q web; then
         echec "Le port $PORT est déjà occupé par un autre service. Changer SISEP_PORT dans .env."
