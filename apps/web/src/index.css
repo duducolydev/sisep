@@ -104,15 +104,15 @@ input:autofill {
 }
 
 /*
- * /connexion est en thème sombre (§ page dédiée) : le texte forcé par
- * l'autofill (souvent noir, ou currentColor ignoré par l'état autofill de
- * Chrome) devient illisible sur fond sombre — forcé en blanc explicitement,
- * scopé à cette page pour ne pas affecter les formulaires clairs de l'app.
+ * /connexion : Chrome ignore la couleur de texte du champ dans son état
+ * d'auto-remplissage. Les champs sont désormais clairs, la couleur est donc
+ * forcée sur l'encre principale — l'ancienne règle forçait du blanc, pensé
+ * pour un fond sombre, qui rendrait l'adresse mémorisée invisible.
  */
 .page-connexion input:-webkit-autofill,
 .page-connexion input:-webkit-autofill:hover,
 .page-connexion input:-webkit-autofill:focus,
 .page-connexion input:autofill {
-  -webkit-text-fill-color: #fff;
-  caret-color: #fff;
+  -webkit-text-fill-color: var(--color-text);
+  caret-color: var(--color-text);
 }

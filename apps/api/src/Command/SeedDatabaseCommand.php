@@ -81,6 +81,7 @@ final class SeedDatabaseCommand extends Command
         // qu'aucune adresse réelle n'entre dans le dépôt, et il est recréé à
         // chaque reseed.
         #[Autowire('%env(ADMIN_EMAIL)%')] private readonly string $emailAdministrateur = '',
+        #[Autowire('%kernel.environment%')] private readonly string $environnement = 'dev',
     ) {
         parent::__construct();
     }
@@ -93,6 +94,22 @@ final class SeedDatabaseCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
+
+        // Garde absolue, sans option pour la contourner : avec --force, cette
+        // commande vide TOUTES les tables, comptes utilisateurs et journal
+        // compris, avant de semer des données fictives. Sur la base de
+        // production, c'est la perte de tout ce que l'UGP y a saisi. Il n'y a
+        // aucune raison légitime de la lancer là ; qui en aurait vraiment
+        // besoin devrait d'abord changer APP_ENV, délibérément.
+        if ('prod' === $this->environnement) {
+            $io->error(
+                'Refusé : environnement de production. Cette commande remplace toutes les données, '
+                .'comptes compris, par un jeu de démonstration. Pour amorcer une base de production, '
+                .'utiliser app:amorcer.',
+            );
+
+            return Command::FAILURE;
+        }
 
         $projetExistant = $this->em->getRepository(Projet::class)->findOneBy(['code' => 'PHASAOC']);
         if (null !== $projetExistant) {

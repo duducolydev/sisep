@@ -210,4 +210,17 @@ final class ReferentielApplicatif
 
         return $administrateur;
     }
+
+    /**
+     * Nouveau mot de passe temporaire pour un compte existant — le recours
+     * quand le mot de passe d'amorçage a été perdu. Le changement reste
+     * imposé à la connexion suivante, et l'écriture passe par le journal
+     * d'activité comme toute modification de compte.
+     */
+    public function reinitialiserMotDePasse(Utilisateur $utilisateur, string $motDePasseTemporaire): void
+    {
+        $utilisateur->setMotDePasseHash($this->hacheur->hashPassword($utilisateur, $motDePasseTemporaire));
+        $utilisateur->exigerChangementMdp();
+        $utilisateur->setActif(true);
+    }
 }

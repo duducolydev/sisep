@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -14,10 +14,21 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>
 
+/**
+ * Page de connexion : écran partagé, panneau de marque à gauche, formulaire
+ * à droite.
+ *
+ * Le panneau reprend le bleu nuit de la barre latérale de l'application,
+ * pour que l'utilisateur reconnaisse, une fois connecté, l'endroit où il
+ * vient d'entrer. Il disparaît sous la largeur d'une tablette : sur un
+ * téléphone, le formulaire passe avant la marque.
+ */
 export function Connexion() {
   const navigate = useNavigate()
   const [erreur, setErreur] = useState<string | null>(null)
   const [motDePasseVisible, setMotDePasseVisible] = useState(false)
+  const [aideOuverte, setAideOuverte] = useState(false)
+  const annee = new Date().getFullYear()
 
   const {
     register,
@@ -38,122 +49,261 @@ export function Connexion() {
   }
 
   return (
-    <div
-      className="page-connexion relative flex min-h-screen items-center justify-center overflow-hidden p-6"
-      style={{ background: 'color-mix(in srgb, var(--color-navbg) 55%, black)' }}
-    >
-      {/* Halo ambiant derrière la carte — reprend l'effet néon de la maquette, dérivé des tokens accent, pas une couleur hors palette. */}
-      <div
-        className="pointer-events-none absolute h-[480px] w-[820px] max-w-full rounded-full bg-accent-clair/25 blur-[120px]"
-        aria-hidden="true"
-      />
+    <div className="page-connexion grid min-h-screen bg-surface lg:grid-cols-[44%_1fr]">
+      <PanneauMarque />
 
-      <div className="relative w-full max-w-3xl rounded-[28px] bg-gradient-to-br from-accent-clair via-accent to-accent-d p-[2px] shadow-[0_0_90px_-8px_var(--color-accent-clair),0_0_140px_-20px_var(--color-accent)]">
-        <div className="relative overflow-hidden rounded-[26px] bg-navbg">
-          {/*
-            Pan bleu diagonal — § 9.2 : tokens accent/accent-clair de la
-            maquette, jamais de couleur hors palette. Clip-path exprimé en
-            pourcentages de la carte entière (pas d'un sous-panneau local) :
-            le bord gauche du bleu recule vers la droite en descendant
-            (55 % en haut → 66 % en bas), pour ne jamais recouvrir le texte
-            de la colonne de gauche, y compris le paragraphe le plus bas.
-          */}
-          <div
-            className="absolute inset-0 hidden bg-gradient-to-br from-accent to-accent-clair md:block"
-            style={{ clipPath: 'polygon(55% 0%, 100% 0%, 100% 100%, 66% 100%)' }}
-            aria-hidden="true"
-          />
+      <main className="flex min-h-screen flex-col">
+        <header className="flex items-center justify-between px-6 pt-6 sm:px-12 lg:px-16">
+          <p className="font-titre text-sm font-extrabold tracking-[.28em] text-navbg">
+            SISEP <span className="text-accent-clair">·</span> ANSD
+          </p>
+          <span className="chiffres rounded-full bg-hover px-3 py-1 text-xs text-muted">{annee}</span>
+        </header>
 
-          <div className="relative grid gap-10 p-8 sm:p-12 md:grid-cols-[56%_44%] md:p-14">
-            <div className="flex flex-col justify-center">
-              <p className="mb-1 font-titre text-xs font-semibold uppercase tracking-[.2em] text-accent-clair">SISEP</p>
-              <h1 className="mb-8 font-titre text-3xl font-extrabold text-navstrong">Connexion</h1>
+        <div className="flex flex-1 items-center justify-center px-6 py-10 sm:px-12">
+          <div className="w-full max-w-md">
+            <h1 className="font-titre text-4xl font-extrabold text-navbg sm:text-5xl">Bienvenue&nbsp;!</h1>
+            <p className="mt-3 text-muted">
+              Connectez-vous pour accéder à la plateforme de suivi-évaluation du projet PHASAOC.
+            </p>
 
-              {erreur && (
-                <div role="alert" className="mb-4 rounded-[var(--radius-controle)] bg-bad-bg px-4 py-3 text-sm text-bad">
-                  {erreur}
-                </div>
-              )}
+            {erreur && (
+              <div role="alert" className="mt-6 rounded-xl bg-bad-bg px-4 py-3 text-sm text-bad">
+                {erreur}
+              </div>
+            )}
 
-              <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-6">
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <label htmlFor="email" className="text-navfg">
-                      Adresse e-mail
-                    </label>
-                    <IconePersonne />
-                  </div>
-                  <input
-                    id="email"
-                    type="email"
-                    autoComplete="email"
-                    className="border-0 border-b border-navborder bg-transparent pb-2 text-white outline-none placeholder:text-navmuted focus:border-accent-clair"
-                    aria-invalid={errors.email ? 'true' : 'false'}
-                    {...register('email')}
-                  />
-                  {errors.email && <p className="text-sm text-bad">{errors.email.message}</p>}
-                </div>
+            <form onSubmit={handleSubmit(onSubmit)} noValidate className="mt-8 flex flex-col gap-6">
+              <Champ
+                id="email"
+                libelle="Adresse e-mail"
+                icone={<IconePersonne />}
+                erreur={errors.email?.message}
+              >
+                <input
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="prenom.nom@ansd.sn"
+                  aria-invalid={errors.email ? 'true' : 'false'}
+                  className="min-w-0 flex-1 bg-transparent px-4 py-3.5 text-text outline-none placeholder:text-muted/70"
+                  {...register('email')}
+                />
+              </Champ>
 
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <label htmlFor="motDePasse" className="text-navfg">
-                      Mot de passe
-                    </label>
+              <div>
+                <Champ
+                  id="motDePasse"
+                  libelle="Mot de passe"
+                  icone={<IconeCadenas />}
+                  erreur={errors.motDePasse?.message}
+                  suffixe={
                     <button
                       type="button"
                       onClick={() => setMotDePasseVisible((v) => !v)}
                       aria-label={motDePasseVisible ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
-                      className="text-navmuted hover:text-navstrong"
+                      className="flex items-center self-stretch border-l border-border px-4 text-muted transition-colors hover:text-accent"
                     >
                       {motDePasseVisible ? <IconeOeilBarre /> : <IconeOeil />}
                     </button>
-                  </div>
+                  }
+                >
                   <input
                     id="motDePasse"
                     type={motDePasseVisible ? 'text' : 'password'}
                     autoComplete="current-password"
-                    className="border-0 border-b border-navborder bg-transparent pb-2 text-white outline-none placeholder:text-navmuted focus:border-accent-clair"
                     aria-invalid={errors.motDePasse ? 'true' : 'false'}
+                    className="min-w-0 flex-1 bg-transparent px-4 py-3.5 text-text outline-none"
                     {...register('motDePasse')}
                   />
-                  {errors.motDePasse && <p className="text-sm text-bad">{errors.motDePasse.message}</p>}
+                </Champ>
+
+                <div className="mt-3 flex justify-end">
+                  {/*
+                    Pas de lien de réinitialisation : SISEP n'a pas de
+                    parcours de récupération en libre-service, et un lien
+                    vers nulle part vaut moins qu'une consigne juste. Le
+                    recours réel est l'administrateur, qui attribue un mot
+                    de passe temporaire à changer à la connexion suivante.
+                  */}
+                  <button
+                    type="button"
+                    onClick={() => setAideOuverte((v) => !v)}
+                    aria-expanded={aideOuverte}
+                    aria-controls="aide-mot-de-passe"
+                    className="flex items-center gap-1.5 text-sm font-semibold text-accent transition-colors hover:text-accent-d"
+                  >
+                    <IconeCle />
+                    Mot de passe oublié&nbsp;?
+                  </button>
                 </div>
+                {aideOuverte && (
+                  <p id="aide-mot-de-passe" className="mt-2 rounded-xl bg-accent-bg px-4 py-3 text-sm text-accent-d">
+                    Contactez l'administrateur SISEP de l'UGP : il vous attribuera un mot de passe temporaire, que
+                    l'application vous demandera de changer dès votre connexion.
+                  </p>
+                )}
+              </div>
 
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="mt-2 rounded-full bg-gradient-to-r from-accent to-accent-clair py-3 font-titre font-bold text-white shadow-[0_10px_30px_-10px_var(--color-accent)] transition-transform hover:brightness-110 disabled:opacity-60"
-                >
-                  {isSubmitting ? 'Connexion…' : 'Se connecter'}
-                </button>
-              </form>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="mt-2 flex items-center justify-center gap-2.5 rounded-xl bg-gradient-to-r from-accent-d via-accent to-accent-clair py-4 font-titre text-lg font-bold text-white shadow-[0_14px_32px_-14px_var(--color-accent)] transition hover:brightness-110 disabled:opacity-60"
+              >
+                <IconeEntrer />
+                {isSubmitting ? 'Connexion…' : 'Se connecter'}
+              </button>
+            </form>
 
-              <p className="mt-5 text-sm text-navmuted">
-                Accès réservé aux agents habilités — contactez l'administrateur SISEP en cas de difficulté.
-              </p>
-            </div>
-
-            {/*
-              La colonne fait 44 % de la carte (grid-cols-[56%_44%]) et
-              commence donc à l'abscisse 56 % — pile où le bleu démarre en
-              haut du dégradé diagonal. Le bleu recule jusqu'à 66 % en bas
-              (cf. clip-path ci-dessus) : pl-[30%] de cette colonne de 44 %
-              pousse le texte à ~69 % de la carte, toujours au-delà du bleu,
-              quelle que soit la hauteur — le texte ne doit jamais apparaître
-              sur le fond sombre.
-            */}
-            <div className="flex flex-col justify-center md:pl-[30%] md:text-white">
-              <h2 className="font-titre text-4xl font-extrabold text-navstrong md:text-white">
-                Bon retour&nbsp;!
-              </h2>
-              <p className="mt-4 max-w-xs text-navfg md:text-white/85">
-                Suivi-évaluation du PHASAOC — retrouvez l'état d'exécution du projet, le budget et les indicateurs de
-                performance du cadre de résultats.
-              </p>
-            </div>
+            <p className="mt-8 text-center text-sm text-muted">
+              Accès réservé aux agents habilités — Visitez{' '}
+              <a
+                href="https://www.ansd.sn"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-accent hover:underline"
+              >
+                ansd.sn
+              </a>
+            </p>
           </div>
         </div>
+
+        <footer className="border-t border-border px-6 py-5 text-center text-xs text-muted">
+          © {annee} Agence Nationale de la Statistique et de la Démographie — Tous droits réservés
+        </footer>
+      </main>
+    </div>
+  )
+}
+
+/**
+ * Panneau de marque. Les cercles et la trame de points sont décoratifs et
+ * masqués aux lecteurs d'écran ; seul le texte porte de l'information.
+ */
+function PanneauMarque() {
+  return (
+    <aside
+      className="relative hidden flex-col justify-between overflow-hidden p-10 text-white lg:flex xl:p-12"
+      style={{
+        background:
+          'linear-gradient(160deg, var(--color-navbg) 0%, color-mix(in srgb, var(--color-navbg) 55%, var(--color-accent-d)) 45%, var(--color-accent-d) 100%)',
+      }}
+    >
+      {/* Trame de points, très discrète : elle donne une texture au fond sans attirer l'œil. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 opacity-[.07]"
+        style={{ backgroundImage: 'radial-gradient(white 1px, transparent 1px)', backgroundSize: '22px 22px' }}
+      />
+      <Cercle className="-top-24 right-[-18%] h-[26rem] w-[26rem]" />
+      <Cercle className="top-[18%] left-[12%] h-56 w-56" />
+      <Cercle className="right-[12%] bottom-[30%] h-28 w-28" />
+      <Cercle className="-bottom-20 -left-24 h-72 w-72" />
+
+      <div className="relative">
+        <span className="inline-flex items-center gap-2.5 rounded-full border border-white/20 bg-white/5 px-4 py-2 text-xs font-bold tracking-[.18em] backdrop-blur-sm">
+          <span className="h-2 w-2 rounded-full bg-[#3fd17a] shadow-[0_0_8px_#3fd17a]" aria-hidden="true" />
+          SYSTÈME DE SUIVI-ÉVALUATION
+        </span>
       </div>
+
+      <div className="relative flex flex-col items-center text-center">
+        <Monogramme />
+        <p className="mt-8 max-w-sm font-titre text-3xl leading-tight font-extrabold xl:text-[2rem]">
+          Agence Nationale de la Statistique et de la Démographie
+        </p>
+        <p className="mt-4 text-sm tracking-[.18em] text-white/60">PROJET PHASAOC</p>
+      </div>
+
+      <div className="relative flex items-center gap-4 rounded-2xl border border-white/15 bg-white/[.06] p-4 backdrop-blur-sm">
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white font-titre text-sm font-extrabold text-navbg">
+          SE
+        </span>
+        <p className="flex-1 text-[11px] leading-relaxed font-semibold tracking-[.12em] text-white/75">
+          HARMONISATION ET AMÉLIORATION DES STATISTIQUES
+          <br />
+          EN AFRIQUE DE L'OUEST ET DU CENTRE
+        </p>
+        <DrapeauSenegal />
+      </div>
+    </aside>
+  )
+}
+
+function Cercle({ className }: { className: string }) {
+  return (
+    <div
+      aria-hidden="true"
+      className={`pointer-events-none absolute rounded-full border border-white/10 bg-white/[.04] ${className}`}
+    />
+  )
+}
+
+/**
+ * Monogramme de SISEP, le même que dans la barre latérale. Il tient lieu de
+ * logo faute de fichier officiel de l'ANSD dans le dépôt : un logo
+ * institutionnel ne se redessine pas à la main.
+ */
+function Monogramme() {
+  return (
+    <div className="flex h-36 w-36 items-center justify-center rounded-[2rem] bg-white/10 ring-1 ring-white/25 backdrop-blur-sm">
+      <span className="font-titre text-6xl font-extrabold tracking-tight">
+        S<span className="text-accent-clair">E</span>
+      </span>
+    </div>
+  )
+}
+
+/** Drapeau du Sénégal : trois bandes verticales, étoile verte au centre de la bande jaune. */
+function DrapeauSenegal() {
+  return (
+    <svg viewBox="0 0 90 60" className="h-11 w-16 shrink-0 overflow-hidden rounded-md shadow-sm" role="img" aria-label="Drapeau du Sénégal">
+      <rect width="30" height="60" fill="#00853F" />
+      <rect x="30" width="30" height="60" fill="#FDEF42" />
+      <rect x="60" width="30" height="60" fill="#E31B23" />
+      <path d="M45 19l3.1 9.4h9.9l-8 5.8 3.1 9.4-8.1-5.8-8.1 5.8 3.1-9.4-8-5.8h9.9z" fill="#00853F" />
+    </svg>
+  )
+}
+
+/**
+ * Champ à cellule d'icône : l'icône vit dans sa propre case, séparée de la
+ * saisie par un filet, comme un préfixe. Tout le cadre réagit au focus,
+ * pas seulement le texte.
+ */
+function Champ({
+  id,
+  libelle,
+  icone,
+  suffixe,
+  erreur,
+  children,
+}: {
+  id: string
+  libelle: string
+  icone: ReactNode
+  suffixe?: ReactNode
+  erreur?: string
+  children: ReactNode
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <label htmlFor={id} className="text-xs font-bold tracking-[.14em] text-navbg uppercase">
+        {libelle}
+      </label>
+      <div
+        className={`flex items-stretch overflow-hidden rounded-xl border-2 bg-accent-bg/60 transition focus-within:border-accent focus-within:bg-surface focus-within:ring-4 focus-within:ring-accent/10 ${
+          erreur ? 'border-bad' : 'border-border'
+        }`}
+      >
+        <span className="flex items-center border-r border-border bg-surface/70 px-4 text-muted" aria-hidden="true">
+          {icone}
+        </span>
+        {children}
+        {suffixe}
+      </div>
+      {erreur && <p className="text-sm text-bad">{erreur}</p>}
     </div>
   )
 }
@@ -162,24 +312,52 @@ const iconeProps = {
   viewBox: '0 0 24 24',
   fill: 'none',
   stroke: 'currentColor',
-  strokeWidth: 1.7,
+  strokeWidth: 1.8,
   strokeLinecap: 'round' as const,
   strokeLinejoin: 'round' as const,
-  className: 'h-4 w-4 text-navmuted',
+  className: 'h-[18px] w-[18px]',
+  'aria-hidden': true,
 }
 
 function IconePersonne() {
   return (
-    <svg {...iconeProps} aria-hidden="true">
+    <svg {...iconeProps}>
       <circle cx="12" cy="8" r="3.4" />
       <path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6" />
     </svg>
   )
 }
 
+function IconeCadenas() {
+  return (
+    <svg {...iconeProps}>
+      <rect x="5" y="10.5" width="14" height="10" rx="2" />
+      <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" />
+    </svg>
+  )
+}
+
+function IconeCle() {
+  return (
+    <svg {...iconeProps} className="h-4 w-4">
+      <circle cx="8" cy="15" r="4" />
+      <path d="M10.85 12.15 19 4M15.5 7.5 18 10M17 5.5 19.5 8" />
+    </svg>
+  )
+}
+
+function IconeEntrer() {
+  return (
+    <svg {...iconeProps} className="h-5 w-5">
+      <path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4" />
+      <path d="M3 12h11M10 8l4 4-4 4" />
+    </svg>
+  )
+}
+
 function IconeOeil() {
   return (
-    <svg {...iconeProps} aria-hidden="true">
+    <svg {...iconeProps}>
       <path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12Z" />
       <circle cx="12" cy="12" r="3" />
     </svg>
@@ -188,7 +366,7 @@ function IconeOeil() {
 
 function IconeOeilBarre() {
   return (
-    <svg {...iconeProps} aria-hidden="true">
+    <svg {...iconeProps}>
       <path d="M3 3l18 18" />
       <path d="M10.6 5.2C11.05 5.07 11.52 5 12 5c7 0 10.5 7 10.5 7a13.5 13.5 0 0 1-3.15 4.15M6.5 6.65C3.6 8.5 1.5 12 1.5 12s3.5 7 10.5 7c1.28 0 2.46-.23 3.53-.63" />
       <path d="M9.5 9.6a3 3 0 0 0 4.15 4.24" />

@@ -173,6 +173,15 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
         $this->doitChangerMdp = false;
     }
 
+    /**
+     * Après une réinitialisation par l'exploitant, le mot de passe a été vu
+     * par quelqu'un d'autre que son titulaire : il ne doit servir qu'une fois.
+     */
+    public function exigerChangementMdp(): void
+    {
+        $this->doitChangerMdp = true;
+    }
+
     public function getDerniereConnexion(): ?\DateTimeImmutable
     {
         return $this->derniereConnexion;

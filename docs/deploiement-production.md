@@ -119,6 +119,26 @@ Les imports rapprochent par code et par identité : ils mettent à jour sans
 dupliquer. Le montant notifié d'une dotation déjà saisie n'est jamais
 réécrit ; les écarts sont listés en fin d'exécution.
 
+### Ce qu'une mise à jour conserve
+
+Tout ce qui est saisi dans l'application : comptes utilisateurs, droits,
+écritures budgétaires, documents déposés, journal d'activité. La base vit
+dans le volume `sisep_prod_db` et les fichiers dans `sisep_prod_uploads` ;
+reconstruire et redémarrer les conteneurs ne touche ni à l'un ni à l'autre.
+Les migrations ne font qu'ajouter des colonnes ou des tables.
+
+`--donnees` est le seul cas où l'application voit des valeurs remplacées :
+les imports réécrivent depuis les classeurs les coordonnées des points
+focaux et les fiches du personnel. Ils ne touchent jamais aux comptes.
+
+### Ce qu'il ne faut jamais lancer sur ce serveur
+
+| Commande | Effet |
+|---|---|
+| `docker compose … down -v` | Le `-v` supprime les volumes : base et fichiers déposés perdus. `down` seul est sans risque. |
+| `docker volume rm sisep_sisep_prod_db` | Même effet, explicitement. |
+| `php bin/console app:db:seed` | Refusée en production : elle viderait toutes les tables, comptes compris, pour y mettre des données fictives. |
+
 ## 7. Sauvegardes
 
 Deux choses à sauvegarder **ensemble**, une base sans ses fichiers étant

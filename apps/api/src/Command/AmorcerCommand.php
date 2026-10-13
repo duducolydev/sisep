@@ -7,6 +7,7 @@ namespace App\Command;
 use App\Amorcage\ReferentielApplicatif;
 use App\Entity\Permission;
 use App\Entity\Role;
+use App\Entity\Utilisateur;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -26,10 +27,17 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  * exécution budgétaire simulée. Sur une base destinée à la production,
  * `app:db:seed` ne doit jamais être lancée.
  *
- * Elle ne touche à rien si le référentiel est déjà en place : relancée après
- * une mise à jour, elle se contente de le dire. Ajouter une permission à une
- * base déjà amorcée se fait par migration, pas en rejouant cette commande —
- * elle ne saurait pas distinguer un ajout d'un retrait volontaire.
+ * Deux parties indépendantes, et c'est ce qui la rend sûre à relancer :
+ *  - le référentiel des droits n'est semé que sur une base vierge. Ajouter
+ *    une permission à une base déjà amorcée se fait par migration — la
+ *    commande ne saurait pas distinguer un ajout d'un retrait volontaire ;
+ *  - le compte d'administration est créé s'il manque, à chaque passage.
+ *    Une première exécution sans ADMIN_EMAIL ne condamne donc plus la base :
+ *    on renseigne la variable et on relance.
+ *
+ * `--reinitialiser-mot-de-passe` donne un nouveau mot de passe temporaire au
+ * compte d'administration existant. C'est le recours quand celui affiché au
+ * premier amorçage a été perdu : il n'est écrit nulle part, par conception.
  */
 #[AsCommand(
     name: 'app:amorcer',
@@ -47,61 +55,96 @@ final class AmorcerCommand extends Command
 
     protected function configure(): void
     {
-        $this->addOption(
-            'mot-de-passe',
-            null,
-            InputOption::VALUE_REQUIRED,
-            "Mot de passe temporaire du compte d'administration (généré si absent)",
-        );
+        $this
+            ->addOption(
+                'mot-de-passe',
+                null,
+                InputOption::VALUE_REQUIRED,
+                "Mot de passe temporaire du compte d'administration (généré si absent)",
+            )
+            ->addOption(
+                'reinitialiser-mot-de-passe',
+                null,
+                InputOption::VALUE_NONE,
+                "Donne un nouveau mot de passe temporaire au compte d'administration existant",
+            );
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
 
-        if (0 < \count($this->em->getRepository(Permission::class)->findAll())) {
-            $io->warning('Le référentiel des droits est déjà en place : rien à faire.');
+        $this->semerReferentielSiVierge($io);
+
+        if ('' === $this->emailAdministrateur) {
+            $this->em->flush();
+            $io->warning(
+                "Aucun compte d'administration : ADMIN_EMAIL n'est pas renseigné. "
+                .'Sans lui, personne ne peut se connecter — renseigner la variable puis relancer cette commande.',
+            );
 
             return Command::SUCCESS;
+        }
+
+        $compte = $this->em->getRepository(Utilisateur::class)->findOneBy(['email' => $this->emailAdministrateur]);
+        $motDePasse = $this->motDePasse($input);
+
+        if (null === $compte) {
+            $this->referentiel->creerAdministrateur($this->emailAdministrateur, $motDePasse, $this->roleAdministrateur());
+            $this->em->flush();
+            $io->success(\sprintf("Compte d'administration créé pour %s.", $this->emailAdministrateur));
+            $this->afficherMotDePasse($io, $motDePasse);
+
+            return Command::SUCCESS;
+        }
+
+        if (!$input->getOption('reinitialiser-mot-de-passe')) {
+            $this->em->flush();
+            $io->note(\sprintf(
+                "Le compte %s existe déjà : il n'a pas été modifié. "
+                .'Mot de passe perdu ? Relancer avec --reinitialiser-mot-de-passe.',
+                $this->emailAdministrateur,
+            ));
+
+            return Command::SUCCESS;
+        }
+
+        $this->referentiel->reinitialiserMotDePasse($compte, $motDePasse);
+        $this->em->flush();
+        $io->success(\sprintf('Mot de passe de %s réinitialisé.', $this->emailAdministrateur));
+        $this->afficherMotDePasse($io, $motDePasse);
+
+        return Command::SUCCESS;
+    }
+
+    private function semerReferentielSiVierge(SymfonyStyle $io): void
+    {
+        if (0 < \count($this->em->getRepository(Permission::class)->findAll())) {
+            $io->text('Référentiel des droits déjà en place : inchangé.');
+
+            return;
         }
 
         $permissions = $this->referentiel->semerPermissions();
         $roles = $this->referentiel->semerRoles($permissions);
         $nbParametres = $this->referentiel->semerParametres();
+        // Le compte d'administration est recherché plus loin par requête :
+        // le référentiel doit être en base, pas seulement en mémoire.
+        $this->em->flush();
 
         $io->definitionList(
             ['Permissions' => (string) \count($permissions)],
             ['Rôles' => (string) \count($roles)],
             ['Paramètres' => (string) $nbParametres],
         );
+    }
 
-        if ('' === $this->emailAdministrateur) {
-            $this->em->flush();
-            $io->warning(
-                "Aucun compte d'administration créé : ADMIN_EMAIL n'est pas renseigné. "
-                .'Sans lui, personne ne peut se connecter — renseigner la variable puis relancer sur une base vide.',
-            );
-
-            return Command::SUCCESS;
-        }
-
-        $motDePasse = $this->motDePasse($input);
-        $administrateur = $this->referentiel->creerAdministrateur(
-            $this->emailAdministrateur,
-            $motDePasse,
-            $this->role($roles, 'administrateur'),
-        );
-        $this->em->flush();
-
-        if (null === $administrateur) {
-            $io->warning(\sprintf('Un compte existe déjà pour %s : il n\'a pas été modifié.', $this->emailAdministrateur));
-
-            return Command::SUCCESS;
-        }
-
-        // Affiché une fois, à l'écran, jamais écrit sur disque : c'est à
-        // l'exploitant de le transmettre et de ne pas le conserver.
-        $io->success(\sprintf('Compte d\'administration créé pour %s.', $this->emailAdministrateur));
+    /**
+     * Affiché une fois, à l'écran, jamais écrit sur disque : c'est à
+     * l'exploitant de le transmettre et de ne pas le conserver.
+     */
+    private function afficherMotDePasse(SymfonyStyle $io, string $motDePasse): void
+    {
         $io->block(
             [
                 'Mot de passe temporaire : '.$motDePasse,
@@ -112,8 +155,6 @@ final class AmorcerCommand extends Command
             ' ',
             true,
         );
-
-        return Command::SUCCESS;
     }
 
     private function motDePasse(InputInterface $input): string
@@ -128,9 +169,9 @@ final class AmorcerCommand extends Command
         return rtrim(strtr(base64_encode(random_bytes(12)), '+/', 'Ab'), '=').'!7';
     }
 
-    /** @param array<string, Role> $roles */
-    private function role(array $roles, string $code): Role
+    private function roleAdministrateur(): Role
     {
-        return $roles[$code] ?? throw new \RuntimeException(\sprintf('Rôle « %s » absent du référentiel.', $code));
+        return $this->em->getRepository(Role::class)->findOneBy(['code' => 'administrateur'])
+            ?? throw new \RuntimeException('Rôle « administrateur » absent du référentiel.');
     }
 }
