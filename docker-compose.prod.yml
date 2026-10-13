@@ -1,0 +1,77 @@
+# Composition de production de SISEP.
+#
+# Trois services, un seul port publié : nginx sert le front et relaie l'API,
+# PHP-FPM et MySQL ne sont joignables que depuis le réseau interne de la
+# composition. Un seul port exposé, c'est aussi une seule chose à surveiller.
+#
+# Tous les secrets viennent de .env, jamais de ce fichier : il est versionné,
+# .env ne l'est pas. Voir .env.prod.example et docs/deploiement-production.md.
+services:
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-sisep}
+      MYSQL_USER: ${MYSQL_USER:-sisep}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?mot de passe applicatif requis dans .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?mot de passe root requis dans .env}
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_0900_ai_ci
+    volumes:
+      - sisep_prod_db:/var/lib/mysql
+    # Aucun port publié : la base n'est joignable que depuis les autres
+    # services. Pour une sauvegarde ou une inspection, passer par
+    # `docker compose exec db`.
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile.prod
+    restart: unless-stopped
+    environment:
+      APP_ENV: prod
+      APP_DEBUG: "0"
+      APP_SECRET: ${APP_SECRET:?secret applicatif requis dans .env}
+      APP_TIMEZONE: ${APP_TIMEZONE:-Africa/Dakar}
+      DATABASE_URL: "mysql://${MYSQL_USER:-sisep}:${MYSQL_PASSWORD}@db:3306/${MYSQL_DATABASE:-sisep}?serverVersion=8.0.37&charset=utf8mb4"
+      # Front et API partagent l'origine : le navigateur n'émet aucune
+      # requête inter-origine, et cette liste n'a donc rien à autoriser.
+      CORS_ALLOW_ORIGIN: ${CORS_ALLOW_ORIGIN:-^$$}
+      # Adresse publique du service, utilisée dans les courriels.
+      APP_URL_WEB: ${APP_URL_WEB:?adresse publique requise dans .env}
+      MAILER_DSN: ${MAILER_DSN:-null://null}
+      MAILER_EXPEDITEUR_ADRESSE: ${MAILER_EXPEDITEUR_ADRESSE:-no-reply@sisep.local}
+      MAILER_EXPEDITEUR_NOM: ${MAILER_EXPEDITEUR_NOM:-SISEP — PHASAOC}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+    volumes:
+      # Seuls les fichiers déposés et les journaux sortent de l'image. Le
+      # code et le cache compilé y restent : les monter effacerait le cache
+      # chauffé à la construction.
+      - sisep_prod_uploads:/app/var/uploads
+      - sisep_prod_logs:/app/var/log
+      # Les classeurs sources, en lecture seule, pour les commandes d'import.
+      - ./docs:/app/docs:ro
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile.prod
+    restart: unless-stopped
+    ports:
+      # Port de l'hôte paramétrable : 80 est probablement déjà pris par un
+      # autre service de ce serveur. Vérifier avant de démarrer.
+      - "${SISEP_PORT:-8080}:80"
+    depends_on:
+      - api
+
+volumes:
+  sisep_prod_db:
+  sisep_prod_uploads:
+  sisep_prod_logs:

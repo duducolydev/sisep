@@ -1,0 +1,53 @@
+# Image de production de l'API — PHP-FPM, pas le serveur intégré de PHP.
+#
+# Le Dockerfile de développement lance `php -S`, qui ne traite qu'une requête
+# à la fois et n'a jamais été prévu pour autre chose qu'un poste de travail
+# (la documentation de PHP le dit). Ici, FPM gère un pool de processus et
+# nginx se charge du HTTP.
+#
+# Le code est figé dans l'image : aucun bind-mount en production, donc
+# OPcache peut cesser de vérifier les dates de fichiers, et l'autoloader peut
+# être compilé en table de correspondance.
+FROM php:8.3-fpm AS base
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        git unzip libicu-dev libzip-dev libpng-dev libjpeg-dev libfreetype6-dev \
+    && docker-php-ext-configure gd --with-jpeg --with-freetype \
+    && docker-php-ext-install pdo_mysql intl zip opcache bcmath gd \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+COPY docker/php/prod.ini /usr/local/etc/php/conf.d/prod.ini
+
+WORKDIR /app
+
+ENV APP_ENV=prod \
+    APP_DEBUG=0
+
+# Dépendances d'abord, code ensuite : une modification de code ne réinstalle
+# pas les paquets.
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --no-scripts --no-interaction --prefer-dist --optimize-autoloader
+
+COPY . .
+
+# `--classmap-authoritative` : en production, une classe absente de la table
+# est absente, point. Plus aucun accès disque pour la chercher.
+RUN composer dump-autoload --no-dev --optimize --classmap-authoritative \
+    && rm -rf var/cache/* var/log/* \
+    # Le cache est chauffé à la construction, pas à la première requête :
+    # sans cela, le premier utilisateur paie la compilation du conteneur
+    # d'injection de dépendances. DATABASE_URL n'est pas lue ici, mais doit
+    # être syntaxiquement valide pour que le bundle Doctrine se configure.
+    && DATABASE_URL="mysql://x:x@db:3306/x?serverVersion=8.0.37&charset=utf8mb4" \
+       APP_SECRET=chauffage php bin/console cache:warmup --no-interaction \
+    && chown -R www-data:www-data var
+
+# Les fichiers déposés survivent aux déploiements : ce répertoire est un
+# volume, déclaré ici pour qu'un `docker run` sans compose ne les perde pas
+# silencieusement.
+VOLUME ["/app/var/uploads"]
+
+EXPOSE 9000
+
+CMD ["php-fpm"]

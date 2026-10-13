@@ -3,3 +3,10 @@ node_modules
 # Comptes de démonstration et paramètres d'accès — jamais versionnés,
 # même en environnement de démo (voir docs/comptes-acces.md).
 docs/comptes-acces.md
+
+# Secrets de production : le .env de la racine alimente docker-compose.prod.yml
+# (mots de passe MySQL, APP_SECRET, DSN du SMTP). Seul .env.prod.example, qui
+# ne contient que des emplacements vides, est versionné.
+/.env
+/.env.*
+!/.env.prod.example

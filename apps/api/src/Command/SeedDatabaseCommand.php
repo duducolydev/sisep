@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Command;
 
+use App\Amorcage\ReferentielApplicatif;
 use App\Entity\Activite;
 use App\Entity\Composante;
 use App\Entity\Depense;
@@ -15,8 +16,6 @@ use App\Entity\Exercice;
 use App\Entity\GabaritEtapes;
 use App\Entity\Indicateur;
 use App\Entity\IndicateurValeur;
-use App\Entity\Parametre;
-use App\Entity\Permission;
 use App\Entity\PieceJointe;
 use App\Entity\PointFocal;
 use App\Entity\Projet;
@@ -73,6 +72,7 @@ final class SeedDatabaseCommand extends Command
     private const SIGLE_COORDINATION = 'ANSD';
 
     public function __construct(
+        private readonly ReferentielApplicatif $referentiel,
         private readonly EntityManagerInterface $em,
         private readonly Connection $connection,
         private readonly UserPasswordHasherInterface $passwordHasher,
@@ -108,8 +108,8 @@ final class SeedDatabaseCommand extends Command
         $donnees = require __DIR__.'/../DataFixtures/donnees_demonstration.php';
 
         $io->section('Référentiel des droits');
-        $permissions = $this->semerPermissions();
-        $roles = $this->semerRoles($permissions);
+        $permissions = $this->referentiel->semerPermissions();
+        $roles = $this->referentiel->semerRoles($permissions);
         $io->text(\sprintf('%d permissions, %d rôles', \count($permissions), \count($roles)));
 
         $io->section('Structures et points focaux');
@@ -157,7 +157,7 @@ final class SeedDatabaseCommand extends Command
         $io->text(\sprintf('%d rapports périodiques', $nbRapports));
 
         $io->section('Paramètres');
-        $nbParametres = $this->semerParametres();
+        $nbParametres = $this->referentiel->semerParametres();
         $io->text(\sprintf('%d paramètres', $nbParametres));
 
         $this->em->flush();
@@ -195,139 +195,6 @@ final class SeedDatabaseCommand extends Command
         // garde l'ancien Projet(id: 1) et entre en collision avec le nouveau
         // qui reçoit le même id.
         $this->em->clear();
-    }
-
-    /** @return array<string, Permission> code => Permission */
-    private function semerPermissions(): array
-    {
-        $definitions = [
-            ['activites.consulter', 'activites', 'Consulter les activités'],
-            ['activites.creer', 'activites', 'Créer une activité'],
-            ['activites.modifier', 'activites', 'Modifier une activité'],
-            ['activites.supprimer', 'activites', 'Supprimer une activité'],
-            ['activites.valider', 'activites', "Valider la clôture d'une activité"],
-            ['budget.engagement.saisir', 'budget', 'Saisir un engagement'],
-            ['budget.engagement.valider', 'budget', 'Valider un engagement'],
-            ['budget.depense.saisir', 'budget', 'Saisir une dépense'],
-            ['budget.depense.valider', 'budget', 'Valider une dépense'],
-            ['indicateurs.consulter', 'indicateurs', 'Consulter le catalogue des indicateurs de performance'],
-            ['indicateurs.definir', 'indicateurs', 'Définir un indicateur'],
-            ['indicateurs.saisir', 'indicateurs', "Saisir une valeur d'indicateur"],
-            ['indicateurs.valider', 'indicateurs', "Valider une valeur d'indicateur"],
-            ['indicateurs.inviter', 'indicateurs', 'Inviter un sectoriel à saisir un indicateur'],
-            ['structures.gerer', 'structures', 'Gérer les structures'],
-            ['points_focaux.gerer', 'points_focaux', 'Gérer les points focaux'],
-            ['admin.roles', 'admin', 'Gérer les rôles et permissions'],
-            ['admin.parametres', 'admin', 'Gérer les paramètres'],
-            ['admin.utilisateurs', 'admin', 'Gérer les comptes utilisateurs'],
-            ['journal.consulter', 'journal', "Consulter le journal d'activité"],
-            ['documents.gerer', 'documents', 'Déposer et retirer des documents de la bibliothèque'],
-            ['exports.generer', 'exports', 'Générer un export'],
-            ['initiatives.gerer', 'initiatives', 'Gérer le suivi des projets'],
-            ['rh.consulter', 'rh', 'Consulter le suivi des ressources humaines'],
-            ['rh.gerer', 'rh', 'Gérer le personnel, les contrats et les effectifs'],
-        ];
-
-        $permissions = [];
-        foreach ($definitions as [$code, $groupe, $libelle]) {
-            $permission = new Permission($code, $groupe, $libelle);
-            $this->em->persist($permission);
-            $permissions[$code] = $permission;
-        }
-
-        return $permissions;
-    }
-
-    /**
-     * @param array<string, Permission> $permissions
-     *
-     * @return array<string, Role> code => Role
-     */
-    private function semerRoles(array $permissions): array
-    {
-        $accorder = static function (Role $role, array $permissions, array $codes): void {
-            foreach ($codes as $code) {
-                $role->accorder($permissions[$code]);
-            }
-        };
-
-        $coordonnateur = new Role('coordonnateur', 'Coordonnateur', true);
-        $accorder($coordonnateur, $permissions, [
-            'activites.consulter', 'activites.creer', 'activites.modifier', 'activites.supprimer', 'activites.valider',
-            'budget.engagement.valider', 'budget.depense.valider', 'indicateurs.consulter', 'indicateurs.valider',
-            'indicateurs.inviter', 'structures.gerer', 'points_focaux.gerer', 'admin.roles', 'admin.parametres',
-            'admin.utilisateurs', 'journal.consulter', 'exports.generer', 'initiatives.gerer',
-            'rh.consulter', 'rh.gerer', 'documents.gerer',
-        ]);
-
-        // Dérogation assumée à la séparation saisie/validation (§ 7.2),
-        // décidée après la réunion du 22/09/2026 : le responsable
-        // suivi-évaluation tient le budget de bout en bout dans les faits,
-        // l'UGP n'ayant pas deux agents distincts à y consacrer. Elle est
-        // bornée et traçable — journal_activite retient qui a saisi, modifié
-        // et validé chaque dotation, engagement et dépense, avec l'état
-        // avant et après, et l'écran du budget expose ce fil. Aucun autre
-        // rôle opérationnel ne cumule les deux : le gestionnaire budgétaire
-        // saisit sans valider, le coordonnateur valide sans saisir.
-        $suiviEvaluation = new Role('responsable_suivi_evaluation', 'Responsable suivi-évaluation', true);
-        $accorder($suiviEvaluation, $permissions, [
-            'activites.consulter', 'activites.creer', 'activites.modifier', 'activites.valider',
-            'budget.engagement.saisir', 'budget.engagement.valider',
-            'budget.depense.saisir', 'budget.depense.valider',
-            'indicateurs.consulter', 'indicateurs.definir', 'indicateurs.saisir', 'indicateurs.inviter',
-            'journal.consulter', 'exports.generer', 'initiatives.gerer', 'admin.parametres',
-            'rh.consulter', 'rh.gerer', 'documents.gerer',
-        ]);
-
-        $gestionnaireBudgetaire = new Role('gestionnaire_budgetaire', 'Gestionnaire budgétaire', true);
-        $accorder($gestionnaireBudgetaire, $permissions, [
-            'activites.consulter', 'budget.engagement.saisir', 'budget.depense.saisir',
-            'indicateurs.consulter', 'exports.generer',
-        ]);
-
-        // Séparation saisir/valider (§ 7.2) : le gestionnaire budgétaire ne
-        // détient jamais budget.*.valider, le coordonnateur ne détient
-        // jamais budget.*.saisir. Le module Indicateurs de performance est
-        // réservé à l'équipe PHASAOC (indicateurs.consulter en portée
-        // globale, absent ici) : un point focal de structure renseigne
-        // seulement l'avancement des activités dont sa structure est
-        // responsable, jamais la saisie ni la validation des indicateurs
-        // (portée-aware pour activites.modifier, cf.
-        // SousActivite::getStructurePourPortee()).
-        $pointFocalStructure = new Role('point_focal_structure', 'Point focal de structure', true);
-        $accorder($pointFocalStructure, $permissions, [
-            'activites.consulter', 'activites.modifier', 'points_focaux.gerer',
-        ]);
-
-        // Rôle d'administration de la plateforme, pas un rôle opérationnel :
-        // il détient TOUTES les permissions, donc budget.*.saisir ET
-        // budget.*.valider à la fois. C'est une dérogation assumée à la
-        // séparation saisie/validation du § 7.2, au même titre que
-        // celle accordée au responsable suivi-évaluation : elle ne doit jamais
-        // être attribuée à quelqu'un qui traite réellement des écritures
-        // budgétaires. Sa contrepartie est le journal d'activité, qui trace
-        // qui a saisi, modifie ou valide quoi.
-        $administrateur = new Role('administrateur', 'Administrateur', true);
-        $accorder($administrateur, $permissions, array_keys($permissions));
-        $this->em->persist($administrateur);
-
-        $lecteur = new Role('lecteur', 'Lecteur', true);
-        $accorder($lecteur, $permissions, ['activites.consulter', 'indicateurs.consulter']);
-
-        $roles = [
-            'administrateur' => $administrateur,
-            'coordonnateur' => $coordonnateur,
-            'responsable_suivi_evaluation' => $suiviEvaluation,
-            'gestionnaire_budgetaire' => $gestionnaireBudgetaire,
-            'point_focal_structure' => $pointFocalStructure,
-            'lecteur' => $lecteur,
-        ];
-
-        foreach ($roles as $role) {
-            $this->em->persist($role);
-        }
-
-        return $roles;
     }
 
     /**
@@ -877,26 +744,5 @@ final class SeedDatabaseCommand extends Command
         }
 
         return \count($structuresData);
-    }
-
-    /** Seuils de vigilance § 5.3 — éditables ensuite depuis /admin/parametres (P6). */
-    private function semerParametres(): int
-    {
-        $definitions = [
-            ['vigilance.seuil_retard', '-0.10', "Écart taux d'exécution / taux attendu en-deçà duquel une activité passe en \"en retard\""],
-            ['vigilance.seuil_risque', '-0.20', "Écart taux d'exécution / taux attendu en-deçà duquel une activité passe en \"risque élevé\""],
-            ['rapport.echeance_jours', '15', 'Délai (jours) après la fin du trimestre pour transmettre le rapport périodique'],
-            ['initiatives.seuil_duree_risque', '0.6667', 'Fraction de la durée d\'une activité de projet écoulée à partir de laquelle une faible progression déclenche "à risque"'],
-            ['initiatives.seuil_ecart_risque', '-0.20', 'Écart progression / durée écoulée en-deçà duquel une activité de projet passe "à risque"'],
-            ['alertes.destinataires', '', 'Adresses destinataires des alertes planifiées, séparées par des virgules (vide : les comptes coordonnateur et suivi-évaluation)'],
-            ['alertes.contrat_jours', '30,15,7,0', "Jours restants déclenchant une alerte d'échéance de contrat"],
-            ['alertes.relance_intervalle_jours', '7', 'Délai minimal (jours) entre deux relances automatiques du même rapport'],
-        ];
-
-        foreach ($definitions as [$code, $valeur, $description]) {
-            $this->em->persist(new Parametre($code, $valeur, $description));
-        }
-
-        return \count($definitions);
     }
 }
