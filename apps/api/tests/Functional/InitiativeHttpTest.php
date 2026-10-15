@@ -243,7 +243,7 @@ final class InitiativeHttpTest extends WebTestCase
             $client->request(
                 'POST',
                 '/api/v1/initiative-pieces-jointes',
-                parameters: ['entiteType' => 'initiative_activite', 'entiteUuid' => $fixture['activite']->getUuid()->toRfc4122()],
+                parameters: ['entiteType' => 'initiative_activite', 'entiteUuid' => $fixture['activite']->getUuid()->toRfc4122(), 'typeDocument' => 'note'],
                 files: ['fichier' => $fichier],
             );
             self::assertResponseStatusCodeSame(201);
@@ -385,7 +385,7 @@ final class InitiativeHttpTest extends WebTestCase
         file_put_contents($cheminTemporaire, 'contenu de test');
         $fichier = new UploadedFile($cheminTemporaire, 'document-'.$visibilite.'.txt', 'text/plain', null, true);
 
-        $parametres = ['entiteType' => 'initiative_activite', 'entiteUuid' => $activiteUuid, 'visibilite' => $visibilite];
+        $parametres = ['entiteType' => 'initiative_activite', 'entiteUuid' => $activiteUuid, 'visibilite' => $visibilite, 'typeDocument' => 'note'];
         if ([] !== $agentsUuid) {
             $parametres['agentsUuid'] = $agentsUuid;
         }

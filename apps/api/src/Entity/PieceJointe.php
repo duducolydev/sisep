@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Enum\TypeDocument;
 use App\Enum\VisibilitePieceJointe;
 use App\Repository\PieceJointeRepository;
 use Doctrine\Common\Collections\ArrayCollection;
@@ -62,6 +63,14 @@ class PieceJointe
     #[ORM\Column(length: 30, enumType: VisibilitePieceJointe::class)]
     private VisibilitePieceJointe $visibilite = VisibilitePieceJointe::TOUS;
 
+    /** Nature du document (rapport, compte-rendu…) — nulle pour les dépôts antérieurs à son introduction. */
+    #[ORM\Column(name: 'type_document', length: 30, nullable: true, enumType: TypeDocument::class)]
+    private ?TypeDocument $typeDocument = null;
+
+    /** Précision libre, seulement pour le type « Autre ». */
+    #[ORM\Column(name: 'type_document_precision', length: 120, nullable: true)]
+    private ?string $typeDocumentPrecision = null;
+
     /** @var Collection<int, Utilisateur> */
     #[ORM\ManyToMany(targetEntity: Utilisateur::class)]
     #[ORM\JoinTable(name: 'pieces_jointes_visibilite_agents')]
@@ -86,6 +95,43 @@ class PieceJointe
         $this->creePar = $creePar;
         $this->creeLe = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
         $this->agentsVisibilite = new ArrayCollection();
+    }
+
+    /**
+     * « Autre » exige une précision ; les autres types n'en gardent aucune,
+     * pour qu'un libellé ne contredise jamais le type choisi.
+     */
+    public function qualifier(TypeDocument $type, ?string $precision = null): void
+    {
+        $precision = null !== $precision ? trim($precision) : null;
+        if (TypeDocument::AUTRE === $type && (null === $precision || '' === $precision)) {
+            throw new \InvalidArgumentException('Précisez le type de document lorsque « Autre » est choisi.');
+        }
+
+        $this->typeDocument = $type;
+        $this->typeDocumentPrecision = TypeDocument::AUTRE === $type ? mb_substr((string) $precision, 0, 120) : null;
+    }
+
+    public function getTypeDocument(): ?TypeDocument
+    {
+        return $this->typeDocument;
+    }
+
+    public function getTypeDocumentPrecision(): ?string
+    {
+        return $this->typeDocumentPrecision;
+    }
+
+    /** Libellé affiché : la précision pour « Autre », le libellé du type sinon, null si non renseigné. */
+    public function libelleTypeDocument(): ?string
+    {
+        if (null === $this->typeDocument) {
+            return null;
+        }
+
+        return TypeDocument::AUTRE === $this->typeDocument
+            ? 'Autre : '.$this->typeDocumentPrecision
+            : $this->typeDocument->libelle();
     }
 
     /** @param list<Utilisateur> $agents */

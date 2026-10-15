@@ -5,6 +5,8 @@ import { journalQueryOptions } from '@/lib/admin'
 import { formaterDate } from '@/lib/format'
 import { AdminOnglets } from '@/components/AdminOnglets'
 import { Squelette } from '@/components/Squelette'
+import { urlExportDonnees } from '@/lib/exports'
+import { BoutonExporter } from '@/components/BoutonExporter'
 
 const TYPES_ENTITE = [
   'activite',
@@ -17,6 +19,10 @@ const TYPES_ENTITE = [
   'role',
   'permission',
   'utilisateur',
+  'personnel',
+  'contrat',
+  'effectif_enqueteurs',
+  'point_focal',
 ]
 
 const LIBELLES_ACTION: Record<string, string> = {
@@ -58,7 +64,10 @@ export function AdminJournal() {
 
       <AdminOnglets />
 
-      <h2 className="mb-4 text-lg font-semibold">Journal d'activité</h2>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-lg font-semibold">Journal d'activité</h2>
+        <BoutonExporter href={urlExportDonnees('journal', { entite, du, au })} libelle="Exporter" />
+      </div>
 
       <div className="mb-4 flex flex-wrap items-end gap-3" role="search" aria-label="Filtres du journal">
         <label className="flex flex-col gap-1 text-sm">

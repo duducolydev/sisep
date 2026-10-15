@@ -1,5 +1,6 @@
 import { queryOptions } from '@tanstack/react-query'
 import { apiClient } from './api-client'
+import { ajouterNature, type NatureDocument } from './types-document'
 
 /** Niveau de rattachement d'un document — segment d'URL de l'API. */
 export type TypeRattachement = 'projets' | 'composantes' | 'sous-composantes'
@@ -45,6 +46,9 @@ export interface Document {
   famille: FamilleDocument
   tailleOctets: number
   visibilite: string
+  /** Nature choisie au dépôt — null pour les dépôts antérieurs. */
+  typeDocument: string | null
+  typeDocumentLibelle: string | null
   deposePar: string
   creeLe: string
 }
@@ -56,6 +60,8 @@ export interface FiltresDocuments {
   du?: string
   au?: string
   famille?: string
+  /** Nature du document (rapport, compte-rendu…). */
+  type?: string
 }
 
 export const documentsQueryOptions = (
@@ -86,12 +92,13 @@ export const TAILLE_MAX_DOCUMENT_OCTETS = 50 * 1024 * 1024
 export async function deposerDocument(
   type: TypeRattachement,
   uuid: string,
-  entree: { fichier: File; libelle: string; visibilite: string },
+  entree: { fichier: File; libelle: string; visibilite: string; nature: NatureDocument },
 ): Promise<Document> {
   const donnees = new FormData()
   donnees.append('fichier', entree.fichier)
   donnees.append('libelle', entree.libelle)
   donnees.append('visibilite', entree.visibilite)
+  ajouterNature(donnees, entree.nature)
 
   const reponse = await fetch(
     `${(import.meta.env.VITE_API_URL as string | undefined) ?? '/api/v1'}/documents/${type}/${uuid}`,

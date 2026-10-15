@@ -6,6 +6,7 @@ namespace App\Repository;
 
 use App\Entity\PieceJointe;
 use App\Enum\FamilleDocument;
+use App\Enum\TypeDocument;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -36,6 +37,7 @@ class PieceJointeRepository extends ServiceEntityRepository
         ?\DateTimeImmutable $du = null,
         ?\DateTimeImmutable $au = null,
         ?FamilleDocument $famille = null,
+        ?TypeDocument $typeDocument = null,
     ): array {
         $qb = $this->createQueryBuilder('p')
             ->andWhere('p.entiteType = :type')
@@ -78,6 +80,10 @@ class PieceJointeRepository extends ServiceEntityRepository
                 }
                 $qb->andWhere(implode(' OR ', $conditions));
             }
+        }
+
+        if (null !== $typeDocument) {
+            $qb->andWhere('p.typeDocument = :typeDocument')->setParameter('typeDocument', $typeDocument);
         }
 
         /** @var list<PieceJointe> $resultat */

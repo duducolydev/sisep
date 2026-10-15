@@ -14,6 +14,7 @@ use App\Entity\SousActivite;
 use App\Entity\Utilisateur;
 use App\Http\EtapeActiviteNormalizer;
 use App\Http\ProblemResponseFactory;
+use App\Http\TypeDocumentRequete;
 use App\Repository\ActiviteRepository;
 use App\Repository\EtapeActiviteRepository;
 use App\Repository\GabaritEtapesRepository;
@@ -330,6 +331,11 @@ final class EtapeActiviteController
             return ProblemResponseFactory::creer(422, 'Fichier trop volumineux', 'La taille maximale est de 10 Mo.');
         }
 
+        $nature = TypeDocumentRequete::lire($request);
+        if ($nature instanceof JsonResponse) {
+            return $nature;
+        }
+
         $repertoire = $this->projectDir.'/var/uploads/etapes';
         $this->filesystem->mkdir($repertoire);
         $nomStocke = Uuid::v4()->toRfc4122().'-'.$fichier->getClientOriginalName();
@@ -346,6 +352,7 @@ final class EtapeActiviteController
             $tailleOctets,
             $utilisateur,
         );
+        $pieceJointe->qualifier(...$nature);
         $this->em->persist($pieceJointe);
         $this->em->flush();
 

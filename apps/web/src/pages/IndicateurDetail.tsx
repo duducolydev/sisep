@@ -16,7 +16,7 @@ import { ApiError } from '@/lib/api-client'
 import { queryClient } from '@/lib/query-client'
 import { usePeut } from '@/lib/use-permissions'
 import { usePeriodeFiltre } from '@/lib/periode'
-import { urlTelechargerPieceJointe } from '@/lib/exports'
+import { urlTelechargerPieceJointe, urlExportDonnees } from '@/lib/exports'
 import { BarreAtteinte } from '@/components/BarreAtteinte'
 import { BarresObjectifsIndicateur } from '@/components/BarresObjectifsIndicateur'
 import { CourbeIndicateur } from '@/components/CourbeIndicateur'
@@ -28,6 +28,7 @@ import { Squelette } from '@/components/Squelette'
 import { useToast } from '@/components/ToastProvider'
 import { Bouton } from '@/components/Bouton'
 import { IconeBouton, IconeTrombone, IconeAnnuler, IconePlus, IconeInviter, IconeValider } from '@/components/Icones'
+import { BoutonExporter } from '@/components/BoutonExporter'
 
 function formaterTaille(octets: number): string {
   if (octets < 1024) return `${octets} o`
@@ -111,7 +112,10 @@ export function IndicateurDetail() {
           <span className="chiffres text-muted">{indicateur.code}</span>
           <span className="rounded-full bg-accent-bg px-2 py-0.5 text-xs font-semibold text-accent">{indicateur.type}</span>
         </div>
-        <h1 className="text-2xl">{indicateur.libelle}</h1>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <h1 className="text-2xl">{indicateur.libelle}</h1>
+          <BoutonExporter href={urlExportDonnees(`indicateurs/${indicateur.uuid}`)} libelle="Exporter la série" />
+        </div>
         {indicateur.precisionLibelle && <p className="text-muted">{indicateur.precisionLibelle}</p>}
         <p className="mt-2 text-sm text-muted">
           Source : {indicateur.source} · Fréquence : {indicateur.frequence}
@@ -297,6 +301,7 @@ export function IndicateurDetail() {
                         <a href={urlTelechargerPieceJointe(p.uuid)} className="min-w-0 truncate text-accent hover:text-accent-d">
                           {p.nomFichier}
                         </a>
+                        {p.typeDocumentLibelle && <span className="shrink-0 rounded-full bg-nested px-2 py-0.5 text-xs text-muted">{p.typeDocumentLibelle}</span>}
                         <span className="chiffres shrink-0 text-xs text-muted">{formaterTaille(p.tailleOctets)}</span>
                       </li>
                     ))}

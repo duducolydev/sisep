@@ -10,13 +10,14 @@ import {
 import { usePeut } from '@/lib/use-permissions'
 import { queryClient } from '@/lib/query-client'
 import { ApiError } from '@/lib/api-client'
-import { urlExportRapportTrimestriel } from '@/lib/exports'
+import { urlExportRapportTrimestriel, urlExportDonnees } from '@/lib/exports'
 import { StructureModale } from '@/components/StructureModale'
 import { LIBELLES_TYPE_STRUCTURE } from '@/lib/types-structure'
-import { IconeRecherche, IconeMettreAJour, IconePlus } from '@/components/Icones'
+import { IconeImporter, IconeRecherche, IconeMettreAJour, IconePlus } from '@/components/Icones'
 import { BoutonExporter } from '@/components/BoutonExporter'
 import { Pagination } from '@/components/Pagination'
 import { trancherPage } from '@/lib/pagination'
+import { ImportExcelModale } from '@/components/ImportExcelModale'
 
 const TRIMESTRE_COURANT = `T${Math.floor(new Date().getMonth() / 3) + 1}`
 const TAILLE_PAGE = 12
@@ -27,6 +28,7 @@ export function PartiesPrenantes() {
   const { data: rapports } = useQuery(rapportsQueryOptions())
   const peutGerer = usePeut('structures.gerer')
   const peutRelancer = usePeut('points_focaux.gerer')
+  const [importOuvert, setImportOuvert] = useState(false)
   const peutExporter = usePeut('exports.generer')
 
   const [searchParams, setSearchParams] = useSearchParams()
@@ -118,6 +120,7 @@ export function PartiesPrenantes() {
                 ))}
               </select>
               <BoutonExporter href={urlExportRapportTrimestriel(periodeExport)} libelle="Rapport PDF" />
+              <BoutonExporter href={urlExportDonnees('parties-prenantes')} libelle="Exporter (Excel)" />
             </div>
           )}
           {peutRelancer && (
@@ -130,6 +133,27 @@ export function PartiesPrenantes() {
               <IconeMettreAJour />
               {relanceEnCours ? 'Relance…' : 'Relancer les retardataires'}
             </button>
+          )}
+          {peutRelancer && (
+            <button
+              type="button"
+              onClick={() => setImportOuvert(true)}
+              className="flex items-center gap-1.5 rounded-[var(--radius-controle)] border border-border bg-surface px-4 py-2 font-semibold transition-colors hover:border-accent hover:text-accent"
+            >
+              <IconeImporter />
+              Importer des points focaux
+            </button>
+          )}
+          {importOuvert && (
+            <ImportExcelModale
+              type="points-focaux"
+              titre="Importer des points focaux"
+              onFermer={() => setImportOuvert(false)}
+              onImporte={async () => {
+                await queryClient.invalidateQueries({ queryKey: ['points-focaux'] })
+                await queryClient.invalidateQueries({ queryKey: ['structures'] })
+              }}
+            />
           )}
           {peutGerer && (
             <button

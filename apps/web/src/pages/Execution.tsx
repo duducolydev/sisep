@@ -5,6 +5,9 @@ import { executionQueryOptions, type LigneExecutionSynthese } from '@/lib/execut
 import { formaterDate, formaterFcfa, formaterTaux } from '@/lib/format'
 import { SelecteurExercice } from '@/components/SelecteurExercice'
 import { Squelette } from '@/components/Squelette'
+import { urlExportDonnees } from '@/lib/exports'
+import { BoutonExporter } from '@/components/BoutonExporter'
+import { usePeut } from '@/lib/use-permissions'
 
 const MOIS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
 
@@ -33,6 +36,7 @@ export function Execution() {
     activite: searchParams.get('activite') ?? undefined,
   }
   const { data, isLoading, isError } = useQuery(executionQueryOptions(projet?.uuid, filtres))
+  const peutExporter = usePeut('exports.generer')
 
   function definir(modifications: Record<string, string | null>) {
     const suivant = new URLSearchParams(searchParams)
@@ -79,6 +83,7 @@ export function Execution() {
         className="flex flex-wrap items-center gap-3 rounded-[var(--radius-carte)] bg-surface p-3 shadow-[var(--shadow-carte)]"
       >
         <SelecteurExercice projetUuid={projet?.uuid} />
+        {peutExporter && <BoutonExporter href={urlExportDonnees('execution', filtres)} libelle="Exporter" />}
 
         <div className="flex gap-0.5 rounded-[var(--radius-controle)] bg-nested p-0.5 text-xs" role="group" aria-label="Période">
           {(

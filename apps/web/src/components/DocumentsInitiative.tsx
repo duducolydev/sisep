@@ -13,6 +13,8 @@ import { queryClient } from '@/lib/query-client'
 import { IconeTrombone } from './Icones'
 import { DropzoneFichier } from './DropzoneFichier'
 import { ComboboxMultiple } from './ComboboxMultiple'
+import { ChoixTypeDocument } from './ChoixTypeDocument'
+import { erreurNature, NATURE_VIDE, type NatureDocument } from '@/lib/types-document'
 
 interface DocumentsInitiativeProps {
   entiteType: EntiteInitiative
@@ -41,6 +43,7 @@ export function DocumentsInitiative({ entiteType, entiteUuid, piecesJointes, peu
   const [fichier, setFichier] = useState<File | null>(null)
   const [visibilite, setVisibilite] = useState<VisibilitePieceJointe>('tous')
   const [agents, setAgents] = useState<string[]>([])
+  const [nature, setNature] = useState<NatureDocument>(NATURE_VIDE)
   const [enCours, setEnCours] = useState(false)
   const [erreur, setErreur] = useState<string | null>(null)
 
@@ -49,15 +52,22 @@ export function DocumentsInitiative({ entiteType, entiteUuid, piecesJointes, peu
     setFichier(null)
     setVisibilite('tous')
     setAgents([])
+    setNature(NATURE_VIDE)
     setErreur(null)
   }
 
   async function televerser() {
     if (!fichier) return
+    const erreurType = erreurNature(nature)
+    if (erreurType !== null) {
+      setErreur(erreurType)
+
+      return
+    }
     setErreur(null)
     setEnCours(true)
     try {
-      await televerserPieceJointeInitiative(entiteType, entiteUuid, fichier, visibilite, agents)
+      await televerserPieceJointeInitiative(entiteType, entiteUuid, fichier, visibilite, agents, nature)
       await queryClient.invalidateQueries({ queryKey: ['initiatives'] })
       reinitialiser()
     } catch (e) {
@@ -86,6 +96,8 @@ export function DocumentsInitiative({ entiteType, entiteUuid, piecesJointes, peu
       {panneauOuvert && (
         <div className="mb-3 flex flex-col gap-2 rounded-[var(--radius-controle)] border border-border bg-nested p-3">
           <DropzoneFichier fichier={fichier} onChange={setFichier} />
+
+          <ChoixTypeDocument id={`type-document-${entiteUuid}`} nature={nature} onChange={setNature} disabled={enCours} />
 
           <label className="flex flex-col gap-1 text-sm">
             Visible par
@@ -143,6 +155,7 @@ export function DocumentsInitiative({ entiteType, entiteUuid, piecesJointes, peu
               <a href={urlTelechargerPieceJointe(p.uuid)} className="min-w-0 truncate text-accent hover:text-accent-d">
                 {p.nomFichier}
               </a>
+              {p.typeDocumentLibelle && <span className="shrink-0 rounded-full bg-nested px-2 py-0.5 text-xs text-muted">{p.typeDocumentLibelle}</span>}
               <span className="chiffres shrink-0 text-xs text-muted">{formaterTaille(p.tailleOctets)}</span>
               {p.visibilite !== 'tous' && (
                 <span className="shrink-0 rounded-full bg-nested px-2 py-0.5 text-xs text-muted">

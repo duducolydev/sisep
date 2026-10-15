@@ -1,5 +1,6 @@
 import { queryOptions } from '@tanstack/react-query'
 import { apiClient } from './api-client'
+import { ajouterNature, type NatureDocument } from './types-document'
 
 /** Calculé (StatutInitiativeCalculator), jamais saisi — fusionne ce qui était auparavant un statut saisi et une vigilance calculée à part. */
 export type StatutInitiativeActivite = 'planifiee' | 'en_cours' | 'a_risque' | 'en_retard' | 'terminee'
@@ -35,6 +36,8 @@ export interface NoteInitiative {
 export interface PieceJointeInitiative {
   uuid: string
   nomFichier: string
+  /** Nature choisie au dépôt (« Rapport », « Autre : … ») — null pour les dépôts antérieurs. */
+  typeDocumentLibelle: string | null
   mime: string
   tailleOctets: number
   creeLe: string
@@ -171,9 +174,11 @@ export async function televerserPieceJointeInitiative(
   entiteUuid: string,
   fichier: File,
   visibilite: VisibilitePieceJointe,
-  agentsUuid: string[] = [],
+  agentsUuid: string[],
+  nature: NatureDocument,
 ): Promise<Initiative> {
   const donnees = new FormData()
+  ajouterNature(donnees, nature)
   donnees.append('entiteType', entiteType)
   donnees.append('entiteUuid', entiteUuid)
   donnees.append('fichier', fichier)

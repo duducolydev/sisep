@@ -30,6 +30,21 @@ export function urlExportInitiativesPdf(): string {
   return `${BASE_URL}/exports/initiatives.pdf`
 }
 
+/**
+ * Extraction Excel d'un écran (`/exports/donnees/{jeu}.xlsx`) — les filtres
+ * affichés à l'écran sont transmis tels quels, pour que le fichier reprenne
+ * exactement ce que l'utilisateur voit. Paramètres vides ignorés.
+ */
+export function urlExportDonnees(jeu: string, params: Record<string, string | null | undefined> = {}): string {
+  const recherche = new URLSearchParams()
+  for (const [cle, valeur] of Object.entries(params)) {
+    if (valeur !== null && valeur !== undefined && valeur !== '') recherche.set(cle, valeur)
+  }
+  const suffixe = recherche.toString()
+
+  return `${BASE_URL}/exports/donnees/${jeu}.xlsx${suffixe ? `?${suffixe}` : ''}`
+}
+
 export function urlTelechargerPieceJointe(uuid: string): string {
   return `${BASE_URL}/pieces-jointes/${uuid}/telecharger`
 }

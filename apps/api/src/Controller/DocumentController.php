@@ -10,8 +10,10 @@ use App\Entity\Projet;
 use App\Entity\SousComposante;
 use App\Entity\Utilisateur;
 use App\Enum\FamilleDocument;
+use App\Enum\TypeDocument;
 use App\Enum\VisibilitePieceJointe;
 use App\Http\ProblemResponseFactory;
+use App\Http\TypeDocumentRequete;
 use App\Repository\ComposanteRepository;
 use App\Repository\PieceJointeRepository;
 use App\Repository\ProjetRepository;
@@ -113,6 +115,7 @@ final class DocumentController
             // document déposé ce jour-là à 15 h.
             $this->dateOuNull($request, 'au')?->setTime(23, 59, 59),
             FamilleDocument::tryFrom((string) $request->query->get('famille', '')),
+            TypeDocument::tryFrom((string) $request->query->get('type', '')),
         );
 
         return new JsonResponse([
@@ -203,6 +206,11 @@ final class DocumentController
             return ProblemResponseFactory::creer(422, 'Visibilité non applicable', 'La bibliothèque ne gère pas la visibilité par agents nommés.');
         }
 
+        $nature = TypeDocumentRequete::lire($request);
+        if ($nature instanceof JsonResponse) {
+            return $nature;
+        }
+
         $repertoire = $this->projectDir.'/var/uploads/documents';
         $this->filesystem->mkdir($repertoire);
         $nomOriginal = $fichier->getClientOriginalName();
@@ -219,6 +227,7 @@ final class DocumentController
             $tailleOctets,
             $utilisateur,
         );
+        $document->qualifier(...$nature);
         $document->definirVisibilite($visibilite);
 
         $libelle = $request->request->get('libelle');
@@ -279,6 +288,8 @@ final class DocumentController
             'uuid' => $document->getUuid()->toRfc4122(),
             'libelle' => $document->getLibelle(),
             'nomFichier' => $document->getNomFichier(),
+            'typeDocument' => $document->getTypeDocument()?->value,
+            'typeDocumentLibelle' => $document->libelleTypeDocument(),
             'mime' => $document->getMime(),
             'tailleOctets' => $document->getTailleOctets(),
             'visibilite' => $document->getVisibilite()->value,

@@ -4,6 +4,8 @@ import { Bouton } from './Bouton'
 import { DropzoneFichier } from './DropzoneFichier'
 import { TAILLE_MAX_DOCUMENT_OCTETS, deposerDocument, VISIBILITES, type TypeRattachement } from '@/lib/documents'
 import { queryClient } from '@/lib/query-client'
+import { ChoixTypeDocument } from './ChoixTypeDocument'
+import { erreurNature, NATURE_VIDE, type NatureDocument } from '@/lib/types-document'
 
 interface DeposerDocumentModaleProps {
   type: TypeRattachement
@@ -17,6 +19,7 @@ export function DeposerDocumentModale({ type, cibleUuid, cibleLibelle, onFermer 
   const [fichier, setFichier] = useState<File | null>(null)
   const [libelle, setLibelle] = useState('')
   const [visibilite, setVisibilite] = useState<string>('tous')
+  const [nature, setNature] = useState<NatureDocument>(NATURE_VIDE)
   const [enCours, setEnCours] = useState(false)
   const [erreur, setErreur] = useState<string | null>(null)
 
@@ -31,11 +34,17 @@ export function DeposerDocumentModale({ type, cibleUuid, cibleLibelle, onFermer 
 
       return
     }
+    const erreurType = erreurNature(nature)
+    if (erreurType !== null) {
+      setErreur(erreurType)
+
+      return
+    }
 
     setErreur(null)
     setEnCours(true)
     try {
-      await deposerDocument(type, cibleUuid, { fichier, libelle: libelle.trim(), visibilite })
+      await deposerDocument(type, cibleUuid, { fichier, libelle: libelle.trim(), visibilite, nature })
       await queryClient.invalidateQueries({ queryKey: ['documents'] })
       onFermer()
     } catch (e) {
@@ -57,6 +66,8 @@ export function DeposerDocumentModale({ type, cibleUuid, cibleLibelle, onFermer 
         <p className="text-sm text-muted">
           Rattachement : <span className="font-semibold text-text">{cibleLibelle}</span>
         </p>
+
+        <ChoixTypeDocument nature={nature} onChange={setNature} disabled={enCours} />
 
         <div className="flex flex-col gap-1">
           <label htmlFor="document-libelle">Intitulé (optionnel)</label>

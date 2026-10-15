@@ -14,6 +14,8 @@ import { SelecteurExercice } from '@/components/SelecteurExercice'
 import { SelecteurPeriode } from '@/components/SelecteurPeriode'
 import { IconeVoir } from '@/components/Icones'
 import { usePeut } from '@/lib/use-permissions'
+import { urlExportDonnees } from '@/lib/exports'
+import { BoutonExporter } from '@/components/BoutonExporter'
 
 const CLASSES_EVENEMENT: Record<string, string> = {
   creation: 'bg-warn',
@@ -33,6 +35,7 @@ export function TableauDeBord() {
   // Module réservé par défaut à l'équipe PHASAOC (§ décision), sauf
   // invitation ponctuelle — cf. Layout.tsx pour le même hint.
   const voitIndicateurs = usePeut('indicateurs.consulter')
+  const peutExporter = usePeut('exports.generer')
   const { data: indicateurs } = useQuery({ ...indicateursQueryOptions(), enabled: voitIndicateurs })
   const { data: activiteRecente } = useQuery(activiteRecenteQueryOptions(projet?.uuid))
 
@@ -51,6 +54,9 @@ export function TableauDeBord() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <SelecteurExercice projetUuid={projet?.uuid} />
+          {peutExporter && (
+            <BoutonExporter href={urlExportDonnees('tableau-de-bord', { exercice: searchParams.get('exercice') })} libelle="Exporter" />
+          )}
           <SelecteurPeriode />
         </div>
       </div>

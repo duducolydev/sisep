@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Bouton } from './Bouton'
 import { IconeBouton, IconeAnnuler, IconeModifier, IconePlus, IconeSupprimer, IconeTrombone } from './Icones'
@@ -20,6 +20,7 @@ import { formaterDate, formaterTaux } from '@/lib/format'
 import { ApiError } from '@/lib/api-client'
 import { queryClient } from '@/lib/query-client'
 import { useConfirmer } from '@/lib/confirmation'
+import { JoindreFichierModale } from './JoindreFichierModale'
 
 interface EtapesActiviteProps {
   activiteUuid: string
@@ -250,6 +251,7 @@ export function EtapesActivite({ activiteUuid, sousActiviteUuid, titre, peutStru
                     <a href={urlTelechargerPieceJointe(piece.uuid)} className="truncate text-accent hover:text-accent-d">
                       {piece.nomFichier}
                     </a>
+                    {piece.typeDocumentLibelle && <span className="shrink-0 rounded-full bg-nested px-2 py-0.5 text-xs text-muted">{piece.typeDocumentLibelle}</span>}
                   </span>
                 ))}
                 {peutRenseigner && (
@@ -284,29 +286,21 @@ function DeposerJustificatif({
   enCours: boolean
   onDeposer: (action: () => Promise<unknown>) => Promise<void>
 }) {
-  const champ = useRef<HTMLInputElement>(null)
+  const [ouvert, setOuvert] = useState(false)
 
   return (
     <>
-      <input
-        ref={champ}
-        type="file"
-        className="hidden"
-        onChange={(e) => {
-          const fichier = e.target.files?.[0]
-          if (fichier) void onDeposer(() => televerserPieceJointeEtape(etapeUuid, fichier))
-          e.target.value = ''
-        }}
-      />
-      <Bouton
-        variante="discret"
-        taille="mini"
-        icone={<IconeTrombone />}
-        disabled={enCours}
-        onClick={() => champ.current?.click()}
-      >
+      <Bouton variante="discret" taille="mini" icone={<IconeTrombone />} disabled={enCours} onClick={() => setOuvert(true)}>
         Joindre un justificatif
       </Bouton>
+      {ouvert && (
+        <JoindreFichierModale
+          titre="Joindre un justificatif"
+          tailleMaxOctets={10 * 1024 * 1024}
+          onEnvoyer={(fichier, nature) => onDeposer(() => televerserPieceJointeEtape(etapeUuid, fichier, nature))}
+          onFermer={() => setOuvert(false)}
+        />
+      )}
     </>
   )
 }

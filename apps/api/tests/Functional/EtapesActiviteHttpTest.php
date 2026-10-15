@@ -216,7 +216,7 @@ final class EtapesActiviteHttpTest extends WebTestCase
             $etapeDpee = $this->ajouterEtape($client, $fixture['activiteDpee']->getUuid()->toRfc4122(), 'Collecte DPEE');
 
             $this->connecter($client, $fixture['focalDsid']->getEmail());
-            $client->request('POST', "/api/v1/etapes/{$etapeDsid}/pieces-jointes", files: ['fichier' => $this->fichierTest()]);
+            $client->request('POST', "/api/v1/etapes/{$etapeDsid}/pieces-jointes", parameters: ['typeDocument' => 'proces_verbal'], files: ['fichier' => $this->fichierTest()]);
             self::assertResponseStatusCodeSame(201, 'Le justificatif accompagne le renseignement : même droit que renseigner.');
 
             $piecesJointes = $this->corps($client)['piecesJointes'];
@@ -227,7 +227,7 @@ final class EtapesActiviteHttpTest extends WebTestCase
             self::assertResponseIsSuccessful('La pièce jointe doit être téléchargeable par qui peut voir l\'activité.');
 
             // La portée s'applique au dépôt comme au renseignement.
-            $client->request('POST', "/api/v1/etapes/{$etapeDpee}/pieces-jointes", files: ['fichier' => $this->fichierTest()]);
+            $client->request('POST', "/api/v1/etapes/{$etapeDpee}/pieces-jointes", parameters: ['typeDocument' => 'proces_verbal'], files: ['fichier' => $this->fichierTest()]);
             self::assertResponseStatusCodeSame(403, 'Un point focal DSID ne dépose rien sur une étape de la DPEE.');
         } finally {
             $this->rollback();

@@ -26,6 +26,8 @@ import { Squelette } from '@/components/Squelette'
 import { EtapesActivite } from '@/components/EtapesActivite'
 import { Bouton } from '@/components/Bouton'
 import { IconeDotation, IconeEngagement, IconeDepense, IconeValider, IconeAnnuler, IconePlus } from '@/components/Icones'
+import { urlExportDonnees } from '@/lib/exports'
+import { BoutonExporter } from '@/components/BoutonExporter'
 
 type CibleBudget = { type: 'activite' | 'sous_activite'; uuid: string }
 type Modale =
@@ -50,6 +52,7 @@ export function ActiviteDetail() {
   const peutValiderEngagement = usePeut('budget.engagement.valider')
   const peutSaisirDepense = usePeut('budget.depense.saisir')
   const peutValiderDepense = usePeut('budget.depense.valider')
+  const peutExporter = usePeut('exports.generer')
 
   if (isLoading) return <Squelette lignes={6} />
   if (isError || !activite) {
@@ -103,7 +106,10 @@ export function ActiviteDetail() {
             }}
           />
         </div>
-        <h1 className="text-2xl">{activite.libelle}</h1>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <h1 className="text-2xl">{activite.libelle}</h1>
+          {peutExporter && <BoutonExporter href={urlExportDonnees(`activites/${activite.uuid}`)} libelle="Exporter" />}
+        </div>
         {activite.description && <p className="text-muted">{activite.description}</p>}
         <p className="mt-2 text-sm text-muted">
           {activite.sousComposante.code} — {activite.sousComposante.libelle} · Responsable :{' '}

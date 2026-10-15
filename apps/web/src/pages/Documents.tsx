@@ -22,6 +22,10 @@ import { IconeBouton, IconePlus, IconeRecherche, IconeSupprimer, IconeTelecharge
 import { DeposerDocumentModale } from '@/components/DeposerDocumentModale'
 import { useToast } from '@/components/ToastProvider'
 import { useConfirmer } from '@/lib/confirmation'
+import { ComboboxSimple } from '@/components/ComboboxSimple'
+import { TYPES_DOCUMENT } from '@/lib/types-document'
+import { urlExportDonnees } from '@/lib/exports'
+import { BoutonExporter } from '@/components/BoutonExporter'
 
 /**
  * Bibliothèque documentaire de l'UGP (§ 12 du CR du 22/09/2026).
@@ -43,6 +47,7 @@ export function Documents() {
   const [modaleOuverte, setModaleOuverte] = useState(false)
   const [actionEnCours, setActionEnCours] = useState<string | null>(null)
   const peutGerer = usePeut('documents.gerer')
+  const peutExporter = usePeut('exports.generer')
   const afficherToast = useToast()
 
   const { data: projet } = useQuery(projetCourantQueryOptions())
@@ -59,6 +64,7 @@ export function Documents() {
     du: searchParams.get('du') ?? '',
     au: searchParams.get('au') ?? '',
     famille: searchParams.get('famille') ?? '',
+    type: searchParams.get('type') ?? '',
   }
   const filtresActifs = Object.values(filtres).some((valeur) => valeur !== '')
 
@@ -77,7 +83,7 @@ export function Documents() {
 
   function effacerFiltres() {
     const suivant = new URLSearchParams(searchParams)
-    for (const cle of ['q', 'du', 'au', 'famille']) {
+    for (const cle of ['q', 'du', 'au', 'famille', 'type']) {
       suivant.delete(cle)
     }
     setSearchParams(suivant, { replace: true })
@@ -115,11 +121,16 @@ export function Documents() {
             Bibliothèque de l'UGP — documents de cadrage du projet et pièces rattachées à une composante.
           </p>
         </div>
-        {peutGerer && cibleUuid !== undefined && (
-          <Bouton icone={<IconePlus />} onClick={() => setModaleOuverte(true)}>
-            Déposer un document
-          </Bouton>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {peutExporter && (
+            <BoutonExporter href={urlExportDonnees('documents', { ...filtres, composante: composanteUuid })} libelle="Exporter la liste" />
+          )}
+          {peutGerer && cibleUuid !== undefined && (
+            <Bouton icone={<IconePlus />} onClick={() => setModaleOuverte(true)}>
+              Déposer un document
+            </Bouton>
+          )}
+        </div>
       </div>
 
       <div
@@ -141,13 +152,22 @@ export function Documents() {
           ))}
         </select>
 
+        <div className="w-60">
+          <ComboboxSimple
+            options={[{ value: '', label: 'Tous les types' }, ...TYPES_DOCUMENT.map((t) => ({ value: t.valeur, label: t.libelle }))]}
+            valeur={filtres.type}
+            onChange={(valeur) => definirFiltre('type', valeur)}
+            placeholder="Tous les types"
+          />
+        </div>
+
         <select
-          aria-label="Type de document"
+          aria-label="Format"
           value={filtres.famille}
           onChange={(e) => definirFiltre('famille', e.target.value)}
           className="rounded-[var(--radius-controle)] border border-border bg-surface px-3 py-2"
         >
-          <option value="">Tous les types</option>
+          <option value="">Tous les formats</option>
           {FAMILLES.map((f) => (
             <option key={f.valeur} value={f.valeur}>
               {f.libelle}
@@ -225,6 +245,7 @@ export function Documents() {
                 <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted">
                   <th className="px-4 py-3 font-semibold">Document</th>
                   <th className="px-4 py-3 font-semibold">Type</th>
+                  <th className="px-4 py-3 font-semibold">Format</th>
                   <th className="px-4 py-3 font-semibold">Visibilité</th>
                   <th className="px-4 py-3 font-semibold">Déposé par</th>
                   <th className="px-4 py-3 font-semibold">Le</th>
@@ -244,6 +265,7 @@ export function Documents() {
                       </a>
                       {document.libelle !== null && <p className="text-xs text-muted">{document.nomFichier}</p>}
                     </td>
+                    <td className="px-4 py-3">{document.typeDocumentLibelle ?? <span className="text-muted">Non précisé</span>}</td>
                     <td className="px-4 py-3 text-muted">{LIBELLES_FAMILLE[document.famille] ?? document.famille}</td>
                     <td className="px-4 py-3 text-muted">
                       {LIBELLES_VISIBILITE[document.visibilite] ?? document.visibilite}

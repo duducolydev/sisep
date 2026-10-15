@@ -6,6 +6,8 @@ import { queryClient } from '@/lib/query-client'
 import { formaterValeurIndicateur } from '@/lib/format'
 import { IconeModifier, IconePlus, IconeCalendrier, IconeTrombone } from './Icones'
 import { DropzoneFichier } from './DropzoneFichier'
+import { ChoixTypeDocument } from './ChoixTypeDocument'
+import { erreurNature, NATURE_VIDE, type NatureDocument } from '@/lib/types-document'
 
 interface ValeurIndicateurInlineProps {
   indicateurUuid: string
@@ -43,6 +45,7 @@ export function ValeurIndicateurInline({ indicateurUuid, actuel, enAttente = nul
   const [commentaire, setCommentaire] = useState('')
   const [commentaireOuvert, setCommentaireOuvert] = useState(false)
   const [fichier, setFichier] = useState<File | null>(null)
+  const [nature, setNature] = useState<NatureDocument>(NATURE_VIDE)
   const [fichierOuvert, setFichierOuvert] = useState(false)
   const [enCours, setEnCours] = useState(false)
   const [erreur, setErreur] = useState<string | null>(null)
@@ -81,6 +84,13 @@ export function ValeurIndicateurInline({ indicateurUuid, actuel, enAttente = nul
       return
     }
 
+    const erreurType = fichier ? erreurNature(nature) : null
+    if (erreurType !== null) {
+      setErreur(erreurType)
+
+      return
+    }
+
     setErreur(null)
     setEnCours(true)
     try {
@@ -91,7 +101,7 @@ export function ValeurIndicateurInline({ indicateurUuid, actuel, enAttente = nul
         desagregations: [],
       })
       if (fichier) {
-        await televerserPieceJointeValeur(reponse.uuid, fichier)
+        await televerserPieceJointeValeur(reponse.uuid, fichier, nature)
       }
       await queryClient.invalidateQueries({ queryKey: ['indicateur', indicateurUuid] })
       await queryClient.invalidateQueries({ queryKey: ['indicateurs'] })
@@ -225,8 +235,9 @@ export function ValeurIndicateurInline({ indicateurUuid, actuel, enAttente = nul
               )}
 
               {fichierOuvert ? (
-                <div className="mt-2">
+                <div className="mt-2 flex flex-col gap-2">
                   <DropzoneFichier fichier={fichier} onChange={setFichier} />
+                  {fichier && <ChoixTypeDocument id={`type-document-${indicateurUuid}`} nature={nature} onChange={setNature} />}
                 </div>
               ) : (
                 <button

@@ -92,6 +92,16 @@ export function IconeMettreAJour() {
   )
 }
 
+export function IconeImporter() {
+  return (
+    <svg {...iconeProps} aria-hidden="true">
+      <path d="M12 3v12" />
+      <path d="M7 10l5 5 5-5" />
+      <path d="M20 15v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-4" />
+    </svg>
+  )
+}
+
 export function IconeExporter() {
   return (
     <svg {...iconeProps} aria-hidden="true">

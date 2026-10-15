@@ -5,8 +5,12 @@ import { queryClient } from '@/lib/query-client'
 import { ApiError } from '@/lib/api-client'
 import { AdminOnglets } from '@/components/AdminOnglets'
 import { Squelette } from '@/components/Squelette'
+import { urlExportDonnees } from '@/lib/exports'
+import { BoutonExporter } from '@/components/BoutonExporter'
+import { usePeut } from '@/lib/use-permissions'
 
 export function AdminRoles() {
+  const peutExporterRoles = usePeut('admin.roles')
   const { data: roles, isLoading, isError } = useQuery(rolesQueryOptions())
   const { data: permissions } = useQuery(permissionsQueryOptions())
   const [enCours, setEnCours] = useState<string | null>(null)
@@ -50,7 +54,10 @@ export function AdminRoles() {
 
       <AdminOnglets />
 
-      <h2 className="mb-4 text-lg font-semibold">Rôles et permissions</h2>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-lg font-semibold">Rôles et permissions</h2>
+        {peutExporterRoles && <BoutonExporter href={urlExportDonnees('roles')} libelle="Exporter" />}
+      </div>
 
       {erreur && (
         <div role="alert" className="mb-4 rounded-[var(--radius-controle)] bg-bad-bg px-4 py-3 text-bad">

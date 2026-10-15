@@ -19,6 +19,7 @@ use App\Enum\TypeIndicateur;
 use App\Http\IndicateurNormalizer;
 use App\Http\IndicateurValeurNormalizer;
 use App\Http\ProblemResponseFactory;
+use App\Http\TypeDocumentRequete;
 use App\Repository\ComposanteRepository;
 use App\Repository\IndicateurRepository;
 use App\Repository\IndicateurValeurRepository;
@@ -409,6 +410,11 @@ final class IndicateurController
             return ProblemResponseFactory::creer(422, 'Fichier trop volumineux', 'La taille maximale est de 10 Mo.');
         }
 
+        $nature = TypeDocumentRequete::lire($request);
+        if ($nature instanceof JsonResponse) {
+            return $nature;
+        }
+
         $repertoire = $this->projectDir.'/var/uploads/indicateurs';
         $this->filesystem->mkdir($repertoire);
         $nomStocke = Uuid::v4()->toRfc4122().'-'.$fichier->getClientOriginalName();
@@ -425,6 +431,7 @@ final class IndicateurController
             $tailleOctets,
             $utilisateur,
         );
+        $pieceJointe->qualifier(...$nature);
         $this->em->persist($pieceJointe);
         $this->em->flush();
 

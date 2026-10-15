@@ -4,6 +4,8 @@ import { IconeTrombone } from './Icones'
 interface DropzoneFichierProps {
   fichier: File | null
   onChange: (fichier: File | null) => void
+  /** Extensions proposées par le sélecteur de fichiers (ex. ".xlsx,.csv") — le serveur reste seul juge. */
+  accept?: string
 }
 
 function formaterTaille(octets: number): string {
@@ -13,7 +15,7 @@ function formaterTaille(octets: number): string {
 }
 
 /** Zone de dépôt glisser-déposer + repli clic-pour-parcourir — HTML5 natif, pas de bibliothèque. */
-export function DropzoneFichier({ fichier, onChange }: DropzoneFichierProps) {
+export function DropzoneFichier({ fichier, onChange, accept }: DropzoneFichierProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [survole, setSurvole] = useState(false)
 
@@ -43,6 +45,7 @@ export function DropzoneFichier({ fichier, onChange }: DropzoneFichierProps) {
       <input
         ref={inputRef}
         type="file"
+        accept={accept}
         className="hidden"
         onChange={(e) => onChange(e.target.files?.[0] ?? null)}
       />

@@ -1,5 +1,6 @@
 import { queryOptions } from '@tanstack/react-query'
 import { apiClient } from './api-client'
+import { ajouterNature, type NatureDocument } from './types-document'
 
 export type TypeIndicateur = 'IOD' | 'IRI'
 export type SensIndicateur = 'croissant' | 'decroissant'
@@ -72,6 +73,8 @@ export interface Desagregation {
 export interface PieceJointeIndicateur {
   uuid: string
   nomFichier: string
+  /** Nature choisie au dépôt (« Rapport », « Autre : … ») — null pour les dépôts antérieurs. */
+  typeDocumentLibelle: string | null
   mime: string
   tailleOctets: number
   creeLe: string
@@ -173,9 +176,10 @@ export function validerValeur(uuid: string) {
 }
 
 /** fetch brut multipart — apiClient ne gère pas FormData, même motif que televerserPieceJointeInitiative(). */
-export async function televerserPieceJointeValeur(valeurUuid: string, fichier: File): Promise<IndicateurValeur> {
+export async function televerserPieceJointeValeur(valeurUuid: string, fichier: File, nature: NatureDocument): Promise<IndicateurValeur> {
   const donnees = new FormData()
   donnees.append('fichier', fichier)
+  ajouterNature(donnees, nature)
 
   const reponse = await fetch(`${(import.meta.env.VITE_API_URL as string | undefined) ?? '/api/v1'}/indicateurs/valeurs/${valeurUuid}/pieces-jointes`, {
     method: 'POST',

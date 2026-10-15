@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\EventListener;
 
 use App\Entity\Activite;
+use App\Entity\Contrat;
 use App\Entity\Depense;
 use App\Entity\Dotation;
+use App\Entity\EffectifEnqueteurs;
 use App\Entity\Engagement;
 use App\Entity\EtapeActivite;
 use App\Entity\Indicateur;
@@ -16,6 +18,8 @@ use App\Entity\InitiativeActivite;
 use App\Entity\InvitationIndicateur;
 use App\Entity\JournalActivite;
 use App\Entity\Permission;
+use App\Entity\Personnel;
+use App\Entity\PointFocal;
 use App\Entity\Role;
 use App\Entity\Structure;
 use App\Entity\TacheInitiative;
@@ -63,6 +67,12 @@ final class JournalActiviteSubscriber
         InitiativeActivite::class => 'initiative_activite',
         TacheInitiative::class => 'tache_initiative',
         InvitationIndicateur::class => 'invitation_indicateur',
+        // Données contractuelles et contacts, désormais importables en masse
+        // par fichier Excel : chaque création ou modification reste tracée.
+        Personnel::class => 'personnel',
+        Contrat::class => 'contrat',
+        EffectifEnqueteurs::class => 'effectif_enqueteurs',
+        PointFocal::class => 'point_focal',
     ];
 
     /** @var list<array{entity: object, type: string, apres: array<string, mixed>}> */

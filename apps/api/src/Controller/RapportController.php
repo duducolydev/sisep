@@ -11,6 +11,7 @@ use App\Entity\Structure;
 use App\Entity\Utilisateur;
 use App\Enum\PeriodeTrimestre;
 use App\Enum\StatutRapport;
+use App\Enum\TypeDocument;
 use App\Http\ProblemResponseFactory;
 use App\Http\RapportPeriodiqueNormalizer;
 use App\Rapport\DestinatairesRelanceResolver;
@@ -142,6 +143,7 @@ final class RapportController
             $tailleOctets,
             $utilisateur,
         );
+        $pieceJointe->qualifier(TypeDocument::RAPPORT);
         $this->em->persist($pieceJointe);
 
         $rapport->transmettre($pieceJointe);

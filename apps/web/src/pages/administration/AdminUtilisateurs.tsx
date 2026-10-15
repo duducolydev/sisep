@@ -15,6 +15,8 @@ import { useToast } from '@/components/ToastProvider'
 import { trancherPage } from '@/lib/pagination'
 import { formaterDate } from '@/lib/format'
 import { useConfirmer } from '@/lib/confirmation'
+import { urlExportDonnees } from '@/lib/exports'
+import { BoutonExporter } from '@/components/BoutonExporter'
 
 const TAILLE_PAGE = 10
 
@@ -103,6 +105,8 @@ export function AdminUtilisateurs() {
 
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-lg font-semibold">Comptes utilisateurs</h2>
+        <div className="flex flex-wrap items-center gap-2">
+        {peutGerer && <BoutonExporter href={urlExportDonnees('comptes')} libelle="Exporter" />}
         {peutGerer && (
           <button
             type="button"
@@ -113,6 +117,7 @@ export function AdminUtilisateurs() {
             Ajouter un compte
           </button>
         )}
+        </div>
       </div>
 
       {erreur && (

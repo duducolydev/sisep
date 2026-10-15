@@ -10,6 +10,8 @@ import { CreerActiviteModale } from '@/components/CreerActiviteModale'
 import { IconePlus, IconeComposante, IconeStatut, IconeStructure, IconeRecherche } from '@/components/Icones'
 import { Squelette } from '@/components/Squelette'
 import { SelecteurExercice } from '@/components/SelecteurExercice'
+import { urlExportDonnees } from '@/lib/exports'
+import { BoutonExporter } from '@/components/BoutonExporter'
 
 const STATUTS = [
   { valeur: 'planifiee', libelle: 'Planifiée' },
@@ -23,6 +25,7 @@ export function Composantes() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [modaleOuverte, setModaleOuverte] = useState(false)
   const peutCreer = usePeut('activites.creer')
+  const peutExporter = usePeut('exports.generer')
   const { data: utilisateur } = useUtilisateurCourant()
 
   const { data: projet } = useQuery(projetCourantQueryOptions())
@@ -76,6 +79,8 @@ export function Composantes() {
           <h1 className="text-2xl">Composantes</h1>
           <p className="text-muted">Arbre composante → sous-composante → activité → sous-activité — § 2.2.</p>
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+        {peutExporter && <BoutonExporter href={urlExportDonnees('composantes', { exercice: searchParams.get('exercice') })} libelle="Exporter" />}
         {peutCreer && (
           <button
             type="button"
@@ -86,6 +91,7 @@ export function Composantes() {
             Créer une activité
           </button>
         )}
+        </div>
       </div>
 
       <div

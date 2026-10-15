@@ -1,5 +1,6 @@
 import { queryOptions } from '@tanstack/react-query'
 import { apiClient } from './api-client'
+import { ajouterNature, type NatureDocument } from './types-document'
 
 export interface Livrable {
   uuid: string
@@ -14,6 +15,8 @@ export interface Livrable {
 export interface PieceJointeEtape {
   uuid: string
   nomFichier: string
+  /** Nature choisie au dépôt (« Rapport », « Autre : … ») — null pour les dépôts antérieurs. */
+  typeDocumentLibelle: string | null
   mime: string
   tailleOctets: number
   creeLe: string
@@ -131,9 +134,10 @@ export function modifierLivrable(
 }
 
 /** fetch brut multipart — apiClient ne gère pas FormData, même motif que les autres téléversements. */
-export async function televerserPieceJointeEtape(etapeUuid: string, fichier: File): Promise<EtapeActivite> {
+export async function televerserPieceJointeEtape(etapeUuid: string, fichier: File, nature: NatureDocument): Promise<EtapeActivite> {
   const donnees = new FormData()
   donnees.append('fichier', fichier)
+  ajouterNature(donnees, nature)
 
   const reponse = await fetch(
     `${(import.meta.env.VITE_API_URL as string | undefined) ?? '/api/v1'}/etapes/${etapeUuid}/pieces-jointes`,

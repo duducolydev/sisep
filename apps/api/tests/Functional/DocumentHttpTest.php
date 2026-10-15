@@ -50,7 +50,7 @@ final class DocumentHttpTest extends WebTestCase
             $client->request(
                 'POST',
                 "/api/v1/documents/projets/{$projetUuid}",
-                parameters: ['libelle' => 'Manuel de procédures', 'visibilite' => 'tous'],
+                parameters: ['libelle' => 'Manuel de procédures', 'visibilite' => 'tous', 'typeDocument' => 'manuel'],
                 files: ['fichier' => $this->fichier()],
             );
             self::assertResponseStatusCodeSame(201);
@@ -79,7 +79,7 @@ final class DocumentHttpTest extends WebTestCase
             $client->request(
                 'POST',
                 "/api/v1/documents/composantes/{$composanteUuid}",
-                parameters: ['libelle' => 'Note interne', 'visibilite' => 'equipe_phasaoc'],
+                parameters: ['libelle' => 'Note interne', 'visibilite' => 'equipe_phasaoc', 'typeDocument' => 'note'],
                 files: ['fichier' => $this->fichier()],
             );
             self::assertResponseStatusCodeSame(201);
@@ -139,6 +139,43 @@ final class DocumentHttpTest extends WebTestCase
     }
 
     /**
+     * La nature du document (rapport, compte-rendu, manuel…) se choisit au
+     * dépôt ; « Autre » exige une précision ; la bibliothèque filtre dessus.
+     */
+    public function testLeTypeDeDocumentEstRequisEtFiltrable(): void
+    {
+        [$client, $fixture] = $this->demarrer();
+
+        try {
+            $projetUuid = $fixture['projet']->getUuid()->toRfc4122();
+            $this->connecter($client, $fixture['coordonnateur']->getEmail());
+
+            $client->request('POST', "/api/v1/documents/projets/{$projetUuid}", files: ['fichier' => $this->fichier()]);
+            self::assertResponseStatusCodeSame(422, 'Sans type, le dépôt est refusé.');
+
+            $client->request('POST', "/api/v1/documents/projets/{$projetUuid}", parameters: ['typeDocument' => 'autre'], files: ['fichier' => $this->fichier()]);
+            self::assertResponseStatusCodeSame(422, '« Autre » sans précision est refusé.');
+
+            $client->request('POST', "/api/v1/documents/projets/{$projetUuid}", parameters: [
+                'typeDocument' => 'autre',
+                'typeDocumentPrecision' => 'Fiche de collecte',
+            ], files: ['fichier' => $this->fichier()]);
+            self::assertResponseStatusCodeSame(201);
+            self::assertSame('autre', $this->corps($client)['typeDocument']);
+            self::assertSame('Autre : Fiche de collecte', $this->corps($client)['typeDocumentLibelle']);
+
+            $this->deposer($client, $projetUuid, 'CR du COPIL', 'cr.pdf', 'application/pdf', 'compte_rendu');
+
+            $client->request('GET', "/api/v1/documents/projets/{$projetUuid}?type=compte_rendu");
+            $donnees = $this->corps($client)['donnees'];
+            self::assertSame(['CR du COPIL'], array_column($donnees, 'libelle'));
+            self::assertSame('Compte-rendu', $donnees[0]['typeDocumentLibelle']);
+        } finally {
+            $this->rollback();
+        }
+    }
+
+    /**
      * Retours des RSE : une présentation d'atelier de 28 Mo était refusée.
      * La bibliothèque accepte 50 Mo ; au-delà, un refus explicite.
      */
@@ -150,12 +187,12 @@ final class DocumentHttpTest extends WebTestCase
             $projetUuid = $fixture['projet']->getUuid()->toRfc4122();
             $this->connecter($client, $fixture['coordonnateur']->getEmail());
 
-            $client->request('POST', "/api/v1/documents/projets/{$projetUuid}", files: [
+            $client->request('POST', "/api/v1/documents/projets/{$projetUuid}", parameters: ['typeDocument' => 'presentation'], files: [
                 'fichier' => $this->fichierDeTaille('atelier.pptx', 28 * 1024 * 1024),
             ]);
             self::assertResponseStatusCodeSame(201, 'Un fichier de 28 Mo entre dans la bibliothèque.');
 
-            $client->request('POST', "/api/v1/documents/projets/{$projetUuid}", files: [
+            $client->request('POST', "/api/v1/documents/projets/{$projetUuid}", parameters: ['typeDocument' => 'presentation'], files: [
                 'fichier' => $this->fichierDeTaille('trop-lourd.pptx', DocumentController::TAILLE_MAX_OCTETS + 1),
             ]);
             self::assertResponseStatusCodeSame(422);
@@ -178,7 +215,7 @@ final class DocumentHttpTest extends WebTestCase
         return new UploadedFile($chemin, $nom, 'application/vnd.openxmlformats-officedocument.presentationml.presentation', null, true);
     }
 
-    private function deposer(KernelBrowser $client, string $projetUuid, string $libelle, string $nom, string $mime): void
+    private function deposer(KernelBrowser $client, string $projetUuid, string $libelle, string $nom, string $mime, string $typeDocument = 'rapport'): void
     {
         $chemin = tempnam(sys_get_temp_dir(), 'sisep_doc_');
         self::assertNotFalse($chemin);
@@ -187,7 +224,7 @@ final class DocumentHttpTest extends WebTestCase
         $client->request(
             'POST',
             "/api/v1/documents/projets/{$projetUuid}",
-            parameters: ['libelle' => $libelle],
+            parameters: ['libelle' => $libelle, 'typeDocument' => $typeDocument],
             files: ['fichier' => new UploadedFile($chemin, $nom, $mime, null, true)],
         );
         self::assertResponseStatusCodeSame(201);

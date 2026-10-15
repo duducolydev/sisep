@@ -292,7 +292,7 @@ final class IndicateurHttpTest extends WebTestCase
             file_put_contents($fichierTmp, 'justificatif de test');
             $fichier = new UploadedFile($fichierTmp, 'justificatif.pdf', 'application/pdf', null, true);
 
-            $client->request('POST', "/api/v1/indicateurs/valeurs/{$valeurUuid}/pieces-jointes", files: ['fichier' => $fichier]);
+            $client->request('POST', "/api/v1/indicateurs/valeurs/{$valeurUuid}/pieces-jointes", parameters: ['typeDocument' => 'rapport'], files: ['fichier' => $fichier]);
             self::assertResponseStatusCodeSame(201);
             $corpsValeur = $this->corps($client);
             self::assertCount(1, $corpsValeur['piecesJointes']);

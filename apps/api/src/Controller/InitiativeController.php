@@ -17,6 +17,7 @@ use App\Entity\Utilisateur;
 use App\Enum\VisibilitePieceJointe;
 use App\Http\InitiativeNormalizer;
 use App\Http\ProblemResponseFactory;
+use App\Http\TypeDocumentRequete;
 use App\Repository\ComposanteRepository;
 use App\Repository\InitiativeActiviteRepository;
 use App\Repository\InitiativeRepository;
@@ -393,6 +394,11 @@ final class InitiativeController
             return ProblemResponseFactory::creer(422, 'Fichier trop volumineux', 'La taille maximale est de 10 Mo.');
         }
 
+        $nature = TypeDocumentRequete::lire($request);
+        if ($nature instanceof JsonResponse) {
+            return $nature;
+        }
+
         $visibilite = VisibilitePieceJointe::tryFrom((string) $request->request->get('visibilite', 'tous'));
         if (null === $visibilite) {
             return ProblemResponseFactory::creer(422, 'Visibilité invalide');
@@ -430,6 +436,7 @@ final class InitiativeController
             $tailleOctets,
             $utilisateur,
         );
+        $pieceJointe->qualifier(...$nature);
         $pieceJointe->definirVisibilite($visibilite, $agents);
         $this->em->persist($pieceJointe);
         $this->em->flush();

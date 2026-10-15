@@ -8,7 +8,7 @@ import { PersonnelModale } from '@/components/PersonnelModale'
 import { TableauBordRh } from '@/components/TableauBordRh'
 import { Squelette } from '@/components/Squelette'
 import { useToast } from '@/components/ToastProvider'
-import { IconeBouton, IconeCalendrier, IconeModifier, IconePlus, IconeRecherche, IconeSupprimer } from '@/components/Icones'
+import { IconeBouton, IconeCalendrier, IconeImporter, IconeModifier, IconePlus, IconeRecherche, IconeSupprimer } from '@/components/Icones'
 import { ApiError } from '@/lib/api-client'
 import { formaterDate } from '@/lib/format'
 import { queryClient } from '@/lib/query-client'
@@ -24,6 +24,9 @@ import {
 } from '@/lib/rh'
 import { usePeut } from '@/lib/use-permissions'
 import { useConfirmer } from '@/lib/confirmation'
+import { ImportExcelModale } from '@/components/ImportExcelModale'
+import { urlExportDonnees } from '@/lib/exports'
+import { BoutonExporter } from '@/components/BoutonExporter'
 
 type Vue = 'personnel' | 'enqueteurs' | 'tableau-de-bord'
 
@@ -45,6 +48,7 @@ export function RessourcesHumaines() {
   const { data: echeances } = useQuery(echeancesContratsQueryOptions(90))
   const peutGerer = usePeut('rh.gerer')
   const afficherToast = useToast()
+  const [importOuvert, setImportOuvert] = useState(false)
 
   const [modalePersonnel, setModalePersonnel] = useState<{ personnel?: Personnel } | null>(null)
   const [modaleContrats, setModaleContrats] = useState<Personnel | null>(null)
@@ -96,14 +100,35 @@ export function RessourcesHumaines() {
             Personnel technique, contrats et effectifs d'enquêteurs — sans information salariale.
           </p>
         </div>
-        {peutGerer && vue !== 'tableau-de-bord' && (
-          <Bouton
-            taille="normale"
-            icone={<IconePlus />}
-            onClick={() => (vue === 'enqueteurs' ? setModaleEffectif({}) : setModalePersonnel({}))}
-          >
-            {vue === 'enqueteurs' ? 'Effectif' : 'Nouvel agent'}
-          </Bouton>
+        {vue !== 'tableau-de-bord' && (
+          <div className="flex flex-wrap gap-2">
+            <BoutonExporter href={urlExportDonnees(vue === 'enqueteurs' ? 'effectifs-enqueteurs' : 'personnel')} libelle="Exporter" />
+            {peutGerer && (
+            <>
+            <Bouton variante="secondaire" taille="normale" icone={<IconeImporter />} onClick={() => setImportOuvert(true)}>
+              Importer (Excel)
+            </Bouton>
+            <Bouton
+              taille="normale"
+              icone={<IconePlus />}
+              onClick={() => (vue === 'enqueteurs' ? setModaleEffectif({}) : setModalePersonnel({}))}
+            >
+              {vue === 'enqueteurs' ? 'Effectif' : 'Nouvel agent'}
+            </Bouton>
+            </>
+            )}
+          </div>
+        )}
+        {importOuvert && (
+          <ImportExcelModale
+            type={vue === 'enqueteurs' ? 'effectifs-enqueteurs' : 'personnel'}
+            titre={vue === 'enqueteurs' ? "Importer des effectifs d'enquêteurs" : 'Importer du personnel technique'}
+            onFermer={() => setImportOuvert(false)}
+            onImporte={async (rapport) => {
+              await queryClient.invalidateQueries({ queryKey: ['rh'] })
+              afficherToast(`Import terminé : ${rapport.resume.creations} créé(s), ${rapport.resume.misesAJour} mis à jour.`)
+            }}
+          />
         )}
       </div>
 

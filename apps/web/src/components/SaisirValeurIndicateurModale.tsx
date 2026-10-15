@@ -9,6 +9,8 @@ import { IconeBouton, IconePlus, IconeAnnuler } from './Icones'
 import { saisirValeur, televerserPieceJointeValeur } from '@/lib/indicateurs'
 import { ApiError } from '@/lib/api-client'
 import { queryClient } from '@/lib/query-client'
+import { ChoixTypeDocument } from './ChoixTypeDocument'
+import { erreurNature, NATURE_VIDE, type NatureDocument } from '@/lib/types-document'
 
 const schema = z
   .object({
@@ -45,6 +47,7 @@ interface SaisirValeurIndicateurModaleProps {
 export function SaisirValeurIndicateurModale({ indicateurUuid, onFermer }: SaisirValeurIndicateurModaleProps) {
   const [erreur, setErreur] = useState<string | null>(null)
   const [fichier, setFichier] = useState<File | null>(null)
+  const [nature, setNature] = useState<NatureDocument>(NATURE_VIDE)
 
   const {
     register,
@@ -59,6 +62,14 @@ export function SaisirValeurIndicateurModale({ indicateurUuid, onFermer }: Saisi
 
   async function onSubmit(donnees: FormValues) {
     setErreur(null)
+    // Vérifié avant la saisie : une valeur enregistrée dont la pièce serait
+    // ensuite refusée laisserait l'utilisateur à mi-chemin.
+    const erreurType = fichier ? erreurNature(nature) : null
+    if (erreurType !== null) {
+      setErreur(erreurType)
+
+      return
+    }
     try {
       const reponse = await saisirValeur(indicateurUuid, {
         periode: donnees.periode,
@@ -67,7 +78,7 @@ export function SaisirValeurIndicateurModale({ indicateurUuid, onFermer }: Saisi
         desagregations: donnees.desagregations,
       })
       if (fichier) {
-        await televerserPieceJointeValeur(reponse.uuid, fichier)
+        await televerserPieceJointeValeur(reponse.uuid, fichier, nature)
       }
       await queryClient.invalidateQueries({ queryKey: ['indicateur', indicateurUuid] })
       onFermer()
@@ -143,6 +154,7 @@ export function SaisirValeurIndicateurModale({ indicateurUuid, onFermer }: Saisi
         <div className="flex flex-col gap-1">
           <span className="text-sm">Pièce justificative (optionnel)</span>
           <DropzoneFichier fichier={fichier} onChange={setFichier} />
+          {fichier && <ChoixTypeDocument id="valeur-type-document" nature={nature} onChange={setNature} />}
         </div>
 
         <div>

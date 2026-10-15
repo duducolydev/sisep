@@ -170,6 +170,8 @@ final class InitiativeNormalizer
         return array_map(fn ($p) => [
             'uuid' => $p->getUuid()->toRfc4122(),
             'nomFichier' => $p->getNomFichier(),
+            'typeDocument' => $p->getTypeDocument()?->value,
+            'typeDocumentLibelle' => $p->libelleTypeDocument(),
             'mime' => $p->getMime(),
             'tailleOctets' => $p->getTailleOctets(),
             'creeLe' => $p->getCreeLe()->format(\DateTimeInterface::ATOM),
