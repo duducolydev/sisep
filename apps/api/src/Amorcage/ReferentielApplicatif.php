@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Amorcage;
 
+use App\Entity\EtapeGabarit;
+use App\Entity\GabaritEtapes;
 use App\Entity\Parametre;
 use App\Entity\Permission;
 use App\Entity\Role;
@@ -165,6 +167,59 @@ final class ReferentielApplicatif
         }
 
         return $roles;
+    }
+
+    /**
+     * Gabarits d'étapes de départ, seulement si le catalogue est vide — un
+     * catalogue vide laissait les lignes du PTBA impossibles à structurer en
+     * production (le jeu de démonstration était seul à en créer). Modèles
+     * modifiables et supprimables ensuite depuis l'administration ; jamais
+     * ajoutés par-dessus des gabarits que l'UGP a déjà définis.
+     *
+     * @return int nombre de gabarits créés
+     */
+    public function semerGabaritsSiCatalogueVide(): int
+    {
+        if (0 < $this->em->getRepository(GabaritEtapes::class)->count([])) {
+            return 0;
+        }
+
+        $gabarits = [
+            ["Cycle standard d'une activité", 'Quatre phases applicables à toute activité du PTBA.', ['Préparation', 'Mise en œuvre', 'Suivi', 'Restitution']],
+            ['Enquête ou recensement', 'Opération de collecte de terrain, de la méthodologie à la diffusion.', [
+                'Élaboration de la méthodologie et des outils',
+                'Recrutement des agents de collecte',
+                'Formation des enquêteurs',
+                'Phase pilote',
+                'Collecte / dénombrement',
+                "Atelier de traitement et d'apurement des données",
+                'Analyse et rédaction du rapport',
+                'Validation et diffusion des résultats',
+            ]],
+            ['Acquisition (passation de marché)', 'Achat de biens, travaux ou services.', [
+                'Expression des besoins et termes de référence',
+                'Lancement de la consultation',
+                'Évaluation des offres et attribution',
+                'Livraison ou exécution',
+                'Réception',
+            ]],
+            ['Atelier ou formation', 'Atelier, séminaire ou session de formation.', [
+                'Préparation (termes de référence, participants, logistique)',
+                "Tenue de l'atelier",
+                'Rapport et restitution',
+            ]],
+        ];
+
+        foreach ($gabarits as [$libelle, $description, $etapes]) {
+            $gabarit = new GabaritEtapes($libelle);
+            $gabarit->setDescription($description);
+            $this->em->persist($gabarit);
+            foreach ($etapes as $ordre => $etape) {
+                $this->em->persist(new EtapeGabarit($gabarit, $etape, $ordre + 1));
+            }
+        }
+
+        return \count($gabarits);
     }
 
     /** Seuils de vigilance § 5.3 — éditables ensuite depuis /admin/parametres (P6). */

@@ -112,10 +112,11 @@ final class ArbreController
 
         $composante = $this->uuidOuNull((string) $request->query->get('composante', ''))?->toRfc4122();
         $activite = $this->uuidOuNull((string) $request->query->get('activite', ''))?->toRfc4122();
+        $ligne = $this->uuidOuNull((string) $request->query->get('ligne', ''))?->toRfc4122();
 
         return new JsonResponse([
             'exercice' => $annee,
-            ...$this->executionSyntheseReader->lire((int) $projet->getId(), (int) $exercice->getId(), $debut, $fin, $composante, $activite),
+            ...$this->executionSyntheseReader->lire((int) $projet->getId(), (int) $exercice->getId(), $debut, $fin, $composante, $activite, $ligne),
         ]);
     }
 

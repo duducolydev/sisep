@@ -21,6 +21,8 @@ function gererToucheDepliage(evenement: KeyboardEvent, ouvert: boolean, uuid: st
 interface ArbreExecutionProps {
   composantes: NoeudComposante[]
   tauxAttendu?: number | null
+  /** Recherche en cours : tout est déplié, pour que la ligne trouvée soit visible sans clic. */
+  toutDeplie?: boolean
 }
 
 interface SousActiviteOuverte {
@@ -28,9 +30,11 @@ interface SousActiviteOuverte {
   sousActiviteUuid: string
 }
 
-export function ArbreExecution({ composantes, tauxAttendu }: ArbreExecutionProps) {
+export function ArbreExecution({ composantes, tauxAttendu, toutDeplie = false }: ArbreExecutionProps) {
   const [ouverts, setOuverts] = useState<Set<string>>(() => new Set(composantes.map((c) => c.uuid)))
   const [sousActiviteOuverte, setSousActiviteOuverte] = useState<SousActiviteOuverte | null>(null)
+
+  const ouvertsEffectifs = toutDeplie ? tousLesNoeuds(composantes) : ouverts
 
   function basculer(uuid: string) {
     setOuverts((precedent) => {
@@ -108,9 +112,9 @@ export function ArbreExecution({ composantes, tauxAttendu }: ArbreExecutionProps
           <LigneComposante
             key={c.uuid}
             composante={c}
-            ouvert={ouverts.has(c.uuid)}
+            ouvert={ouvertsEffectifs.has(c.uuid)}
             onBasculer={basculer}
-            ouverts={ouverts}
+            ouverts={ouvertsEffectifs}
             tauxAttendu={tauxAttendu}
             onOuvrirSousActivite={setSousActiviteOuverte}
           />
@@ -327,4 +331,20 @@ function MiniBarreAvancement({ avancement, libelle }: { avancement: number | nul
       <span className="chiffres shrink-0 text-xs text-muted">{avancement}%</span>
     </span>
   )
+}
+
+/** Uuid de tous les nœuds dépliables : composantes, sous-composantes, activités. */
+function tousLesNoeuds(composantes: NoeudComposante[]): Set<string> {
+  const tous = new Set<string>()
+  for (const c of composantes) {
+    tous.add(c.uuid)
+    for (const sc of c.sousComposantes ?? []) {
+      tous.add(sc.uuid)
+      for (const a of sc.activites ?? []) {
+        tous.add(a.uuid)
+      }
+    }
+  }
+
+  return tous
 }

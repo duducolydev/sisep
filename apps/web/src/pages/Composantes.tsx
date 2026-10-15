@@ -168,7 +168,7 @@ export function Composantes() {
           <input
             type="search"
             aria-label="Recherche"
-            placeholder="Rechercher une activité…"
+            placeholder="Rechercher une activité ou une ligne (RNOCB…)"
             value={filtres.recherche ?? ''}
             onChange={(e) => definirFiltre('recherche', e.target.value)}
             className="w-full rounded-[var(--radius-controle)] border border-border bg-surface py-2 pr-3 pl-9"
@@ -198,7 +198,7 @@ export function Composantes() {
           {/* Les graphiques suivent les filtres ci-dessus : résumer un périmètre
               différent de celui de l'arbre en dessous serait trompeur. */}
           <VueEnsembleComposantes composantes={composantesFiltrees} tauxAttendu={arbre.tauxAttendu} />
-          <ArbreExecution composantes={composantesFiltrees} tauxAttendu={arbre.tauxAttendu} />
+          <ArbreExecution composantes={composantesFiltrees} tauxAttendu={arbre.tauxAttendu} toutDeplie={Boolean(filtres.recherche?.trim())} />
         </>
       )}
 

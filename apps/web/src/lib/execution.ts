@@ -37,6 +37,8 @@ export interface ExecutionSynthese {
   options: {
     composantes: { uuid: string; code: string; libelle: string }[]
     activites: { uuid: string; code: string; libelle: string; composanteUuid: string }[]
+    /** Lignes du PTBA consultables, pour la recherche directe par nom (RNOCB, ENES…). */
+    lignes: { uuid: string; libelle: string; activiteUuid: string; activiteCode: string }[]
   }
 }
 
@@ -46,6 +48,7 @@ export interface FiltresExecution {
   mois?: string
   composante?: string
   activite?: string
+  ligne?: string
 }
 
 export const executionQueryOptions = (projetUuid: string | undefined, filtres: FiltresExecution) =>

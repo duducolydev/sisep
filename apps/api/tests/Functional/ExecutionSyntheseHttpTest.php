@@ -85,6 +85,16 @@ final class ExecutionSyntheseHttpTest extends WebTestCase
             self::assertSame('activite', $this->corps($client)['niveau']);
             self::assertCount(2, $this->corps($client)['lignes']);
 
+            // Recherche directe d'une ligne par son nom : la liste des lignes
+            // alimente la recherche, le filtre ne garde que la ligne choisie.
+            self::assertSame(['RNOCB', 'ENES'], array_column($t1['options']['lignes'], 'libelle'));
+            $client->request('GET', $url.'&ligne='.$f['rnocb']->getUuid()->toRfc4122());
+            $ligne = $this->corps($client);
+            self::assertSame('ligne', $ligne['niveau']);
+            self::assertSame(['RNOCB'], array_column($ligne['lignes'], 'libelle'));
+            self::assertSame(1_000_000, $ligne['totaux']['budget']);
+            self::assertSame(1, $ligne['totaux']['realisees']);
+
             $client->request('GET', $url.'&trimestre=5');
             self::assertResponseStatusCodeSame(422);
         } finally {
@@ -169,6 +179,7 @@ final class ExecutionSyntheseHttpTest extends WebTestCase
             'projet' => $projet,
             'composante' => $composante,
             'activiteLignes' => $activiteLignes,
+            'rnocb' => $rnocb,
         ]];
     }
 

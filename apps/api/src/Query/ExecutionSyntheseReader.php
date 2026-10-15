@@ -53,8 +53,17 @@ final class ExecutionSyntheseReader
         \DateTimeImmutable $fin,
         ?string $composanteUuid,
         ?string $activiteUuid,
+        ?string $ligneUuid = null,
     ): array {
         $activites = $this->activites($projetId);
+        $lignesConsultables = [] === $activites ? [] : $this->connection->fetchAllAssociative(
+            'SELECT sa.uuid, sa.libelle, a.uuid AS activite_uuid, a.code AS activite_code
+             FROM sous_activites sa JOIN activites a ON a.id = sa.activite_id
+             WHERE sa.activite_id IN (?) AND sa.supprime_le IS NULL
+             ORDER BY a.code, sa.ordre, sa.id',
+            [array_map(static fn (array $a) => (int) $a['id'], $activites)],
+            [ArrayParameterType::INTEGER],
+        );
         $composantes = $this->connection->fetchAllAssociative(
             'SELECT id, uuid, code, libelle FROM composantes WHERE projet_id = ? AND supprime_le IS NULL ORDER BY ordre, code',
             [$projetId],
@@ -69,10 +78,27 @@ final class ExecutionSyntheseReader
                 'libelle' => $a['libelle'],
                 'composanteUuid' => $a['composante_uuid'],
             ], $activites),
+            // Recherche directe d'une ligne par son nom (RNOCB, ENES, RGE…).
+            'lignes' => array_map(static fn (array $l) => [
+                'uuid' => $l['uuid'],
+                'libelle' => $l['libelle'],
+                'activiteUuid' => $l['activite_uuid'],
+                'activiteCode' => $l['activite_code'],
+            ], $lignesConsultables),
         ];
 
         $niveau = 'composante';
-        if (null !== $activiteUuid) {
+        $ligneChoisie = null;
+        if (null !== $ligneUuid) {
+            foreach ($lignesConsultables as $ligne) {
+                if ($ligne['uuid'] === $ligneUuid) {
+                    $ligneChoisie = $ligne;
+                }
+            }
+            // Ligne inconnue ou hors périmètre : aucun résultat, jamais tout le projet.
+            $activites = null === $ligneChoisie ? [] : array_values(array_filter($activites, static fn (array $a) => $a['uuid'] === $ligneChoisie['activite_uuid']));
+            $niveau = 'ligne';
+        } elseif (null !== $activiteUuid) {
             $activites = array_values(array_filter($activites, static fn (array $a) => $a['uuid'] === $activiteUuid));
             $niveau = 'ligne';
         } elseif (null !== $composanteUuid) {
@@ -81,6 +107,9 @@ final class ExecutionSyntheseReader
         }
 
         $unites = $this->unites($activites, $exerciceId, $debut, $fin);
+        if (null !== $ligneUuid) {
+            $unites = array_values(array_filter($unites, static fn (array $u) => $u['uuid'] === $ligneUuid));
+        }
 
         // Regroupement au niveau du dessous de la sélection.
         $groupes = [];

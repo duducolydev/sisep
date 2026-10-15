@@ -21,6 +21,8 @@ import { ApiError } from '@/lib/api-client'
 import { queryClient } from '@/lib/query-client'
 import { useConfirmer } from '@/lib/confirmation'
 import { JoindreFichierModale } from './JoindreFichierModale'
+import { Link } from 'react-router'
+import { usePeut } from '@/lib/use-permissions'
 
 interface EtapesActiviteProps {
   activiteUuid: string
@@ -39,6 +41,7 @@ export function EtapesActivite({ activiteUuid, sousActiviteUuid, titre, peutStru
   const confirmer = useConfirmer()
   const { data: etapes } = useQuery(etapesActiviteQueryOptions(activiteUuid, sousActiviteUuid))
   const { data: gabarits } = useQuery({ ...gabaritsEtapesQueryOptions(), enabled: peutStructurer })
+  const peutGererGabarits = usePeut('admin.parametres')
 
   const [gabaritChoisi, setGabaritChoisi] = useState('')
   const [etapeRenseignee, setEtapeRenseignee] = useState<EtapeActivite | null>(null)
@@ -88,6 +91,19 @@ export function EtapesActivite({ activiteUuid, sousActiviteUuid, titre, peutStru
             {sousActiviteUuid !== undefined ? 'Cette ligne' : 'Cette activité'} n'est pas encore structurée en étapes : sa
             progression reste indéterminée.
           </p>
+          {peutStructurer && (gabarits?.donnees ?? []).length === 0 && gabarits !== undefined && (
+            <p className="mt-2 text-sm text-muted">
+              Aucun gabarit dans le catalogue.{' '}
+              {peutGererGabarits ? (
+                <Link to="/administration/gabarits-etapes" className="font-semibold text-accent hover:underline">
+                  Créer un gabarit
+                </Link>
+              ) : (
+                "Un administrateur peut en créer dans Administration → Gabarits d'étapes."
+              )}{' '}
+              Vous pouvez aussi ajouter les étapes une à une.
+            </p>
+          )}
           {peutStructurer && (
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <select
@@ -110,6 +126,11 @@ export function EtapesActivite({ activiteUuid, sousActiviteUuid, titre, peutStru
               >
                 Instancier
               </Bouton>
+              {!ajoutOuvert && (
+                <Bouton variante="discret" icone={<IconePlus />} disabled={enCours} onClick={() => setAjoutOuvert(true)}>
+                  Ajouter une étape
+                </Bouton>
+              )}
             </div>
           )}
         </div>

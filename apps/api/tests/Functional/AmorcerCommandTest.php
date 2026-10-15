@@ -6,6 +6,7 @@ namespace App\Tests\Functional;
 
 use App\Amorcage\ReferentielApplicatif;
 use App\Command\AmorcerCommand;
+use App\Entity\GabaritEtapes;
 use App\Entity\Utilisateur;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -46,6 +47,31 @@ final class AmorcerCommandTest extends KernelTestCase
         self::assertTrue($compte->doitChangerMdp(), 'Un mot de passe d\'amorçage ne sert qu\'une fois.');
         self::assertTrue($this->hacheur()->isPasswordValid($compte, 'Temporaire123!'));
         self::assertStringContainsString('Temporaire123!', $tester->getDisplay(), 'Le mot de passe doit être affiché, il n\'est écrit nulle part.');
+    }
+
+    /**
+     * En production, le catalogue de gabarits était vide : aucune ligne ne
+     * pouvait être structurée en étapes. L'amorçage le remplit, une seule
+     * fois, sans jamais toucher à un catalogue déjà constitué.
+     */
+    public function testSemeLesGabaritsSeulementSiLeCatalogueEstVide(): void
+    {
+        $tester = $this->demarrer();
+        // Catalogue vidé, comme sur une base de production neuve.
+        $this->em->createQuery('DELETE FROM App\Entity\EtapeGabarit e')->execute();
+        $this->em->createQuery('DELETE FROM App\Entity\GabaritEtapes g')->execute();
+
+        $tester->execute(['--mot-de-passe' => 'Temporaire123!']);
+        $tester->assertCommandIsSuccessful();
+        $gabarits = $this->em->getRepository(GabaritEtapes::class)->findAll();
+        self::assertCount(4, $gabarits);
+        $enquete = array_values(array_filter($gabarits, static fn (GabaritEtapes $g) => 'Enquête ou recensement' === $g->getLibelle()))[0] ?? null;
+        self::assertNotNull($enquete);
+        self::assertSame('Formation des enquêteurs', $enquete->getEtapes()->toArray()[2]->getLibelle());
+
+        // Relancée à chaque déploiement : rien n'est ajouté une seconde fois.
+        $tester->execute([]);
+        self::assertCount(4, $this->em->getRepository(GabaritEtapes::class)->findAll());
     }
 
     public function testNeTouchePasAUnCompteExistantSansDemandeExplicite(): void

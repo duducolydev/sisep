@@ -9,11 +9,32 @@ export interface FiltresArbre {
 
 export const FILTRES_VIDES: FiltresArbre = { composante: null, statut: null, structure: null, recherche: null }
 
+function ligneCorrespond(libelle: string, recherche: string): boolean {
+  return libelle.toLowerCase().includes(recherche)
+}
+
+/**
+ * La recherche porte sur l'activité (code, libellé) et sur ses lignes
+ * (RNOCB, ENES…) : une activité qui ne correspond que par une ligne reste
+ * affichée, réduite aux lignes qui correspondent.
+ */
 function activiteCorrespond(a: NoeudActivite, filtres: FiltresArbre, recherche: string | null): boolean {
   if (filtres.statut && a.statut !== filtres.statut) return false
   if (filtres.structure && a.structureResponsable.uuid !== filtres.structure) return false
-  if (recherche && !`${a.code} ${a.libelle}`.toLowerCase().includes(recherche)) return false
+  if (
+    recherche &&
+    !`${a.code} ${a.libelle}`.toLowerCase().includes(recherche) &&
+    !(a.sousActivites ?? []).some((sa) => ligneCorrespond(sa.libelle, recherche))
+  ) {
+    return false
+  }
   return true
+}
+
+function restreindreLignes(a: NoeudActivite, recherche: string | null): NoeudActivite {
+  if (!recherche || `${a.code} ${a.libelle}`.toLowerCase().includes(recherche)) return a
+
+  return { ...a, sousActivites: (a.sousActivites ?? []).filter((sa) => ligneCorrespond(sa.libelle, recherche)) }
 }
 
 /**
@@ -32,7 +53,7 @@ export function filtrerArbre(composantes: NoeudComposante[], filtres: FiltresArb
       sousComposantes: c.sousComposantes?.map((sc) => ({
         ...sc,
         activites: filtreActiviteActif
-          ? (sc.activites ?? []).filter((a) => activiteCorrespond(a, filtres, recherche))
+          ? (sc.activites ?? []).filter((a) => activiteCorrespond(a, filtres, recherche)).map((a) => restreindreLignes(a, recherche))
           : sc.activites,
       })),
     }))

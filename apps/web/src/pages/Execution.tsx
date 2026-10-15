@@ -8,6 +8,7 @@ import { Squelette } from '@/components/Squelette'
 import { urlExportDonnees } from '@/lib/exports'
 import { BoutonExporter } from '@/components/BoutonExporter'
 import { usePeut } from '@/lib/use-permissions'
+import { ComboboxSimple } from '@/components/ComboboxSimple'
 
 const MOIS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
 
@@ -34,6 +35,7 @@ export function Execution() {
     mois: searchParams.get('mois') ?? undefined,
     composante: searchParams.get('composante') ?? undefined,
     activite: searchParams.get('activite') ?? undefined,
+    ligne: searchParams.get('ligne') ?? undefined,
   }
   const { data, isLoading, isError } = useQuery(executionQueryOptions(projet?.uuid, filtres))
   const peutExporter = usePeut('exports.generer')
@@ -138,7 +140,7 @@ export function Execution() {
         <select
           aria-label="Composante"
           value={filtres.composante ?? ''}
-          onChange={(e) => definir({ composante: e.target.value, activite: null })}
+          onChange={(e) => definir({ composante: e.target.value, activite: null, ligne: null })}
           className="w-full rounded-[var(--radius-controle)] border border-border bg-surface px-2.5 py-1.5 text-sm sm:w-72"
         >
           <option value="">Toutes les composantes</option>
@@ -152,7 +154,7 @@ export function Execution() {
         <select
           aria-label="Activité"
           value={filtres.activite ?? ''}
-          onChange={(e) => definir({ activite: e.target.value })}
+          onChange={(e) => definir({ activite: e.target.value, ligne: null })}
           className="w-full rounded-[var(--radius-controle)] border border-border bg-surface px-2.5 py-1.5 text-sm sm:w-72"
         >
           <option value="">Toutes les activités</option>
@@ -162,6 +164,20 @@ export function Execution() {
             </option>
           ))}
         </select>
+
+        {/* Recherche directe d'une ligne par son nom : RNOCB, ENES, RGE… */}
+        <div className="w-full sm:w-80">
+          <ComboboxSimple
+            id="recherche-ligne"
+            options={[
+              { value: '', label: 'Toutes les lignes' },
+              ...(data?.options.lignes ?? []).map((l) => ({ value: l.uuid, label: `${l.activiteCode} — ${l.libelle}` })),
+            ]}
+            valeur={filtres.ligne ?? ''}
+            onChange={(uuid) => definir({ ligne: uuid, composante: null, activite: null })}
+            placeholder="Rechercher une ligne (RNOCB, ENES…)"
+          />
+        </div>
       </div>
 
       {isLoading && <Squelette lignes={5} />}

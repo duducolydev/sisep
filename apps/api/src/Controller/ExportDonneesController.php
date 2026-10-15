@@ -252,6 +252,7 @@ final class ExportDonneesController
             $fin,
             $this->uuidOuNull((string) $request->query->get('composante', ''))?->toRfc4122(),
             $this->uuidOuNull((string) $request->query->get('activite', ''))?->toRfc4122(),
+            $this->uuidOuNull((string) $request->query->get('ligne', ''))?->toRfc4122(),
         );
         $niveau = ['composante' => 'Composante', 'activite' => 'Activité', 'ligne' => 'Ligne du PTBA'][$donnees['niveau']];
         $lignes = array_map(fn (array $l) => $this->ligneExecution($l['code'], $l['libelle'], $l), $donnees['lignes']);

@@ -75,6 +75,11 @@ final class AmorcerCommand extends Command
         $io = new SymfonyStyle($input, $output);
 
         $this->semerReferentielSiVierge($io);
+        $nbGabarits = $this->referentiel->semerGabaritsSiCatalogueVide();
+        if ($nbGabarits > 0) {
+            $this->em->flush();
+            $io->text(\sprintf("%d gabarits d'étapes de départ créés (catalogue vide).", $nbGabarits));
+        }
 
         if ('' === $this->emailAdministrateur) {
             $this->em->flush();
