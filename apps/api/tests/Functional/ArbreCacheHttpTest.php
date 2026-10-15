@@ -189,6 +189,7 @@ final class ArbreCacheHttpTest extends WebTestCase
 
         $gestionnaire = new Utilisateur('gestionnaire.cache@example.test', 'temp', 'Fall', 'Khadija');
         $gestionnaire->setMotDePasseHash($hasher->hashPassword($gestionnaire, self::MOT_DE_PASSE));
+        $gestionnaire->marquerMdpChange();
         $this->em->persist($gestionnaire);
         $this->em->persist(new UtilisateurRole($gestionnaire, $roleGestionnaire, null));
 

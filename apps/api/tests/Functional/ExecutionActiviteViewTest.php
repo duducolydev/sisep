@@ -73,7 +73,7 @@ final class ExecutionActiviteViewTest extends KernelTestCase
         $engagement = new Engagement(
             $activite,
             $exercice,
-            NatureEngagement::FONCTIONNEMENT,
+            NatureEngagement::AUTRE_FONCTIONNEMENT,
             Montant::fromFcfa(600_000),
             new \DateTimeImmutable('2026-03-01'),
             $utilisateur,

@@ -80,6 +80,9 @@ export const documentsQueryOptions = (
   })
 
 /** fetch brut multipart — apiClient ne gère pas FormData, même motif que les autres téléversements. */
+/** Miroir de DocumentController::TAILLE_MAX_OCTETS — vérifié avant l'envoi pour ne pas téléverser 30 Mo en vain. */
+export const TAILLE_MAX_DOCUMENT_OCTETS = 50 * 1024 * 1024
+
 export async function deposerDocument(
   type: TypeRattachement,
   uuid: string,
@@ -94,6 +97,10 @@ export async function deposerDocument(
     `${(import.meta.env.VITE_API_URL as string | undefined) ?? '/api/v1'}/documents/${type}/${uuid}`,
     { method: 'POST', credentials: 'include', body: donnees },
   )
+  if (reponse.status === 413) {
+    // Refus du serveur web, avant l'application : pas de corps JSON à lire.
+    throw new Error('Fichier trop volumineux : la taille maximale est de 50 Mo.')
+  }
   if (!reponse.ok) {
     const probleme = (await reponse.json().catch(() => undefined)) as { detail?: string; title?: string } | undefined
     throw new Error(probleme?.detail ?? probleme?.title ?? `Erreur ${reponse.status}`)

@@ -456,16 +456,19 @@ final class InitiativeHttpTest extends WebTestCase
 
         $coordonnateur = new Utilisateur('coordonnateur.initiative.test@example.test', 'temp', 'Diagne', 'Aïssatou');
         $coordonnateur->setMotDePasseHash($hasher->hashPassword($coordonnateur, self::MOT_DE_PASSE));
+        $coordonnateur->marquerMdpChange();
         $this->em->persist($coordonnateur);
         $this->em->persist(new UtilisateurRole($coordonnateur, $roleCoordonnateur, null));
 
         $responsable = new Utilisateur('responsable.initiative.test@example.test', 'temp', 'Sarr', 'Ibrahima');
         $responsable->setMotDePasseHash($hasher->hashPassword($responsable, self::MOT_DE_PASSE));
+        $responsable->marquerMdpChange();
         $this->em->persist($responsable);
         $this->em->persist(new UtilisateurRole($responsable, $roleSansRien, null));
 
         $tiers = new Utilisateur('tiers.initiative.test@example.test', 'temp', 'Ba', 'Fatou');
         $tiers->setMotDePasseHash($hasher->hashPassword($tiers, self::MOT_DE_PASSE));
+        $tiers->marquerMdpChange();
         $this->em->persist($tiers);
         $this->em->persist(new UtilisateurRole($tiers, $roleSansRien, null));
 
@@ -480,22 +483,26 @@ final class InitiativeHttpTest extends WebTestCase
 
         $membrePhasaoc = new Utilisateur('membre.phasaoc.initiative.test@example.test', 'temp', 'Diop', 'Cheikh');
         $membrePhasaoc->setMotDePasseHash($hasher->hashPassword($membrePhasaoc, self::MOT_DE_PASSE));
+        $membrePhasaoc->marquerMdpChange();
         $this->em->persist($membrePhasaoc);
         $this->em->persist(new UtilisateurRole($membrePhasaoc, $roleMembrePhasaoc, null));
 
         $sectoriel = new Utilisateur('sectoriel.initiative.test@example.test', 'temp', 'Ndiaye', 'Awa');
         $sectoriel->setMotDePasseHash($hasher->hashPassword($sectoriel, self::MOT_DE_PASSE));
+        $sectoriel->marquerMdpChange();
         $this->em->persist($sectoriel);
         $this->em->persist(new UtilisateurRole($sectoriel, $roleSectoriel, null));
 
         $agentNomme = new Utilisateur('agent.nomme.initiative.test@example.test', 'temp', 'Fall', 'Moussa');
         $agentNomme->setMotDePasseHash($hasher->hashPassword($agentNomme, self::MOT_DE_PASSE));
+        $agentNomme->marquerMdpChange();
         $this->em->persist($agentNomme);
         $this->em->persist(new UtilisateurRole($agentNomme, $roleSansRien, null));
 
         // Responsable d'une tâche précise, mais pas de l'activité qui la porte — distinct de $responsable (§ correctif exigerResponsableOuGerer).
         $responsableTacheSeule = new Utilisateur('responsable.tache.seule.initiative.test@example.test', 'temp', 'Cissé', 'Mariama');
         $responsableTacheSeule->setMotDePasseHash($hasher->hashPassword($responsableTacheSeule, self::MOT_DE_PASSE));
+        $responsableTacheSeule->marquerMdpChange();
         $this->em->persist($responsableTacheSeule);
         $this->em->persist(new UtilisateurRole($responsableTacheSeule, $roleSansRien, null));
 

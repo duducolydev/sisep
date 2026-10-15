@@ -139,11 +139,13 @@ final class ClotureActiviteHttpTest extends WebTestCase
 
         $focalDsid = new Utilisateur('focal.dsid.cloture@example.test', 'temp', 'Sarr', 'Ibrahima');
         $focalDsid->setMotDePasseHash($hasher->hashPassword($focalDsid, self::MOT_DE_PASSE));
+        $focalDsid->marquerMdpChange();
         $this->em->persist($focalDsid);
         $this->em->persist(new UtilisateurRole($focalDsid, $rolePointFocal, $dsid));
 
         $coordonnateur = new Utilisateur('coordonnateur.cloture@example.test', 'temp', 'Diagne', 'Aïssatou');
         $coordonnateur->setMotDePasseHash($hasher->hashPassword($coordonnateur, self::MOT_DE_PASSE));
+        $coordonnateur->marquerMdpChange();
         $this->em->persist($coordonnateur);
         $this->em->persist(new UtilisateurRole($coordonnateur, $roleCoordonnateur, null));
 

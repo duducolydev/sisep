@@ -166,7 +166,11 @@ export function AdminIndicateurs() {
         <DefinirIndicateurModale composantes={composantes?.donnees ?? []} onFermer={() => setModaleCreation(false)} />
       )}
       {indicateurEnEdition && (
-        <ModifierIndicateurModale indicateur={indicateurEnEdition} onFermer={() => setIndicateurEnEdition(null)} />
+        <ModifierIndicateurModale
+          indicateur={indicateurEnEdition}
+          composantes={composantes?.donnees ?? []}
+          onFermer={() => setIndicateurEnEdition(null)}
+        />
       )}
     </div>
   )

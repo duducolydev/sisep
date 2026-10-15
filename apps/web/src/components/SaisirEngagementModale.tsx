@@ -3,16 +3,9 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Modale } from './Modale'
-import { creerEngagement } from '@/lib/budget'
+import { creerEngagement, NATURES_ENGAGEMENT as NATURES } from '@/lib/budget'
 import { ApiError } from '@/lib/api-client'
 import { queryClient } from '@/lib/query-client'
-
-const NATURES = [
-  { valeur: 'travaux', libelle: 'Travaux' },
-  { valeur: 'fournitures', libelle: 'Fournitures' },
-  { valeur: 'prestation_intellectuelle', libelle: 'Prestation intellectuelle' },
-  { valeur: 'fonctionnement', libelle: 'Fonctionnement' },
-]
 
 const schema = z.object({
   exercice: z.coerce.number().int().min(2000).max(2100),
@@ -81,11 +74,18 @@ export function SaisirEngagementModale({ cible, activiteUuid, exerciceParDefaut,
           <label htmlFor="nature">Nature</label>
           <select id="nature" className="rounded-[var(--radius-controle)] border border-border px-3 py-2" {...register('nature')}>
             <option value="">— Choisir —</option>
-            {NATURES.map((n) => (
+            {NATURES.filter((n) => !n.groupe).map((n) => (
               <option key={n.valeur} value={n.valeur}>
                 {n.libelle}
               </option>
             ))}
+            <optgroup label="Fonctionnement">
+              {NATURES.filter((n) => n.groupe === 'Fonctionnement').map((n) => (
+                <option key={n.valeur} value={n.valeur}>
+                  {n.libelle}
+                </option>
+              ))}
+            </optgroup>
           </select>
           {errors.nature && <p className="text-bad text-sm">{errors.nature.message}</p>}
         </div>

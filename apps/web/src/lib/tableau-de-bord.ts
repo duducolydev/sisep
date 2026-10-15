@@ -40,6 +40,8 @@ export const alertesQueryOptions = (projetUuid: string | undefined, exercice?: n
   })
 
 export interface EvenementRecent {
+  /** Identifiant de l'entrée de journal — seule clé unique d'un événement. */
+  id: string
   horodatage: string
   type: string
   action: 'creation' | 'modification'

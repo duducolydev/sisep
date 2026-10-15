@@ -23,6 +23,7 @@ import {
   type Personnel,
 } from '@/lib/rh'
 import { usePeut } from '@/lib/use-permissions'
+import { useConfirmer } from '@/lib/confirmation'
 
 type Vue = 'personnel' | 'enqueteurs' | 'tableau-de-bord'
 
@@ -34,6 +35,7 @@ const VUES: { valeur: Vue; libelle: string }[] = [
 
 /** Suivi des ressources humaines du projet (§ 10 et § 11 du CR du 22/09/2026) — aucune donnée salariale n'y figure, elles sont écartées du système. */
 export function RessourcesHumaines() {
+  const confirmer = useConfirmer()
   const [searchParams, setSearchParams] = useSearchParams()
   const vue = (searchParams.get('vue') as Vue | null) ?? 'personnel'
   const recherche = searchParams.get('q') ?? ''
@@ -215,7 +217,11 @@ export function RessourcesHumaines() {
                           <IconeBouton
                             libelle="Retirer l'agent"
                             disabled={actionEnCours === p.uuid}
-                            onClick={() => void executer(p.uuid, () => supprimerPersonnel(p.uuid), 'Agent retiré.')}
+                            onClick={async () => {
+                        if (await confirmer({ titre: 'Retirer l’agent', message: `${p.nomComplet} sera retiré du personnel technique.`, action: 'Retirer' })) {
+                          void executer(p.uuid, () => supprimerPersonnel(p.uuid), 'Agent retiré.')
+                        }
+                      }}
                             classeCouleur="text-muted hover:bg-bad-bg hover:text-bad"
                           >
                             <IconeSupprimer />
@@ -279,9 +285,11 @@ export function RessourcesHumaines() {
                         <IconeBouton
                           libelle="Retirer l'effectif"
                           disabled={actionEnCours === e.uuid}
-                          onClick={() =>
-                            void executer(e.uuid, () => supprimerEffectifEnqueteurs(e.uuid), 'Effectif retiré.')
-                          }
+                          onClick={async () => {
+                        if (await confirmer({ titre: 'Retirer l’effectif', message: `L’effectif d’enquêteurs ${e.libelle ?? e.activite.code} (${e.annee}) sera retiré.`, action: 'Retirer' })) {
+                          void executer(e.uuid, () => supprimerEffectifEnqueteurs(e.uuid), 'Effectif retiré.')
+                        }
+                      }}
                           classeCouleur="text-muted hover:bg-bad-bg hover:text-bad"
                         >
                           <IconeSupprimer />

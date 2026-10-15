@@ -165,6 +165,7 @@ final class CourrielsHttpTest extends WebTestCase
 
         $coordonnateur = new Utilisateur('coordination.courriels@example.test', 'temp', 'Diagne', 'Aïssatou');
         $coordonnateur->setMotDePasseHash($hasher->hashPassword($coordonnateur, self::MOT_DE_PASSE));
+        $coordonnateur->marquerMdpChange();
         $this->em->persist($coordonnateur);
         $this->em->persist(new UtilisateurRole($coordonnateur, $roleCoordonnateur, null));
 

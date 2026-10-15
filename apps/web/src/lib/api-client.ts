@@ -34,6 +34,17 @@ async function requete<T>(chemin: string, options: RequestInit = {}): Promise<T>
         ? probleme2.title
         : `Erreur ${reponse.status}`
 
+    // Filet de sécurité : un mot de passe temporaire ferme toute l'API
+    // (ChangementMotDePasseRequisListener). Le routeur y conduit déjà à la
+    // connexion ; ceci couvre un compte réinitialisé en cours de session.
+    if (
+      reponse.status === 403 &&
+      (probleme as { type?: unknown } | undefined)?.type === 'changement-mot-de-passe-requis' &&
+      window.location.pathname !== '/changer-mot-de-passe'
+    ) {
+      window.location.assign('/changer-mot-de-passe')
+    }
+
     throw new ApiError(message, reponse.status, probleme)
   }
 

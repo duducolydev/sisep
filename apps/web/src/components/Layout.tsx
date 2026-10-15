@@ -9,6 +9,9 @@ import { indicateursQueryOptions } from '@/lib/indicateurs'
 import { structuresQueryOptions } from '@/lib/composantes'
 import { initiativesQueryOptions } from '@/lib/initiatives'
 import { ToastProvider } from './ToastProvider'
+import { ConfirmationProvider } from './ConfirmationProvider'
+import { BandeauAnsd } from './BandeauAnsd'
+import logoAnsd from '@/assets/ansd/logo-ansd.png'
 import { MenuUtilisateur } from './MenuUtilisateur'
 import { ModifierMotDePasseModale } from './ModifierMotDePasseModale'
 
@@ -39,6 +42,11 @@ const ICONES: Record<string, ReactNode> = {
   budget: (
     <svg {...iconProps}>
       <path d="M4 19V9M10 19V4M16 19v-7M2 19h20" />
+    </svg>
+  ),
+  execution: (
+    <svg {...iconProps}>
+      <path d="M4 18a8 8 0 1 1 16 0M12 18l4-6M4 18h16" />
     </svg>
   ),
   indicateurs: (
@@ -130,6 +138,7 @@ export function Layout() {
     { to: '/tableau-de-bord', label: 'Tableau de bord', icone: 'tableauDeBord' },
     { to: '/composantes', label: 'Composantes', icone: 'composantes', compte: composantes?.donnees.length },
     { to: '/budget', label: 'Budget', icone: 'budget' },
+    { to: '/execution', label: 'Exécution', icone: 'execution' },
     ...(voitIndicateurs
       ? [{ to: '/indicateurs', label: 'Indicateurs de performance', icone: 'indicateurs' as const, compte: indicateurs?.donnees.length }]
       : []),
@@ -174,6 +183,7 @@ export function Layout() {
 
   return (
     <ToastProvider>
+      <ConfirmationProvider>
       <div className="min-h-screen overflow-x-hidden bg-bg text-text">
         <nav
           aria-label="Navigation principale"
@@ -181,8 +191,9 @@ export function Layout() {
           className="fixed inset-y-0 left-0 z-20 flex flex-col gap-4 overflow-y-auto overflow-x-hidden border-r border-navborder bg-navbg px-3 py-4 text-navfg transition-[width] duration-200"
         >
           <div className={`flex items-center gap-2.5 px-1.5 ${repliee ? 'justify-center' : ''}`}>
-            <div className="grid h-9 w-9 flex-none place-items-center rounded-[9px] bg-linear-to-br from-accent to-accent-clair font-titre text-sm font-bold text-white">
-              SE
+            {/* Logo de l'ANSD sur fond blanc : ses bleus se perdraient sur le bleu nuit de la barre. */}
+            <div className="grid h-11 w-11 flex-none place-items-center overflow-hidden rounded-[10px] bg-white p-0.5">
+              <img src={logoAnsd} alt="ANSD" className="h-full w-full object-contain" />
             </div>
             {!repliee && (
               <div className="min-w-0">
@@ -238,6 +249,10 @@ export function Layout() {
         </nav>
 
         <div style={{ paddingLeft: repliee ? LARGEUR_REPLIEE : LARGEUR_OUVERTE }} className="transition-[padding-left] duration-200">
+          <BandeauAnsd>
+            <p className="font-titre text-base leading-tight font-bold sm:text-lg">Système de suivi-évaluation</p>
+            <p className="hidden text-xs tracking-[.08em] text-white/85 uppercase sm:block">Projet PHASAOC</p>
+          </BandeauAnsd>
           <main className="mx-auto w-full min-w-0 max-w-[1560px] px-7 py-6">
             <div key={location.pathname} className="entree-page">
               <Outlet />
@@ -247,6 +262,7 @@ export function Layout() {
       </div>
 
       {modaleMotDePasse && <ModifierMotDePasseModale onFermer={() => setModaleMotDePasse(false)} />}
+      </ConfirmationProvider>
     </ToastProvider>
   )
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Entity\Composante;
 use App\Entity\Permission;
 use App\Entity\Projet;
 use App\Entity\Role;
@@ -69,6 +70,16 @@ final class IndicateurHttpTest extends WebTestCase
             self::assertSame('brouillon', $corpsValeur['statut']);
             self::assertCount(2, $corpsValeur['desagregations']);
 
+            // Retours des RSE : la saisie se voit aussitôt, marquée en
+            // attente, sans devenir l'actuel officiel avant validation.
+            $client->request('GET', "/api/v1/indicateurs/{$indicateurUuid}");
+            $ficheAvantValidation = $this->corps($client);
+            self::assertNull($ficheAvantValidation['actuel']);
+            self::assertNull($ficheAvantValidation['tauxAtteinte']);
+            self::assertSame('2026-01-01', $ficheAvantValidation['enAttente']['periode']);
+            self::assertEqualsWithDelta(130.0, (float) $ficheAvantValidation['enAttente']['valeur'], 0.0001);
+            self::assertEqualsWithDelta(1.3, $ficheAvantValidation['enAttente']['tauxAtteinte'], 0.0001);
+
             // Le point focal saisie ne détient pas indicateurs.valider : refusé.
             $client->request('POST', "/api/v1/indicateurs/valeurs/{$valeurUuid}/valider");
             self::assertResponseStatusCodeSame(403);
@@ -84,6 +95,7 @@ final class IndicateurHttpTest extends WebTestCase
             $ficheApresValidation = $this->corps($client);
             self::assertEqualsWithDelta(130.0, (float) $ficheApresValidation['actuel'], 0.0001);
             self::assertEqualsWithDelta(1.3, $ficheApresValidation['tauxAtteinte'], 0.0001);
+            self::assertNull($ficheApresValidation['enAttente'], 'Une fois validée, plus rien n\'est en attente.');
         } finally {
             $this->rollback();
         }
@@ -321,6 +333,47 @@ final class IndicateurHttpTest extends WebTestCase
         return $this->corps($client)['uuid'];
     }
 
+    /**
+     * Retours des RSE : les indicateurs transversaux relèvent de l'objectif
+     * général, pas d'une composante — le filtre « general » les isole.
+     */
+    public function testLeFiltreObjectifGeneralIsoleLesIndicateursSansComposante(): void
+    {
+        [$client, $fixture] = $this->demarrer();
+
+        try {
+            $composante = new Composante($fixture['projet'], 'CIG', 'Composante de test');
+            $this->em->persist($composante);
+            $this->em->flush();
+
+            $this->connecter($client, $fixture['suiviEvaluation']->getEmail());
+            $this->creerIndicateur($client, 'OG-1', '0');
+            $client->request('POST', '/api/v1/indicateurs', server: ['CONTENT_TYPE' => 'application/json'], content: json_encode([
+                'code' => 'C1-1',
+                'libelle' => 'Indicateur de composante',
+                'type' => 'IRI',
+                'composante' => $composante->getUuid()->toRfc4122(),
+                'unite' => 'Nombre',
+                'sens' => 'croissant',
+                'valeurReference' => '0',
+                'dateReference' => '2025-01-01',
+                'valeurCible' => '3',
+                'dateCible' => '2028-12-31',
+                'frequence' => 'annuelle',
+                'source' => 'Test',
+            ], \JSON_THROW_ON_ERROR));
+            self::assertResponseStatusCodeSame(201);
+
+            $client->request('GET', '/api/v1/indicateurs?composante=general');
+            self::assertSame(['OG-1'], array_column($this->corps($client)['donnees'], 'code'));
+
+            $client->request('GET', '/api/v1/indicateurs?composante='.$composante->getUuid()->toRfc4122());
+            self::assertSame(['C1-1'], array_column($this->corps($client)['donnees'], 'code'));
+        } finally {
+            $this->rollback();
+        }
+    }
+
     public function testUnRoleSansIndicateursDefinirNePeutPasCreer(): void
     {
         [$client, $fixture] = $this->demarrer();
@@ -387,17 +440,20 @@ final class IndicateurHttpTest extends WebTestCase
 
         $suiviEvaluation = new Utilisateur('suivi.p4@example.test', 'temp', 'Ndiaye', 'Moussa');
         $suiviEvaluation->setMotDePasseHash($hasher->hashPassword($suiviEvaluation, self::MOT_DE_PASSE));
+        $suiviEvaluation->marquerMdpChange();
         $this->em->persist($suiviEvaluation);
         $this->em->persist(new UtilisateurRole($suiviEvaluation, $roleSuiviEvaluation, null));
 
         $coordonnateur = new Utilisateur('coordonnateur.p4@example.test', 'temp', 'Diagne', 'Aïssatou');
         $coordonnateur->setMotDePasseHash($hasher->hashPassword($coordonnateur, self::MOT_DE_PASSE));
+        $coordonnateur->marquerMdpChange();
         $this->em->persist($coordonnateur);
         $this->em->persist(new UtilisateurRole($coordonnateur, $roleCoordonnateur, null));
 
         // Sans aucune permission indicateurs.* : sert à vérifier que l'invitation, seule, ouvre l'accès.
         $sectoriel = new Utilisateur('sectoriel.p4@example.test', 'temp', 'Ba', 'Fatou');
         $sectoriel->setMotDePasseHash($hasher->hashPassword($sectoriel, self::MOT_DE_PASSE));
+        $sectoriel->marquerMdpChange();
         $this->em->persist($sectoriel);
         $this->em->persist(new UtilisateurRole($sectoriel, $roleSectoriel, null));
 

@@ -42,4 +42,10 @@ final class MontantTest extends TestCase
         self::assertTrue($petit->estSuperieurOuEgalA($petit));
         self::assertTrue($petit->equals(Montant::fromFcfa(100)));
     }
+
+    public function testFormaterPourUnMessage(): void
+    {
+        self::assertSame("12\u{202F}000\u{202F}000 FCFA", Montant::fromFcfa(12_000_000)->formater());
+        self::assertSame('0 FCFA', Montant::fromFcfa(0)->formater());
+    }
 }

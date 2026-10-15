@@ -4,13 +4,14 @@ import { IconeCalendrier } from './Icones'
 
 const OPTIONS: { valeur: GranularitePeriode; libelle: string }[] = [
   { valeur: 'aucun', libelle: 'Toutes périodes' },
+  { valeur: 'annee', libelle: 'Année' },
   { valeur: 'trimestre', libelle: 'Trimestre' },
   { valeur: 'mois', libelle: 'Mois' },
   { valeur: 'jour', libelle: 'Jour' },
 ]
 
 /**
- * Filtre trimestre/mois/jour sur une liste datée (points d'attention,
+ * Filtre année/trimestre/mois/jour sur une liste datée (points d'attention,
  * activité récente, série historique d'un indicateur) — § décision : ne
  * s'applique jamais aux agrégats budgétaires (année seule, via
  * SelecteurExercice), seulement à ces listes déjà renvoyées telles
@@ -58,6 +59,21 @@ export function SelecteurPeriode() {
           </button>
         ))}
       </div>
+
+      {granularite === 'annee' && (
+        <div className="flex items-center gap-1">
+          <IconeCalendrier />
+          <input
+            type="number"
+            aria-label="Année"
+            value={valeur}
+            min={2000}
+            max={2100}
+            onChange={(e) => changerValeur(e.target.value)}
+            className="chiffres w-20 rounded-[var(--radius-controle)] border border-border bg-surface px-2 py-1.5 text-xs"
+          />
+        </div>
+      )}
 
       {granularite === 'mois' && (
         <input

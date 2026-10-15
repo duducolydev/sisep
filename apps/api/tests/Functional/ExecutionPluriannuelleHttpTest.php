@@ -116,6 +116,7 @@ final class ExecutionPluriannuelleHttpTest extends WebTestCase
 
         $utilisateur = new Utilisateur('lecteur.execution.pluriannuelle@example.test', 'temp', 'Diop', 'Cheikh');
         $utilisateur->setMotDePasseHash($hasher->hashPassword($utilisateur, self::MOT_DE_PASSE));
+        $utilisateur->marquerMdpChange();
         $this->em->persist($utilisateur);
         $this->em->persist(new UtilisateurRole($utilisateur, $role, null));
 
@@ -138,7 +139,7 @@ final class ExecutionPluriannuelleHttpTest extends WebTestCase
         // 2025 : dotation notifiée + dépense validée (80 % exécuté).
         $dotation2025 = new Dotation($activite, $exercice2025, Montant::fromFcfa(10_000_000), $utilisateur);
         $this->em->persist($dotation2025);
-        $engagement2025 = new Engagement($activite, $exercice2025, NatureEngagement::PRESTATION_INTELLECTUELLE, Montant::fromFcfa(10_000_000), new \DateTimeImmutable('2025-03-01'), $utilisateur);
+        $engagement2025 = new Engagement($activite, $exercice2025, NatureEngagement::SERVICE_CONSULTATION, Montant::fromFcfa(10_000_000), new \DateTimeImmutable('2025-03-01'), $utilisateur);
         $engagement2025->valider($utilisateur);
         $this->em->persist($engagement2025);
         $depense2025 = new Depense($engagement2025, Montant::fromFcfa(8_000_000), new \DateTimeImmutable('2025-11-01'), $utilisateur);

@@ -59,6 +59,7 @@ final class PorteeActiviteHttpTest extends WebTestCase
             $utilisateur = new Utilisateur('focal.dpee.p1@example.test', 'temp', 'Ba', 'Fatou');
             $utilisateur->setStructure($dpee);
             $utilisateur->setMotDePasseHash($hasher->hashPassword($utilisateur, $motDePasse));
+            $utilisateur->marquerMdpChange();
             $this->em->persist($utilisateur);
 
             $this->em->persist(new UtilisateurRole($utilisateur, $role, $dpee));

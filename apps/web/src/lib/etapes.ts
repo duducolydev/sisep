@@ -48,10 +48,20 @@ export interface GabaritEtapes {
   etapes: EtapeGabarit[]
 }
 
-export const etapesActiviteQueryOptions = (activiteUuid: string | undefined) =>
+/** Chemin des étapes d'une activité (étapes propres) ou d'une de ses lignes (sous-activité). */
+function cheminEtapes(activiteUuid: string | undefined, sousActiviteUuid?: string): string {
+  return sousActiviteUuid !== undefined ? `/sous-activites/${sousActiviteUuid}/etapes` : `/activites/${activiteUuid}/etapes`
+}
+
+/**
+ * Clé rangée sous ['activite', uuid] : toute écriture sur une étape invalide
+ * la fiche de l'activité, ses étapes propres et celles de ses lignes d'un
+ * même geste.
+ */
+export const etapesActiviteQueryOptions = (activiteUuid: string | undefined, sousActiviteUuid?: string) =>
   queryOptions({
-    queryKey: ['activite', activiteUuid, 'etapes'],
-    queryFn: () => apiClient.get<{ donnees: EtapeActivite[] }>(`/activites/${activiteUuid}/etapes`),
+    queryKey: ['activite', activiteUuid, 'etapes', sousActiviteUuid ?? 'propres'],
+    queryFn: () => apiClient.get<{ donnees: EtapeActivite[] }>(cheminEtapes(activiteUuid, sousActiviteUuid)),
     enabled: activiteUuid !== undefined,
   })
 
@@ -78,13 +88,19 @@ export function supprimerGabaritEtapes(uuid: string) {
   return apiClient.delete<void>(`/gabarits-etapes/${uuid}`)
 }
 
-/** Copie les étapes du gabarit sur l'activité — refusé (409) si elle en a déjà. */
-export function instancierGabarit(activiteUuid: string, gabaritUuid: string) {
-  return apiClient.post<{ donnees: EtapeActivite[] }>(`/activites/${activiteUuid}/etapes/instancier`, { gabarit: gabaritUuid })
+/** Copie les étapes du gabarit sur l'activité ou sur une ligne — refusé (409) si elle en a déjà. */
+export function instancierGabarit(activiteUuid: string, gabaritUuid: string, sousActiviteUuid?: string) {
+  return apiClient.post<{ donnees: EtapeActivite[] }>(`${cheminEtapes(activiteUuid, sousActiviteUuid)}/instancier`, {
+    gabarit: gabaritUuid,
+  })
 }
 
-export function ajouterEtape(activiteUuid: string, entree: { libelle: string; echeance?: string; unite?: string }) {
-  return apiClient.post<EtapeActivite>(`/activites/${activiteUuid}/etapes`, entree)
+export function ajouterEtape(
+  activiteUuid: string,
+  entree: { libelle: string; echeance?: string; unite?: string },
+  sousActiviteUuid?: string,
+) {
+  return apiClient.post<EtapeActivite>(cheminEtapes(activiteUuid, sousActiviteUuid), entree)
 }
 
 export interface RenseignerEtapeEntree {

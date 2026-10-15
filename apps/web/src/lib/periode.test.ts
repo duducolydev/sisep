@@ -20,6 +20,11 @@ describe('correspondAPeriode', () => {
     expect(correspondAPeriode('2026-10-01T00:00:00+00:00', 'mois', '2026-09')).toBe(false)
   })
 
+  it("compare à l'année près", () => {
+    expect(correspondAPeriode('2026-09-18', 'annee', '2026')).toBe(true)
+    expect(correspondAPeriode('2025-12-31T23:00:00+00:00', 'annee', '2026')).toBe(false)
+  })
+
   it('compare au trimestre près (mois 7-9 = T3)', () => {
     expect(correspondAPeriode('2026-09-18', 'trimestre', '2026-T3')).toBe(true)
     expect(correspondAPeriode('2026-07-01', 'trimestre', '2026-T3')).toBe(true)

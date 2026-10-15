@@ -146,11 +146,13 @@ final class ExportHttpTest extends WebTestCase
 
         $coordonnateur = new Utilisateur('coordonnateur.export@example.test', 'temp', 'Diagne', 'Aïssatou');
         $coordonnateur->setMotDePasseHash($hasher->hashPassword($coordonnateur, self::MOT_DE_PASSE));
+        $coordonnateur->marquerMdpChange();
         $this->em->persist($coordonnateur);
         $this->em->persist(new UtilisateurRole($coordonnateur, $roleCoordonnateur, null));
 
         $lecteur = new Utilisateur('lecteur.export@example.test', 'temp', 'Diop', 'Cheikh');
         $lecteur->setMotDePasseHash($hasher->hashPassword($lecteur, self::MOT_DE_PASSE));
+        $lecteur->marquerMdpChange();
         $this->em->persist($lecteur);
         $this->em->persist(new UtilisateurRole($lecteur, $roleLecteur, null));
 

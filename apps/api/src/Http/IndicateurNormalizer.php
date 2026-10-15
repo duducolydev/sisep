@@ -13,6 +13,12 @@ use App\Security\IndicateurAccesResolver;
 /**
  * "Valeur actuelle" et taux d'atteinte calculés à la demande à partir de la
  * dernière période validée (§ 5.2, § 2.4) — jamais stockés.
+ *
+ * `enAttente` (retours des RSE, octobre 2026) : la saisie la plus récente
+ * quand elle n'est pas encore validée, avec son taux d'atteinte provisoire.
+ * L'interface la montre aussitôt, marquée « en attente de validation » ;
+ * `actuel` et `tauxAtteinte` restent les valeurs validées, seules reprises
+ * par les exports et les rapports.
  */
 final class IndicateurNormalizer
 {
@@ -25,6 +31,7 @@ final class IndicateurNormalizer
     {
         $derniereValidee = $this->derniereValidee($indicateur);
         $actuel = $derniereValidee?->getValeur();
+        $enAttente = $this->enAttente($indicateur);
 
         return [
             'uuid' => $indicateur->getUuid()->toRfc4122(),
@@ -64,7 +71,36 @@ final class IndicateurNormalizer
             // en liste de permissions — usePeutSur() seul ne le détecterait
             // pas côté front, d'où ce champ calculé serveur par indicateur.
             'peutSaisir' => $this->accesResolver->peutSaisir($indicateur),
+            'enAttente' => null === $enAttente ? null : [
+                'uuid' => $enAttente->getUuid()->toRfc4122(),
+                'valeur' => $enAttente->getValeur(),
+                'periode' => $enAttente->getPeriode()->format('Y-m-d'),
+                'tauxAtteinte' => TauxAtteinteCalculator::calculer(
+                    $indicateur->getSens(),
+                    $indicateur->getValeurReference(),
+                    $indicateur->getValeurCible(),
+                    $enAttente->getValeur(),
+                ),
+            ],
         ];
+    }
+
+    /**
+     * Saisie la plus récente si elle attend encore sa validation. Une
+     * valeur en brouillon plus ancienne que la dernière validée n'est pas
+     * « en attente » au sens de l'affichage : elle ne changerait pas
+     * l'actuel une fois validée.
+     */
+    private function enAttente(Indicateur $indicateur): ?IndicateurValeur
+    {
+        $valeurs = $indicateur->getValeurs()->toArray();
+        if ([] === $valeurs) {
+            return null;
+        }
+
+        usort($valeurs, static fn (IndicateurValeur $a, IndicateurValeur $b) => [$b->getPeriode(), $b->getId()] <=> [$a->getPeriode(), $a->getId()]);
+
+        return StatutValeurIndicateur::BROUILLON === $valeurs[0]->getStatut() ? $valeurs[0] : null;
     }
 
     private function derniereValidee(Indicateur $indicateur): ?IndicateurValeur

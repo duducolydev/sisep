@@ -142,11 +142,13 @@ final class JournalBudgetHttpTest extends WebTestCase
 
         $gestionnaire = new Utilisateur('gestionnaire.journal@example.test', 'temp', 'Fall', 'Khadija');
         $gestionnaire->setMotDePasseHash($hasher->hashPassword($gestionnaire, self::MOT_DE_PASSE));
+        $gestionnaire->marquerMdpChange();
         $this->em->persist($gestionnaire);
         $this->em->persist(new UtilisateurRole($gestionnaire, $roleGestionnaire, null));
 
         $auditeur = new Utilisateur('auditeur.journal@example.test', 'temp', 'Ndiaye', 'Moussa');
         $auditeur->setMotDePasseHash($hasher->hashPassword($auditeur, self::MOT_DE_PASSE));
+        $auditeur->marquerMdpChange();
         $this->em->persist($auditeur);
         $this->em->persist(new UtilisateurRole($auditeur, $roleAuditeur, null));
 

@@ -4,6 +4,8 @@ import { formaterValeurIndicateur } from '@/lib/format'
 interface BarresObjectifsIndicateurProps {
   valeurReference: string
   actuel: string | null
+  /** L'actuel montré est une saisie en attente de validation : barre hachurée et intitulé explicite. */
+  actuelEnAttente?: boolean
   valeurIntermediaire: string | null
   valeurCible: string
   unite: string
@@ -31,13 +33,15 @@ const COULEURS: Record<string, string> = {
 export function BarresObjectifsIndicateur({
   valeurReference,
   actuel,
+  actuelEnAttente = false,
   valeurIntermediaire,
   valeurCible,
   unite,
 }: BarresObjectifsIndicateurProps) {
+  const libelleActuel = actuelEnAttente ? 'Actuel (en attente)' : 'Actuel'
   const donnees = [
     { libelle: 'Référence', valeur: Number(valeurReference) },
-    ...(actuel !== null ? [{ libelle: 'Actuel', valeur: Number(actuel) }] : []),
+    ...(actuel !== null ? [{ libelle: libelleActuel, valeur: Number(actuel) }] : []),
     ...(valeurIntermediaire !== null ? [{ libelle: 'Objectif intermédiaire', valeur: Number(valeurIntermediaire) }] : []),
     { libelle: 'Cible', valeur: Number(valeurCible) },
   ]
@@ -45,12 +49,23 @@ export function BarresObjectifsIndicateur({
   return (
     <div className="h-56 w-full">
       <ResponsiveContainer width="100%" height="100%" minWidth={200} minHeight={160}>
-        <BarChart data={donnees} margin={{ top: 20, right: 8, bottom: 0, left: 0 }}>
+        <BarChart data={donnees} margin={{ top: 36, right: 8, bottom: 0, left: 0 }}>
+          <defs>
+            {/* Hachures : une saisie non validée se distingue sans dépendre de la couleur seule. */}
+            <pattern id="hachures-en-attente" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+              <rect width="6" height="6" fill="var(--color-success)" opacity="0.35" />
+              <line x1="0" y1="0" x2="0" y2="6" stroke="var(--color-success)" strokeWidth="3" />
+            </pattern>
+          </defs>
           <XAxis dataKey="libelle" stroke="var(--color-muted)" fontSize={11} tickLine={false} axisLine={false} />
           <YAxis hide />
-          <Bar dataKey="valeur" radius={[4, 4, 0, 0]} maxBarSize={64} isAnimationActive={false}>
+          {/* minPointSize : une valeur nulle (référence à 0) garde une trace et son étiquette. */}
+          <Bar dataKey="valeur" radius={[4, 4, 0, 0]} maxBarSize={64} minPointSize={3} isAnimationActive={false}>
             {donnees.map((d) => (
-              <Cell key={d.libelle} fill={COULEURS[d.libelle] ?? 'var(--color-accent)'} />
+              <Cell
+                key={d.libelle}
+                fill={d.libelle === 'Actuel (en attente)' ? 'url(#hachures-en-attente)' : (COULEURS[d.libelle] ?? 'var(--color-accent)')}
+              />
             ))}
             <LabelList
               dataKey="valeur"

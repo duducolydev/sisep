@@ -52,13 +52,16 @@ Vite + TypeScript (`apps/web`), monorepo pnpm (`packages/shared`).
   la main dans la migration (décision actée, § 4 du brief).
 - Ne pas réintroduire la saisie de réalisations (retirée au CR du
   22/09/2026) : l'avancement se renseigne étape par étape
-  (`EtapeActivite`), et la progression d'une activité est la moyenne de ses
-  étapes — `App\Activite\ProgressionActiviteCalculator` sur une entité, la
-  même moyenne en SQL dans `ArbreReader`. `sous_activite.avancement`,
+  (`EtapeActivite`). Depuis les retours des RSE (octobre 2026), chaque ligne
+  du PTBA (sous-activité) porte ses propres étapes : progression d'une ligne
+  = moyenne de ses étapes ; progression d'une activité = moyenne de ses
+  blocs (chaque ligne structurée, plus ses étapes propres comptées comme un
+  bloc) — `App\Activite\ProgressionActiviteCalculator` sur une entité, la
+  même règle en SQL dans `ArbreReader`. `sous_activite.avancement`,
   `Realisation` et `RealisationListener` ne subsistent que pour les données
-  historiques : rien n'y écrit plus, et l'arbre ne les expose plus. La
-  sous-activité est désormais la seule maille budgétaire du PTBA, créée par
-  l'UGP (`activites.creer`).
+  historiques : rien n'y écrit plus. La sous-activité (« ligne
+  d'activité » à l'écran) est la maille budgétaire du PTBA, créée par l'UGP
+  (`activites.creer`).
 
 ## Commandes
 

@@ -130,11 +130,13 @@ final class PointFocalLierCompteHttpTest extends WebTestCase
 
         $focalDsid = new Utilisateur('focal.dsid.lier.test@example.test', 'temp', 'Sarr', 'Ibrahima');
         $focalDsid->setMotDePasseHash($hasher->hashPassword($focalDsid, self::MOT_DE_PASSE));
+        $focalDsid->marquerMdpChange();
         $this->em->persist($focalDsid);
         $this->em->persist(new UtilisateurRole($focalDsid, $rolePointFocal, $dsid));
 
         $compteALier = new Utilisateur('compte.a.lier.test@example.test', 'temp', 'Ba', 'Fatou');
         $compteALier->setMotDePasseHash($hasher->hashPassword($compteALier, self::MOT_DE_PASSE));
+        $compteALier->marquerMdpChange();
         $this->em->persist($compteALier);
 
         $pointFocalDsid = new PointFocal($dsid, 'Point focal DSID', 'Adjoint');

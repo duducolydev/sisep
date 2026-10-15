@@ -105,12 +105,16 @@ final class ArbreReader
 
         $activites = [] === $sousComposanteIds ? [] : $this->recupererActivites($sousComposanteIds, $exerciceId);
         $activiteIds = array_column($activites, 'id');
+        [$progressionsActivites, $progressionsLignes] = $this->progressions($activiteIds);
+        foreach ($activites as $index => $a) {
+            $activites[$index]['progression'] = $progressionsActivites[$a['id']] ?? null;
+        }
 
         $sousActivitesParActivite = [];
         if ($niveaux >= 4 && [] !== $activiteIds) {
             $sousActivitesParActivite = $this->regrouperParCle(
                 $this->connection->fetchAllAssociative(
-                    'SELECT sa.uuid, sa.activite_id, sa.libelle, sa.statut, sa.echeance, v.notifie, v.engage, v.depense
+                    'SELECT sa.id, sa.uuid, sa.activite_id, sa.libelle, sa.statut, sa.echeance, v.notifie, v.engage, v.depense
                      FROM sous_activites sa
                      LEFT JOIN v_execution_sous_activite v ON v.sous_activite_id = sa.id AND v.exercice_id = ?
                      WHERE sa.activite_id IN ('.$this->placeholders($activiteIds).') AND sa.supprime_le IS NULL
@@ -119,6 +123,11 @@ final class ArbreReader
                 ),
                 'activite_id',
             );
+            foreach ($sousActivitesParActivite as $activiteId => $lignes) {
+                foreach ($lignes as $index => $ligne) {
+                    $sousActivitesParActivite[$activiteId][$index]['progression'] = $progressionsLignes[$ligne['id']] ?? null;
+                }
+            }
         }
 
         $activitesParSousComposante = $this->regrouperParCle($activites, 'sous_composante_id');
@@ -184,14 +193,15 @@ final class ArbreReader
         ];
 
         if ($niveaux >= 4) {
-            // La sous-activité est devenue une maille purement budgétaire
-            // (§ 6 du CR du 22/09/2026) : plus d'avancement exposé ici, la
-            // colonne sous_activites.avancement n'étant plus alimentée.
+            // L'avancement d'une ligne vient de ses étapes (retours des RSE) —
+            // jamais de la colonne historique sous_activites.avancement, que
+            // plus rien n'alimente.
             $noeud['sousActivites'] = array_map(fn (array $sa) => [
                 'uuid' => $sa['uuid'],
                 'libelle' => $sa['libelle'],
                 'statut' => $sa['statut'],
                 'echeance' => $sa['echeance'],
+                'avancement' => null !== $sa['progression'] ? (int) round((float) $sa['progression']) : null,
                 ...$this->montants($sa),
             ], $sousActivites);
         }
@@ -220,16 +230,9 @@ final class ArbreReader
             $parametresPortee = $structureIds;
         }
 
-        // `progression` est la moyenne de l'avancement des étapes actives,
-        // en SQL plutôt qu'en PHP : ProgressionActiviteCalculator dit la même
-        // chose sur un objet Activite, mais l'arbre lit des lignes brutes et
-        // ne doit pas hydrater une entité par activité. Aucune étape →
-        // AVG() renvoie NULL, jamais 0 (même règle que le calculateur).
         $sql = 'SELECT a.id, a.uuid, a.sous_composante_id, a.code, a.libelle, a.statut, a.ordre,
                         s.uuid AS structure_uuid, s.sigle AS structure_sigle,
-                        v.notifie, v.engage, v.depense,
-                        (SELECT AVG(e.avancement) FROM etapes_activite e
-                          WHERE e.activite_id = a.id AND e.supprime_le IS NULL) AS progression
+                        v.notifie, v.engage, v.depense
                  FROM activites a
                  JOIN structures s ON s.id = a.structure_responsable_id
                  LEFT JOIN v_execution_activite v ON v.activite_id = a.id AND v.exercice_id = ?
@@ -238,6 +241,51 @@ final class ArbreReader
                  ORDER BY a.ordre, a.code';
 
         return $this->connection->fetchAllAssociative($sql, [$exerciceId, ...$sousComposanteIds, ...$parametresPortee]);
+    }
+
+    /**
+     * Progressions (0-100) des activités et de leurs lignes, déduites des
+     * étapes — même règle que ProgressionActiviteCalculator, en SQL pour ne
+     * pas hydrater une entité par activité : une moyenne par bloc (les
+     * étapes propres de l'activité, puis chaque ligne), et l'activité vaut
+     * la moyenne de ses blocs. Aucune étape → pas d'entrée, donc null,
+     * jamais 0.
+     *
+     * @param list<int> $activiteIds
+     *
+     * @return array{0: array<int, float>, 1: array<int, float>} [par activité, par ligne]
+     */
+    private function progressions(array $activiteIds): array
+    {
+        if ([] === $activiteIds) {
+            return [[], []];
+        }
+
+        $blocs = $this->connection->fetchAllAssociative(
+            'SELECT e.activite_id, e.sous_activite_id, AVG(e.avancement) AS moyenne
+             FROM etapes_activite e
+             LEFT JOIN sous_activites sa ON sa.id = e.sous_activite_id
+             WHERE e.activite_id IN ('.$this->placeholders($activiteIds).')
+               AND e.supprime_le IS NULL
+               AND (e.sous_activite_id IS NULL OR sa.supprime_le IS NULL)
+             GROUP BY e.activite_id, e.sous_activite_id',
+            $activiteIds,
+        );
+
+        $parActivite = [];
+        $parLigne = [];
+        foreach ($blocs as $bloc) {
+            $moyenne = (float) $bloc['moyenne'];
+            $parActivite[(int) $bloc['activite_id']][] = $moyenne;
+            if (null !== $bloc['sous_activite_id']) {
+                $parLigne[(int) $bloc['sous_activite_id']] = $moyenne;
+            }
+        }
+
+        return [
+            array_map(static fn (array $moyennes) => array_sum($moyennes) / \count($moyennes), $parActivite),
+            $parLigne,
+        ];
     }
 
     private function utilisateurCourantOuNull(): ?Utilisateur

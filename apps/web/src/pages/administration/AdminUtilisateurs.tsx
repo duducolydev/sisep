@@ -14,10 +14,12 @@ import { Squelette } from '@/components/Squelette'
 import { useToast } from '@/components/ToastProvider'
 import { trancherPage } from '@/lib/pagination'
 import { formaterDate } from '@/lib/format'
+import { useConfirmer } from '@/lib/confirmation'
 
 const TAILLE_PAGE = 10
 
 export function AdminUtilisateurs() {
+  const confirmer = useConfirmer()
   const { data: utilisateurs, isLoading, isError } = useQuery(utilisateursQueryOptions())
   const peutGerer = usePeut('admin.utilisateurs')
   const afficherToast = useToast()
@@ -194,7 +196,11 @@ export function AdminUtilisateurs() {
                         <IconeBouton
                           libelle={`Supprimer le compte de ${u.prenom} ${u.nom}`}
                           disabled={enCours === u.uuid}
-                          onClick={() => supprimer(u)}
+                          onClick={async () => {
+                        if (await confirmer({ titre: 'Supprimer le compte', message: `Le compte de ${u.prenom} ${u.nom} sera supprimé : la personne ne pourra plus se connecter. Pour une suspension temporaire, désactivez plutôt le compte.`, action: 'Supprimer' })) {
+                          void supprimer(u)
+                        }
+                      }}
                           classeCouleur="text-muted hover:bg-bad-bg hover:text-bad"
                         >
                           <IconeSupprimer />

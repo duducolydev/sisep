@@ -6,6 +6,7 @@ import { Modale } from './Modale'
 import { modifierIndicateur, type Indicateur } from '@/lib/indicateurs'
 import { ApiError } from '@/lib/api-client'
 import { queryClient } from '@/lib/query-client'
+import type { LigneExecution } from '@/lib/budget'
 
 const schema = z.object({
   libelle: z.string().min(1, 'Le libellé est requis.'),
@@ -17,16 +18,18 @@ const schema = z.object({
   dateCible: z.string().min(1, 'La date cible est requise.'),
   source: z.string().min(1, 'La source est requise.'),
   actif: z.boolean(),
+  composante: z.string(),
 })
 
 type FormValues = z.infer<typeof schema>
 
 interface ModifierIndicateurModaleProps {
   indicateur: Indicateur
+  composantes: LigneExecution[]
   onFermer: () => void
 }
 
-export function ModifierIndicateurModale({ indicateur, onFermer }: ModifierIndicateurModaleProps) {
+export function ModifierIndicateurModale({ indicateur, composantes, onFermer }: ModifierIndicateurModaleProps) {
   const [erreur, setErreur] = useState<string | null>(null)
 
   const {
@@ -45,6 +48,7 @@ export function ModifierIndicateurModale({ indicateur, onFermer }: ModifierIndic
       dateCible: indicateur.dateCible.slice(0, 10),
       source: indicateur.source,
       actif: indicateur.actif,
+      composante: indicateur.composante?.uuid ?? '',
     },
   })
 
@@ -55,6 +59,7 @@ export function ModifierIndicateurModale({ indicateur, onFermer }: ModifierIndic
         ...valeurs,
         valeurIntermediaire: valeurs.valeurIntermediaire?.trim() === '' ? null : valeurs.valeurIntermediaire,
         dateIntermediaire: valeurs.dateIntermediaire?.trim() === '' ? null : valeurs.dateIntermediaire,
+        composante: valeurs.composante === '' ? null : valeurs.composante,
       })
       await queryClient.invalidateQueries({ queryKey: ['indicateurs'] })
       await queryClient.invalidateQueries({ queryKey: ['indicateur', indicateur.uuid] })
@@ -77,6 +82,18 @@ export function ModifierIndicateurModale({ indicateur, onFermer }: ModifierIndic
           <label htmlFor="libelle">Libellé</label>
           <input id="libelle" className="rounded-[var(--radius-controle)] border border-border px-3 py-2" {...register('libelle')} />
           {errors.libelle && <p className="text-bad text-sm">{errors.libelle.message}</p>}
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label htmlFor="composante">Rattachement</label>
+          <select id="composante" className="rounded-[var(--radius-controle)] border border-border px-3 py-2" {...register('composante')}>
+            <option value="">Objectif général (indicateur transversal)</option>
+            {composantes.map((c) => (
+              <option key={c.uuid} value={c.uuid}>
+                {c.code} — {c.libelle}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="flex flex-col gap-1">

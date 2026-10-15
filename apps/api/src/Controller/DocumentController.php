@@ -58,7 +58,12 @@ final class DocumentController
 {
     use ApiControllerHelpersTrait;
 
-    private const TAILLE_MAX_OCTETS = 10 * 1024 * 1024;
+    /**
+     * 50 Mo : une présentation d'atelier dépasse vite les 10 Mo des
+     * justificatifs (retours des RSE, fichier refusé de 28 Mo). Doit rester
+     * sous client_max_body_size (nginx) et post_max_size (PHP).
+     */
+    public const TAILLE_MAX_OCTETS = 50 * 1024 * 1024;
 
     /** Segment d'URL => entiteType stocké. */
     private const TYPES = [
@@ -173,11 +178,17 @@ final class DocumentController
         // fichier invalide, pas en erreur : sans cette garde, on stockerait
         // une ligne pointant vers un fichier tronqué.
         if (!$fichier->isValid()) {
+            // Refus de PHP sur la taille (upload_max_filesize) : le dire tel
+            // quel plutôt qu'un « fichier invalide » qui ne guide personne.
+            if (\in_array($fichier->getError(), [\UPLOAD_ERR_INI_SIZE, \UPLOAD_ERR_FORM_SIZE], true)) {
+                return ProblemResponseFactory::creer(422, 'Fichier trop volumineux', 'La taille maximale est de 50 Mo.');
+            }
+
             return ProblemResponseFactory::creer(422, 'Fichier invalide', "Le fichier n'a pas pu être reçu (dépassement d'une limite serveur ou envoi interrompu).");
         }
         $tailleOctets = (int) $fichier->getSize();
         if ($tailleOctets > self::TAILLE_MAX_OCTETS) {
-            return ProblemResponseFactory::creer(422, 'Fichier trop volumineux', 'La taille maximale est de 10 Mo.');
+            return ProblemResponseFactory::creer(422, 'Fichier trop volumineux', 'La taille maximale est de 50 Mo.');
         }
 
         $visibilite = VisibilitePieceJointe::tryFrom((string) $request->request->get('visibilite', 'tous'));

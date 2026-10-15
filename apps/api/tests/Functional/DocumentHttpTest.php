@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Controller\DocumentController;
 use App\Entity\Activite;
 use App\Entity\Composante;
 use App\Entity\Permission;
@@ -137,6 +138,46 @@ final class DocumentHttpTest extends WebTestCase
         }
     }
 
+    /**
+     * Retours des RSE : une présentation d'atelier de 28 Mo était refusée.
+     * La bibliothèque accepte 50 Mo ; au-delà, un refus explicite.
+     */
+    public function testUnePresentationLourdePasseEtLaLimiteEstDe50Mo(): void
+    {
+        [$client, $fixture] = $this->demarrer();
+
+        try {
+            $projetUuid = $fixture['projet']->getUuid()->toRfc4122();
+            $this->connecter($client, $fixture['coordonnateur']->getEmail());
+
+            $client->request('POST', "/api/v1/documents/projets/{$projetUuid}", files: [
+                'fichier' => $this->fichierDeTaille('atelier.pptx', 28 * 1024 * 1024),
+            ]);
+            self::assertResponseStatusCodeSame(201, 'Un fichier de 28 Mo entre dans la bibliothèque.');
+
+            $client->request('POST', "/api/v1/documents/projets/{$projetUuid}", files: [
+                'fichier' => $this->fichierDeTaille('trop-lourd.pptx', DocumentController::TAILLE_MAX_OCTETS + 1),
+            ]);
+            self::assertResponseStatusCodeSame(422);
+            self::assertStringContainsString('50 Mo', $this->corps($client)['detail']);
+        } finally {
+            $this->rollback();
+        }
+    }
+
+    /** Fichier creux : la taille est réelle pour PHP sans écrire des dizaines de Mo sur le disque. */
+    private function fichierDeTaille(string $nom, int $octets): UploadedFile
+    {
+        $chemin = tempnam(sys_get_temp_dir(), 'sisep_doc_');
+        self::assertNotFalse($chemin);
+        $flux = fopen($chemin, 'w');
+        self::assertNotFalse($flux);
+        ftruncate($flux, $octets);
+        fclose($flux);
+
+        return new UploadedFile($chemin, $nom, 'application/vnd.openxmlformats-officedocument.presentationml.presentation', null, true);
+    }
+
     private function deposer(KernelBrowser $client, string $projetUuid, string $libelle, string $nom, string $mime): void
     {
         $chemin = tempnam(sys_get_temp_dir(), 'sisep_doc_');
@@ -223,11 +264,13 @@ final class DocumentHttpTest extends WebTestCase
 
         $coordonnateur = new Utilisateur('coordination.doc@example.test', 'temp', 'Coordination', 'SISEP');
         $coordonnateur->setMotDePasseHash($hasher->hashPassword($coordonnateur, self::MOT_DE_PASSE));
+        $coordonnateur->marquerMdpChange();
         $this->em->persist($coordonnateur);
         $this->em->persist(new UtilisateurRole($coordonnateur, $roleCoordonnateur, null));
 
         $focal = new Utilisateur('focal.doc@example.test', 'temp', 'Sarr', 'Ibrahima');
         $focal->setMotDePasseHash($hasher->hashPassword($focal, self::MOT_DE_PASSE));
+        $focal->marquerMdpChange();
         $this->em->persist($focal);
         $this->em->persist(new UtilisateurRole($focal, $rolePointFocal, $structure));
 

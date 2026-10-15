@@ -24,6 +24,7 @@ import { Squelette } from '@/components/Squelette'
 import { useToast } from '@/components/ToastProvider'
 import { Bouton } from '@/components/Bouton'
 import { IconeLier, IconeAnnuler, IconeTransmettre } from '@/components/Icones'
+import { useConfirmer } from '@/lib/confirmation'
 
 const LIBELLES_STATUT_RAPPORT: Record<Rapport['statutAffiche'], string> = {
   attendu: 'Attendu',
@@ -34,6 +35,7 @@ const LIBELLES_STATUT_RAPPORT: Record<Rapport['statutAffiche'], string> = {
 }
 
 export function PartiePrenanteDetail() {
+  const confirmer = useConfirmer()
   const { uuid } = useParams<{ uuid: string }>()
   const { data: structure, isLoading, isError } = useQuery(structureQueryOptions(uuid))
   const { data: activites } = useQuery(structureActivitesQueryOptions(uuid))
@@ -140,7 +142,11 @@ export function PartiePrenanteDetail() {
                           taille="mini"
                           icone={<IconeAnnuler />}
                           disabled={delierEnCours === p.uuid}
-                          onClick={() => delier(p)}
+                          onClick={async () => {
+                        if (await confirmer({ titre: 'Délier le compte', message: `${p.nomComplet} ne sera plus rattaché à son compte utilisateur. Le compte lui-même n'est pas supprimé.`, action: 'Délier' })) {
+                          void delier(p)
+                        }
+                      }}
                         >
                           {delierEnCours === p.uuid ? 'Déliaison…' : 'Délier'}
                         </Bouton>

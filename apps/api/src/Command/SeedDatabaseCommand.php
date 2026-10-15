@@ -273,6 +273,12 @@ final class SeedDatabaseCommand extends Command
             $utilisateur = new Utilisateur($email, $motDePasseHash, $nom, $prenom);
             $utilisateur->setFonction($fonction);
             $utilisateur->setStructure($structure);
+            // Comptes de démonstration : leur mot de passe est connu de tous
+            // par construction, et la commande refuse de tourner en
+            // production. Leur imposer un changement à chaque reseed ne
+            // protégerait rien. Les comptes réels — amorçage, écran
+            // d'administration — y restent soumis.
+            $utilisateur->marquerMdpChange();
             $this->em->persist($utilisateur);
 
             return $utilisateur;
@@ -540,7 +546,7 @@ final class SeedDatabaseCommand extends Command
             $engagement = new Engagement(
                 $cible,
                 $exercice,
-                NatureEngagement::PRESTATION_INTELLECTUELLE,
+                NatureEngagement::SERVICE_CONSULTATION,
                 Montant::fromFcfa($budget['engage']),
                 new \DateTimeImmutable('2026-03-01'),
                 $gestionnaire,
@@ -598,7 +604,7 @@ final class SeedDatabaseCommand extends Command
                 $engagement = new Engagement(
                     $activite,
                     $exercice2025,
-                    NatureEngagement::PRESTATION_INTELLECTUELLE,
+                    NatureEngagement::SERVICE_CONSULTATION,
                     Montant::fromFcfa($montant),
                     new \DateTimeImmutable('2025-03-01'),
                     $gestionnaire,

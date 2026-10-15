@@ -60,4 +60,14 @@ final class Montant
     {
         return $this->fcfa === $autre->fcfa;
     }
+
+    /**
+     * Montant lisible pour un message adressé à l'utilisateur :
+     * « 12 000 000 FCFA », séparateur de milliers insécable pour que le
+     * nombre ne se coupe pas en fin de ligne.
+     */
+    public function formater(): string
+    {
+        return number_format($this->fcfa, 0, ',', "\u{202F}").' FCFA';
+    }
 }

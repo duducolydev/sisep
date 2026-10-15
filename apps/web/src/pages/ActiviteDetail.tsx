@@ -1,9 +1,17 @@
 import { useState } from 'react'
 import { useParams, Link } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
-import { activiteQueryOptions, modifierStatutActivite } from '@/lib/composantes'
+import { activiteQueryOptions, modifierStatutActivite, type SousActiviteDetail } from '@/lib/composantes'
 import { formaterDate, formaterFcfa, formaterTaux } from '@/lib/format'
-import { annulerEngagement, validerDepense, validerEngagement, type Dotation, type Engagement } from '@/lib/budget'
+import {
+  annulerDepense,
+  annulerEngagement,
+  LIBELLES_NATURE_ENGAGEMENT,
+  validerDepense,
+  validerEngagement,
+  type Dotation,
+  type Engagement,
+} from '@/lib/budget'
 import { ApiError } from '@/lib/api-client'
 import { queryClient } from '@/lib/query-client'
 import { usePeut, usePeutSur } from '@/lib/use-permissions'
@@ -12,17 +20,19 @@ import { Pastille } from '@/components/Pastille'
 import { SaisirDotationModale } from '@/components/SaisirDotationModale'
 import { SaisirEngagementModale } from '@/components/SaisirEngagementModale'
 import { SaisirDepenseModale } from '@/components/SaisirDepenseModale'
+import { CreerSousActiviteModale } from '@/components/CreerSousActiviteModale'
 import { ValiderClotureBouton } from '@/components/ValiderClotureBouton'
 import { Squelette } from '@/components/Squelette'
 import { EtapesActivite } from '@/components/EtapesActivite'
 import { Bouton } from '@/components/Bouton'
-import { IconeDotation, IconeEngagement, IconeDepense, IconeValider, IconeAnnuler } from '@/components/Icones'
+import { IconeDotation, IconeEngagement, IconeDepense, IconeValider, IconeAnnuler, IconePlus } from '@/components/Icones'
 
 type CibleBudget = { type: 'activite' | 'sous_activite'; uuid: string }
 type Modale =
   | { type: 'dotation'; cible: CibleBudget }
   | { type: 'engagement'; cible: CibleBudget }
   | { type: 'depense'; engagementUuid: string }
+  | { type: 'sousActivite' }
   | null
 
 export function ActiviteDetail() {
@@ -54,6 +64,8 @@ export function ActiviteDetail() {
   }
 
   const exerciceCourant = new Date().getFullYear()
+  // etapesTotal compte aussi les étapes des lignes : la différence donne les étapes propres.
+  const etapesPropres = activite.etapesTotal - activite.sousActivites.reduce((total, sa) => total + sa.etapesTotal, 0)
 
   async function executerAction(cle: string, action: () => Promise<unknown>) {
     setErreurAction(null)
@@ -183,16 +195,30 @@ export function ActiviteDetail() {
         )}
       </section>
 
-      <EtapesActivite
-        activiteUuid={activite.uuid}
-        peutStructurer={peutStructurerEtapes}
-        peutRenseigner={peutRenseignerEtapes}
-      />
+      {/* Avec des lignes, l'avancement se suit ligne par ligne (retours des
+          RSE) : les étapes propres de l'activité ne s'affichent plus que si
+          elle en porte déjà ou n'a aucune ligne. */}
+      {(activite.sousActivites.length === 0 || etapesPropres > 0) && (
+        <EtapesActivite
+          activiteUuid={activite.uuid}
+          titre={activite.sousActivites.length === 0 ? 'Étapes' : "Étapes propres de l'activité"}
+          peutStructurer={peutStructurerEtapes}
+          peutRenseigner={peutRenseignerEtapes}
+        />
+      )}
 
       <section>
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Sous-activités</h2>
-          <span className="text-sm text-muted">Maille budgétaire du PTBA</span>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="text-lg font-semibold">Activités de {activite.structureResponsable.sigle}</h2>
+            <p className="text-sm text-muted">Lignes du PTBA, chacune avec son budget et ses étapes</p>
+          </div>
+          {/* Découpage réservé à l'UGP : activites.creer, la permission que le serveur exige. */}
+          {peutStructurerEtapes && (
+            <Bouton variante="discret" taille="mini" icone={<IconePlus />} onClick={() => setModale({ type: 'sousActivite' })}>
+              Ajouter une ligne d'activité
+            </Bouton>
+          )}
         </div>
         {activite.sousActivites && activite.sousActivites.length > 0 ? (
           <ul className="flex flex-col gap-3">
@@ -212,6 +238,13 @@ export function ActiviteDetail() {
                     <Pastille statut={sa.statut} />
                   </div>
                 </div>
+
+                <EtapesLigne
+                  activiteUuid={activite.uuid}
+                  ligne={sa}
+                  peutStructurer={peutStructurerEtapes}
+                  peutRenseigner={peutRenseignerEtapes}
+                />
 
                 <div className="flex items-center justify-between">
                   <div className="max-w-xs flex-1">
@@ -285,6 +318,74 @@ export function ActiviteDetail() {
       {modale?.type === 'depense' && (
         <SaisirDepenseModale engagementUuid={modale.engagementUuid} activiteUuid={activite.uuid} onFermer={() => setModale(null)} />
       )}
+      {modale?.type === 'sousActivite' && (
+        <CreerSousActiviteModale
+          activiteUuid={activite.uuid}
+          ordreSuivant={(activite.sousActivites?.length ?? 0) + 1}
+          onFermer={() => setModale(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+/**
+ * Étapes d'une ligne du PTBA (retours des RSE : RNOCB et son recrutement,
+ * sa formation des enquêteurs, sa phase pilote…), repliées par défaut pour
+ * que la liste des lignes reste lisible.
+ */
+function EtapesLigne({
+  activiteUuid,
+  ligne,
+  peutStructurer,
+  peutRenseigner,
+}: {
+  activiteUuid: string
+  ligne: SousActiviteDetail
+  peutStructurer: boolean
+  peutRenseigner: boolean
+}) {
+  const [ouvert, setOuvert] = useState(false)
+
+  return (
+    <div className="rounded-[var(--radius-controle)] bg-nested px-3 py-2">
+      <button
+        type="button"
+        onClick={() => setOuvert((o) => !o)}
+        aria-expanded={ouvert}
+        className="flex w-full flex-wrap items-center gap-3 text-left text-sm"
+      >
+        <span aria-hidden="true" className="text-muted">
+          {ouvert ? '▾' : '▸'}
+        </span>
+        <span className="font-semibold">Étapes</span>
+        {ligne.progression !== null ? (
+          <>
+            <span className="h-1.5 w-28 overflow-hidden rounded-[var(--radius-barre)] bg-track">
+              <span
+                className={`block h-full ${ligne.progression === 1 ? 'bg-success' : 'bg-accent'}`}
+                style={{ width: `${Math.round(ligne.progression * 100)}%` }}
+              />
+            </span>
+            <span className="chiffres">{formaterTaux(ligne.progression)}</span>
+            <span className="chiffres text-muted">
+              {ligne.etapesAchevees} / {ligne.etapesTotal} achevées
+            </span>
+          </>
+        ) : (
+          <span className="text-muted">non structurée</span>
+        )}
+      </button>
+      {ouvert && (
+        <div className="mt-3">
+          <EtapesActivite
+            activiteUuid={activiteUuid}
+            sousActiviteUuid={ligne.uuid}
+            peutStructurer={peutStructurer}
+            peutRenseigner={peutRenseigner}
+          />
+        </div>
+      )}
     </div>
   )
 }
@@ -337,7 +438,7 @@ function ListeEngagements({
         <li key={e.uuid} className="rounded-[var(--radius-carte)] bg-surface px-4 py-3 shadow-[var(--shadow-carte)]">
           <div className="flex items-center justify-between">
             <span>
-              {e.referenceMarche ?? 'Sans référence'} · {e.nature}
+              {e.referenceMarche ?? 'Sans référence'} · {LIBELLES_NATURE_ENGAGEMENT[e.nature] ?? e.nature}
             </span>
             <span className="chiffres">{formaterFcfa(e.montant)}</span>
           </div>
@@ -393,6 +494,17 @@ function ListeEngagements({
                         onClick={() => executerAction(`valider-dep-${d.uuid}`, () => validerDepense(d.uuid))}
                       >
                         Valider
+                      </Bouton>
+                    )}
+                    {d.statut === 'brouillon' && peutValiderDepense && (
+                      <Bouton
+                        variante="discret"
+                        taille="mini"
+                        icone={<IconeAnnuler />}
+                        disabled={actionEnCours === `annuler-dep-${d.uuid}`}
+                        onClick={() => executerAction(`annuler-dep-${d.uuid}`, () => annulerDepense(d.uuid))}
+                      >
+                        Annuler
                       </Bouton>
                     )}
                   </span>

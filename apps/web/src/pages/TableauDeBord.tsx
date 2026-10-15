@@ -173,7 +173,7 @@ export function TableauDeBord() {
             </div>
             <ul className="flex flex-col gap-2">
               {activiteRecenteFiltree.map((e) => (
-                <li key={`${e.horodatage}-${e.type}-${e.action}-${e.code ?? ''}`} className="flex items-start gap-2 text-sm">
+                <li key={e.id} className="flex items-start gap-2 text-sm">
                   <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${CLASSES_EVENEMENT[e.action] ?? 'bg-muted'}`} />
                   <span className="chiffres shrink-0 text-xs text-muted">{formaterDate(e.horodatage)}</span>
                   <span className="min-w-0">

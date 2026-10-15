@@ -28,6 +28,12 @@ use Doctrine\ORM\Mapping as ORM;
  *
  * La portée suit celle de l'activité : qui peut modifier l'activité renseigne
  * ses étapes, sans attribution supplémentaire.
+ *
+ * Étapes d'une ligne (retours des RSE, octobre 2026) : une étape peut aussi
+ * appartenir à une sous-activité — une ligne du PTBA comme RNOCB, avec ses
+ * propres étapes (recrutement, formation des enquêteurs, phase pilote…).
+ * Elle reste rattachée à l'activité parente, qui porte la portée, le journal
+ * et les pièces jointes ; `sousActivite` nul = étape propre de l'activité.
  */
 #[ORM\Entity(repositoryClass: EtapeActiviteRepository::class)]
 #[ORM\Table(name: 'etapes_activite')]
@@ -40,6 +46,10 @@ class EtapeActivite implements PorteeParStructureInterface
     #[ORM\ManyToOne(targetEntity: Activite::class, inversedBy: 'etapes')]
     #[ORM\JoinColumn(nullable: false)]
     private Activite $activite;
+
+    #[ORM\ManyToOne(targetEntity: SousActivite::class, inversedBy: 'etapes')]
+    #[ORM\JoinColumn(nullable: true)]
+    private ?SousActivite $sousActivite = null;
 
     #[ORM\Column(length: 160)]
     private string $libelle;
@@ -71,10 +81,16 @@ class EtapeActivite implements PorteeParStructureInterface
     #[ORM\OneToMany(targetEntity: Livrable::class, mappedBy: 'etape', cascade: ['persist'])]
     private Collection $livrables;
 
-    public function __construct(Activite $activite, string $libelle, int $ordre)
+    public function __construct(Activite $activite, string $libelle, int $ordre, ?SousActivite $sousActivite = null)
     {
+        if (null !== $sousActivite && $sousActivite->getActivite() !== $activite) {
+            throw new \InvalidArgumentException('La sous-activité doit appartenir à l\'activité de l\'étape.');
+        }
+
         $this->initialiserUuid();
         $this->activite = $activite;
+        $this->sousActivite = $sousActivite;
+        $sousActivite?->ajouterEtape($this);
         $this->libelle = $libelle;
         $this->ordre = $ordre;
         $this->livrables = new ArrayCollection();
@@ -86,9 +102,17 @@ class EtapeActivite implements PorteeParStructureInterface
         return $this->activite;
     }
 
+    public function getSousActivite(): ?SousActivite
+    {
+        return $this->sousActivite;
+    }
+
+    /** Une étape de ligne suit la structure de sa ligne, qui hérite elle-même de l'activité. */
     public function getStructurePourPortee(): ?Structure
     {
-        return $this->activite->getStructureResponsable();
+        return null !== $this->sousActivite
+            ? $this->sousActivite->getStructurePourPortee()
+            : $this->activite->getStructurePourPortee();
     }
 
     public function getLibelle(): string

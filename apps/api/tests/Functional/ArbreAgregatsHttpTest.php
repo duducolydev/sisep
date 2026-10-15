@@ -60,6 +60,7 @@ final class ArbreAgregatsHttpTest extends WebTestCase
             $motDePasse = 'MotDePasseValide123!';
             $utilisateur = new Utilisateur('lecteur.arbre@example.test', 'temp', 'Test', 'Lecteur');
             $utilisateur->setMotDePasseHash($hasher->hashPassword($utilisateur, $motDePasse));
+            $utilisateur->marquerMdpChange();
             $this->em->persist($utilisateur);
             $this->em->persist(new UtilisateurRole($utilisateur, $role));
 
@@ -146,7 +147,7 @@ final class ArbreAgregatsHttpTest extends WebTestCase
         $engagement = new Engagement(
             $activite,
             $exercice,
-            NatureEngagement::FONCTIONNEMENT,
+            NatureEngagement::AUTRE_FONCTIONNEMENT,
             Montant::fromFcfa($engage),
             new \DateTimeImmutable('2026-03-01'),
             $utilisateur,

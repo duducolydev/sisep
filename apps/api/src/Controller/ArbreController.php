@@ -12,6 +12,7 @@ use App\Query\AlertesReader;
 use App\Query\ArbreReader;
 use App\Query\DecaissementReader;
 use App\Query\ExecutionPluriannuelleReader;
+use App\Query\ExecutionSyntheseReader;
 use App\Query\SyntheseReader;
 use App\Repository\ExerciceRepository;
 use App\Repository\ProjetRepository;
@@ -37,6 +38,7 @@ final class ArbreController
         private readonly AlertesReader $alertesReader,
         private readonly ActiviteRecenteReader $activiteRecenteReader,
         private readonly ExecutionPluriannuelleReader $executionPluriannuelleReader,
+        private readonly ExecutionSyntheseReader $executionSyntheseReader,
     ) {
     }
 
@@ -72,6 +74,51 @@ final class ArbreController
      * dizaines de kilo-octets et l'IHM en a besoin d'un bloc pour le
      * filtrage instantané (§ 6.2 du brief).
      */
+    /**
+     * Exécution physique et financière (retours des RSE, octobre 2026).
+     * Période : l'exercice entier, ou un trimestre (`trimestre=1..4`), ou un
+     * mois (`mois=1..12`) de cet exercice. Filtres : `composante`, `activite`
+     * (UUID) — le détail descend d'un niveau sous la sélection.
+     */
+    #[Route('/{uuid}/execution', name: 'app_projet_execution', methods: ['GET'])]
+    public function execution(string $uuid, Request $request): Response
+    {
+        $projet = $this->projetOuErreur($uuid);
+        $exercice = $this->exerciceOuErreur($projet, $request);
+        if ($exercice instanceof Response) {
+            return $exercice;
+        }
+
+        $annee = $exercice->getAnnee();
+        $debut = $exercice->getDateDebut();
+        $fin = $exercice->getDateFin();
+        $trimestre = $request->query->get('trimestre');
+        $mois = $request->query->get('mois');
+        if (null !== $trimestre && '' !== $trimestre) {
+            $t = (int) $trimestre;
+            if ($t < 1 || $t > 4) {
+                return ProblemResponseFactory::creer(422, 'Paramètre invalide', 'trimestre doit valoir 1, 2, 3 ou 4.');
+            }
+            $debut = new \DateTimeImmutable(\sprintf('%d-%02d-01', $annee, ($t - 1) * 3 + 1));
+            $fin = $debut->modify('+3 months -1 day');
+        } elseif (null !== $mois && '' !== $mois) {
+            $m = (int) $mois;
+            if ($m < 1 || $m > 12) {
+                return ProblemResponseFactory::creer(422, 'Paramètre invalide', 'mois doit valoir de 1 à 12.');
+            }
+            $debut = new \DateTimeImmutable(\sprintf('%d-%02d-01', $annee, $m));
+            $fin = $debut->modify('last day of this month');
+        }
+
+        $composante = $this->uuidOuNull((string) $request->query->get('composante', ''))?->toRfc4122();
+        $activite = $this->uuidOuNull((string) $request->query->get('activite', ''))?->toRfc4122();
+
+        return new JsonResponse([
+            'exercice' => $annee,
+            ...$this->executionSyntheseReader->lire((int) $projet->getId(), (int) $exercice->getId(), $debut, $fin, $composante, $activite),
+        ]);
+    }
+
     #[Route('/{uuid}/arbre', name: 'app_projet_arbre', methods: ['GET'])]
     public function arbre(string $uuid, Request $request): Response
     {

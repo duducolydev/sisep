@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Modale } from './Modale'
 import { Bouton } from './Bouton'
 import { DropzoneFichier } from './DropzoneFichier'
-import { deposerDocument, VISIBILITES, type TypeRattachement } from '@/lib/documents'
+import { TAILLE_MAX_DOCUMENT_OCTETS, deposerDocument, VISIBILITES, type TypeRattachement } from '@/lib/documents'
 import { queryClient } from '@/lib/query-client'
 
 interface DeposerDocumentModaleProps {
@@ -12,7 +12,7 @@ interface DeposerDocumentModaleProps {
   onFermer: () => void
 }
 
-/** Dépôt d'un document dans la bibliothèque — intitulé libre, visibilité, fichier (10 Mo au plus, limite du serveur). */
+/** Dépôt d'un document dans la bibliothèque — intitulé libre, visibilité, fichier (50 Mo au plus, limite du serveur). */
 export function DeposerDocumentModale({ type, cibleUuid, cibleLibelle, onFermer }: DeposerDocumentModaleProps) {
   const [fichier, setFichier] = useState<File | null>(null)
   const [libelle, setLibelle] = useState('')
@@ -23,6 +23,11 @@ export function DeposerDocumentModale({ type, cibleUuid, cibleLibelle, onFermer 
   async function enregistrer() {
     if (fichier === null) {
       setErreur('Choisissez un fichier.')
+
+      return
+    }
+    if (fichier.size > TAILLE_MAX_DOCUMENT_OCTETS) {
+      setErreur('Fichier trop volumineux : la taille maximale est de 50 Mo.')
 
       return
     }
@@ -83,7 +88,10 @@ export function DeposerDocumentModale({ type, cibleUuid, cibleLibelle, onFermer 
           </select>
         </div>
 
-        <DropzoneFichier fichier={fichier} onChange={setFichier} />
+        <div className="flex flex-col gap-1">
+          <DropzoneFichier fichier={fichier} onChange={setFichier} />
+          <p className="text-xs text-muted">50 Mo au plus.</p>
+        </div>
       </div>
 
       <div className="mt-5 flex justify-end gap-3 border-t border-border pt-4">

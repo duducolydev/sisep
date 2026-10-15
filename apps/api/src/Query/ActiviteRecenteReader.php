@@ -37,11 +37,11 @@ final class ActiviteRecenteReader
     {
     }
 
-    /** @return list<array{horodatage: string, type: string, action: string, libelleAction: string, code: ?string, libelleCible: ?string, utilisateur: ?string}> */
+    /** @return list<array{id: string, horodatage: string, type: string, action: string, libelleAction: string, code: ?string, libelleCible: ?string, utilisateur: ?string}> */
     public function lire(int $projetId, int $limite = 15): array
     {
         $sql = <<<'SQL'
-            (SELECT j.cree_le, j.action, j.entite_type, a.code, a.libelle, u.prenom, u.nom
+            (SELECT j.id, j.cree_le, j.action, j.entite_type, a.code, a.libelle, u.prenom, u.nom
              FROM journal_activite j
              JOIN activites a ON a.id = j.entite_id
              JOIN sous_composantes sc ON sc.id = a.sous_composante_id
@@ -49,7 +49,7 @@ final class ActiviteRecenteReader
              LEFT JOIN utilisateurs u ON u.id = j.utilisateur_id
              WHERE j.entite_type = 'activite' AND c.projet_id = ?)
             UNION ALL
-            (SELECT j.cree_le, j.action, j.entite_type, a.code, a.libelle, u.prenom, u.nom
+            (SELECT j.id, j.cree_le, j.action, j.entite_type, a.code, a.libelle, u.prenom, u.nom
              FROM journal_activite j
              JOIN dotations d ON d.id = j.entite_id
              LEFT JOIN sous_activites sad ON sad.id = d.sous_activite_id
@@ -59,7 +59,7 @@ final class ActiviteRecenteReader
              LEFT JOIN utilisateurs u ON u.id = j.utilisateur_id
              WHERE j.entite_type = 'dotation' AND c.projet_id = ?)
             UNION ALL
-            (SELECT j.cree_le, j.action, j.entite_type, a.code, a.libelle, u.prenom, u.nom
+            (SELECT j.id, j.cree_le, j.action, j.entite_type, a.code, a.libelle, u.prenom, u.nom
              FROM journal_activite j
              JOIN engagements e ON e.id = j.entite_id
              LEFT JOIN sous_activites sae ON sae.id = e.sous_activite_id
@@ -69,7 +69,7 @@ final class ActiviteRecenteReader
              LEFT JOIN utilisateurs u ON u.id = j.utilisateur_id
              WHERE j.entite_type = 'engagement' AND c.projet_id = ?)
             UNION ALL
-            (SELECT j.cree_le, j.action, j.entite_type, a.code, a.libelle, u.prenom, u.nom
+            (SELECT j.id, j.cree_le, j.action, j.entite_type, a.code, a.libelle, u.prenom, u.nom
              FROM journal_activite j
              JOIN depenses dp ON dp.id = j.entite_id
              JOIN engagements e ON e.id = dp.engagement_id
@@ -80,19 +80,22 @@ final class ActiviteRecenteReader
              LEFT JOIN utilisateurs u ON u.id = j.utilisateur_id
              WHERE j.entite_type = 'depense' AND c.projet_id = ?)
             UNION ALL
-            (SELECT j.cree_le, j.action, j.entite_type, i.code, i.libelle, u.prenom, u.nom
+            (SELECT j.id, j.cree_le, j.action, j.entite_type, i.code, i.libelle, u.prenom, u.nom
              FROM journal_activite j
              JOIN indicateurs i ON i.id = j.entite_id
              LEFT JOIN utilisateurs u ON u.id = j.utilisateur_id
              WHERE j.entite_type = 'indicateur' AND i.projet_id = ?)
             UNION ALL
-            (SELECT j.cree_le, j.action, j.entite_type, i.code, i.libelle, u.prenom, u.nom
+            (SELECT j.id, j.cree_le, j.action, j.entite_type, i.code, i.libelle, u.prenom, u.nom
              FROM journal_activite j
              JOIN indicateur_valeurs iv ON iv.id = j.entite_id
              JOIN indicateurs i ON i.id = iv.indicateur_id
              LEFT JOIN utilisateurs u ON u.id = j.utilisateur_id
              WHERE j.entite_type = 'indicateur_valeur' AND i.projet_id = ?)
-            ORDER BY cree_le DESC
+            -- L'identifiant départage les écritures d'une même seconde : un
+            -- import en produit des dizaines, et sans lui l'ordre changeait
+            -- d'un affichage à l'autre.
+            ORDER BY cree_le DESC, id DESC
             LIMIT ?
             SQL;
 
@@ -112,7 +115,7 @@ final class ActiviteRecenteReader
     /**
      * @param array<string, mixed> $ligne
      *
-     * @return array{horodatage: string, type: string, action: string, libelleAction: string, code: ?string, libelleCible: ?string, utilisateur: ?string}
+     * @return array{id: string, horodatage: string, type: string, action: string, libelleAction: string, code: ?string, libelleCible: ?string, utilisateur: ?string}
      */
     private function normaliserLigne(array $ligne): array
     {
@@ -120,6 +123,10 @@ final class ActiviteRecenteReader
         $utilisateur = null !== $ligne['prenom'] ? trim($ligne['prenom'].' '.$ligne['nom']) : null;
 
         return [
+            // Seul identifiant unique d'un événement : horodatage, type et
+            // code se répètent quand plusieurs dotations d'une même activité
+            // changent dans la même seconde, ce que fait l'import du PTBA.
+            'id' => (string) $ligne['id'],
             'horodatage' => (new \DateTimeImmutable($ligne['cree_le']))->format(\DateTimeInterface::ATOM),
             'type' => $ligne['entite_type'],
             'action' => $ligne['action'],

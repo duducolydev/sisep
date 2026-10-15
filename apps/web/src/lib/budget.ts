@@ -117,6 +117,28 @@ export interface Engagement {
 }
 
 /** `activite` XOR `sousActivite` doit être fourni (§ 5.1, alignement PTBA : une ligne budgétaire cible l'un ou l'autre). */
+/**
+ * Natures d'engagement — miroir de l'enum PHP App\Enum\NatureEngagement,
+ * nomenclature des RSE. `groupe` regroupe les natures de fonctionnement dans
+ * la liste de saisie.
+ */
+export const NATURES_ENGAGEMENT: { valeur: string; libelle: string; groupe?: 'Fonctionnement' }[] = [
+  { valeur: 'travaux', libelle: 'Travaux' },
+  { valeur: 'fournitures', libelle: 'Fournitures de biens' },
+  { valeur: 'acquisition_biens', libelle: 'Acquisition de biens' },
+  { valeur: 'service_consultation', libelle: 'Service de consultation' },
+  { valeur: 'service_courant', libelle: 'Service courant' },
+  { valeur: 'salaire', libelle: 'Salaire', groupe: 'Fonctionnement' },
+  { valeur: 'frais_mission', libelle: 'Frais de mission', groupe: 'Fonctionnement' },
+  { valeur: 'atelier', libelle: 'Atelier', groupe: 'Fonctionnement' },
+  { valeur: 'remboursement_transport', libelle: 'Remboursement de transport', groupe: 'Fonctionnement' },
+  { valeur: 'autre_fonctionnement', libelle: 'Autres natures de fonctionnement', groupe: 'Fonctionnement' },
+]
+
+export const LIBELLES_NATURE_ENGAGEMENT: Record<string, string> = Object.fromEntries(
+  NATURES_ENGAGEMENT.map((n) => [n.valeur, n.libelle]),
+)
+
 export function creerDotation(entree: {
   activite?: string
   sousActivite?: string
@@ -159,4 +181,8 @@ export function creerDepense(entree: { engagement: string; montant: number; date
 
 export function validerDepense(uuid: string) {
   return apiClient.post<Depense>(`/depenses/${uuid}/valider`)
+}
+
+export function annulerDepense(uuid: string) {
+  return apiClient.post<Depense>(`/depenses/${uuid}/annuler`)
 }

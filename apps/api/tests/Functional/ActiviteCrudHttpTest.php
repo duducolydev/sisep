@@ -66,12 +66,14 @@ final class ActiviteCrudHttpTest extends WebTestCase
 
             $coordonnateur = new Utilisateur('coordo.crud@example.test', 'temp', 'Test', 'Coordo');
             $coordonnateur->setMotDePasseHash($hasher->hashPassword($coordonnateur, $motDePasse));
+            $coordonnateur->marquerMdpChange();
             $this->em->persist($coordonnateur);
             $this->em->persist(new UtilisateurRole($coordonnateur, $roleCoordonnateur));
 
             $pointFocal = new Utilisateur('focal.crud@example.test', 'temp', 'Test', 'Focal');
             $pointFocal->setStructure($dsid);
             $pointFocal->setMotDePasseHash($hasher->hashPassword($pointFocal, $motDePasse));
+            $pointFocal->marquerMdpChange();
             $this->em->persist($pointFocal);
             $this->em->persist(new UtilisateurRole($pointFocal, $rolePointFocal, $dsid));
 

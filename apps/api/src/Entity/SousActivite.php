@@ -68,6 +68,11 @@ class SousActivite implements PorteeParStructureInterface
     #[ORM\OneToMany(targetEntity: Engagement::class, mappedBy: 'sousActivite')]
     private Collection $engagements;
 
+    /** @var Collection<int, EtapeActivite> */
+    #[ORM\OneToMany(targetEntity: EtapeActivite::class, mappedBy: 'sousActivite')]
+    #[ORM\OrderBy(['ordre' => 'ASC'])]
+    private Collection $etapes;
+
     public function __construct(Activite $activite, string $libelle)
     {
         $this->initialiserUuid();
@@ -76,6 +81,21 @@ class SousActivite implements PorteeParStructureInterface
         $this->realisations = new ArrayCollection();
         $this->dotations = new ArrayCollection();
         $this->engagements = new ArrayCollection();
+        $this->etapes = new ArrayCollection();
+    }
+
+    /** @return Collection<int, EtapeActivite> */
+    public function getEtapesActives(): Collection
+    {
+        return $this->etapes->filter(fn (EtapeActivite $e) => !$e->estSupprime());
+    }
+
+    /** Réservé au constructeur de EtapeActivite — garde les deux côtés cohérents avant même un flush. */
+    public function ajouterEtape(EtapeActivite $etape): void
+    {
+        if (!$this->etapes->contains($etape)) {
+            $this->etapes->add($etape);
+        }
     }
 
     public function getActivite(): Activite

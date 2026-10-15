@@ -6,8 +6,11 @@ import {
   indicateurValeursQueryOptions,
   invitationsQueryOptions,
   revoquerInvitation,
+  libelleRattachement,
   validerValeur,
+  valeurAffichee,
 } from '@/lib/indicateurs'
+import { useConfirmer } from '@/lib/confirmation'
 import { formaterDate, formaterValeurIndicateur } from '@/lib/format'
 import { ApiError } from '@/lib/api-client'
 import { queryClient } from '@/lib/query-client'
@@ -47,6 +50,7 @@ export function IndicateurDetail() {
 
   const peutValider = usePeut('indicateurs.valider')
   const afficherToast = useToast()
+  const confirmer = useConfirmer()
 
   if (isLoading) return <Squelette lignes={6} />
   if (isError || !indicateur) {
@@ -60,9 +64,12 @@ export function IndicateurDetail() {
     )
   }
 
+  // Valeurs validées, plus la saisie en attente si elle est la plus récente :
+  // un brouillon plus ancien que la dernière validation ne dit rien du niveau actuel.
   const pointsCourbe = (valeurs?.donnees ?? [])
-    .filter((v) => v.statut === 'valide')
-    .map((v) => ({ periode: v.periode, valeur: Number(v.valeur) }))
+    .filter((v) => v.statut === 'valide' || v.uuid === indicateur.enAttente?.uuid)
+    .map((v) => ({ periode: v.periode, valeur: Number(v.valeur), enAttente: v.statut !== 'valide' }))
+  const affiche = valeurAffichee(indicateur)
 
   const valeursFiltrees = (valeurs?.donnees ?? []).filter((v) => correspondAPeriode(v.periode))
 
@@ -108,7 +115,7 @@ export function IndicateurDetail() {
         {indicateur.precisionLibelle && <p className="text-muted">{indicateur.precisionLibelle}</p>}
         <p className="mt-2 text-sm text-muted">
           Source : {indicateur.source} · Fréquence : {indicateur.frequence}
-          {indicateur.composante && ` · Composante ${indicateur.composante.code}`}
+          {` · ${libelleRattachement(indicateur)}`}
         </p>
       </div>
 
@@ -135,10 +142,11 @@ export function IndicateurDetail() {
             </dd>
           </div>
           <div>
-            <dt className="text-muted text-sm">Actuel {indicateur.periodeActuelle && `(${formaterDate(indicateur.periodeActuelle)})`}</dt>
+            <dt className="text-muted text-sm">Actuel {affiche.periode && `(${formaterDate(affiche.periode)})`}</dt>
             <dd className="chiffres text-lg">
-              {indicateur.actuel === null ? '—' : `${formaterValeurIndicateur(indicateur.actuel)} ${indicateur.unite}`}
+              {affiche.valeur === null ? '—' : `${formaterValeurIndicateur(affiche.valeur)} ${indicateur.unite}`}
             </dd>
+            {affiche.enAttente && <dd className="text-xs text-eyebrow">En attente de validation</dd>}
           </div>
           {indicateur.valeurIntermediaire !== null && (
             <div>
@@ -157,9 +165,9 @@ export function IndicateurDetail() {
             </dd>
           </div>
           <div>
-            <dt className="text-muted text-sm">Taux d'atteinte</dt>
+            <dt className="text-muted text-sm">Taux d'atteinte{affiche.enAttente && ' (provisoire)'}</dt>
             <dd className="mt-1">
-              <BarreAtteinte taux={indicateur.tauxAtteinte} />
+              <BarreAtteinte taux={affiche.tauxAtteinte} />
             </dd>
           </div>
         </dl>
@@ -167,7 +175,8 @@ export function IndicateurDetail() {
         <div className="mt-4 rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
           <BarresObjectifsIndicateur
             valeurReference={indicateur.valeurReference}
-            actuel={indicateur.actuel}
+            actuel={affiche.valeur}
+            actuelEnAttente={affiche.enAttente}
             valeurIntermediaire={indicateur.valeurIntermediaire}
             valeurCible={indicateur.valeurCible}
             unite={indicateur.unite}
@@ -178,7 +187,11 @@ export function IndicateurDetail() {
       <section>
         <h2 className="mb-2 text-lg font-semibold">Évolution</h2>
         <div className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
-          <CourbeIndicateur points={pointsCourbe} unite={indicateur.unite} tauxAtteinte={indicateur.tauxAtteinte} />
+          {valeurs === undefined ? (
+            <Squelette lignes={3} />
+          ) : (
+            <CourbeIndicateur points={pointsCourbe} unite={indicateur.unite} tauxAtteinte={affiche.tauxAtteinte} />
+          )}
         </div>
       </section>
 
@@ -208,7 +221,17 @@ export function IndicateurDetail() {
                   <IconeBouton
                     libelle="Révoquer l'invitation"
                     disabled={actionEnCours === inv.uuid}
-                    onClick={() => executerRevocation(inv.uuid)}
+                    onClick={async () => {
+                      if (
+                        await confirmer({
+                          titre: 'Révoquer l’invitation',
+                          message: `${inv.utilisateur.nomComplet} ne pourra plus consulter ni saisir cet indicateur.`,
+                          action: 'Révoquer',
+                        })
+                      ) {
+                        void executerRevocation(inv.uuid)
+                      }
+                    }}
                     classeCouleur="text-muted hover:bg-bad-bg hover:text-bad"
                   >
                     <IconeAnnuler />
@@ -284,7 +307,11 @@ export function IndicateurDetail() {
           </ul>
         ) : (
           <p className="text-muted">
-            {valeurs && valeurs.donnees.length > 0 ? 'Aucune valeur pour cette période.' : 'Aucune valeur saisie pour le moment.'}
+            {valeurs === undefined
+              ? 'Chargement…'
+              : valeurs.donnees.length > 0
+                ? 'Aucune valeur pour cette période.'
+                : 'Aucune valeur saisie pour le moment.'}
           </p>
         )}
       </section>

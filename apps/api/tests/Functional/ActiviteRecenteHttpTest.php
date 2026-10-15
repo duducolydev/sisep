@@ -58,6 +58,7 @@ final class ActiviteRecenteHttpTest extends WebTestCase
 
             $utilisateur = new Utilisateur('gestionnaire.recent@example.test', 'temp', 'Test', 'Gestionnaire');
             $utilisateur->setMotDePasseHash($hasher->hashPassword($utilisateur, self::MOT_DE_PASSE));
+            $utilisateur->marquerMdpChange();
             $this->em->persist($utilisateur);
             $this->em->persist(new UtilisateurRole($utilisateur, $role, null));
 

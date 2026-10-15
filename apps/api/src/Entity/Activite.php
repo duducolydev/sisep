@@ -208,10 +208,25 @@ class Activite implements PorteeParStructureInterface
         return $this->etapes;
     }
 
-    /** @return Collection<int, EtapeActivite> */
+    /**
+     * Toutes les étapes actives de l'activité, y compris celles de ses lignes.
+     *
+     * @return Collection<int, EtapeActivite>
+     */
     public function getEtapesActives(): Collection
     {
-        return $this->etapes->filter(fn (EtapeActivite $e) => !$e->estSupprime());
+        return $this->etapes->filter(fn (EtapeActivite $e) => !$e->estSupprime()
+            && (null === $e->getSousActivite() || !$e->getSousActivite()->estSupprime()));
+    }
+
+    /**
+     * Étapes propres de l'activité, hors lignes (sous-activités).
+     *
+     * @return Collection<int, EtapeActivite>
+     */
+    public function getEtapesPropres(): Collection
+    {
+        return $this->getEtapesActives()->filter(fn (EtapeActivite $e) => null === $e->getSousActivite());
     }
 
     /** Réservé au constructeur de EtapeActivite (côté propriétaire) — garde les deux côtés cohérents avant même un flush. */

@@ -10,9 +10,11 @@ import { ApiError } from '@/lib/api-client'
 import { gabaritsEtapesQueryOptions, modifierGabaritEtapes, supprimerGabaritEtapes, type GabaritEtapes } from '@/lib/etapes'
 import { queryClient } from '@/lib/query-client'
 import { usePeut } from '@/lib/use-permissions'
+import { useConfirmer } from '@/lib/confirmation'
 
 /** Référentiel des gabarits d'étapes (§ 6 du CR du 22/09/2026) — la méthode de suivi du projet se normalise ici, pas activité par activité. */
 export function AdminGabaritsEtapes() {
+  const confirmer = useConfirmer()
   const { data: gabarits, isLoading, isError } = useQuery(gabaritsEtapesQueryOptions(true))
   const peutGerer = usePeut('admin.parametres')
   const afficherToast = useToast()
@@ -109,7 +111,11 @@ export function AdminGabaritsEtapes() {
                     <IconeBouton
                       libelle="Supprimer le gabarit"
                       disabled={actionEnCours === g.uuid}
-                      onClick={() => void executer(g.uuid, () => supprimerGabaritEtapes(g.uuid), 'Gabarit supprimé.')}
+                      onClick={async () => {
+                        if (await confirmer({ titre: 'Supprimer le gabarit', message: `Le gabarit « ${g.libelle} » sera supprimé. Les étapes déjà créées à partir de lui sur les activités restent en place.`, action: 'Supprimer' })) {
+                          void executer(g.uuid, () => supprimerGabaritEtapes(g.uuid), 'Gabarit supprimé.')
+                        }
+                      }}
                       classeCouleur="text-muted hover:bg-bad-bg hover:text-bad"
                     >
                       <IconeSupprimer />

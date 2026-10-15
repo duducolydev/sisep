@@ -150,6 +150,7 @@ final class PorteeIndicateurEtAvancementHttpTest extends WebTestCase
 
         $focalDsid = new Utilisateur('focal.dsid.avancement@example.test', 'temp', 'Sarr', 'Ibrahima');
         $focalDsid->setMotDePasseHash($hasher->hashPassword($focalDsid, self::MOT_DE_PASSE));
+        $focalDsid->marquerMdpChange();
         $this->em->persist($focalDsid);
         $this->em->persist(new UtilisateurRole($focalDsid, $rolePointFocal, $dsid));
         $this->em->persist(new UtilisateurRole($focalDsid, $roleLecture, null));

@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate, redirect } from 'react-router'
 import { Layout } from './components/Layout'
 import { Connexion } from './pages/Connexion'
+import { ChangerMotDePasse } from './pages/ChangerMotDePasse'
 import { profilQueryOptions } from './lib/auth'
 import { queryClient } from './lib/query-client'
 import { gardePermission, gardeAccesIndicateurs } from './lib/garde-permission'
@@ -13,12 +14,32 @@ import { gardePermission, gardeAccesIndicateurs } from './lib/garde-permission'
 export const router = createBrowserRouter([
   { path: '/connexion', element: <Connexion /> },
   {
+    // Hors de la coquille : tant que le mot de passe temporaire n'est pas
+    // changé, le serveur refuse toute donnée métier, la coquille n'aurait
+    // rien à afficher. N'ouvre qu'à un compte connecté qui doit changer.
+    path: '/changer-mot-de-passe',
+    element: <ChangerMotDePasse />,
+    loader: async () => {
+      const profil = await queryClient.ensureQueryData(profilQueryOptions())
+      if (profil === null) {
+        throw redirect('/connexion')
+      }
+      if (!profil.doitChangerMdp) {
+        throw redirect('/tableau-de-bord')
+      }
+      return null
+    },
+  },
+  {
     path: '/',
     element: <Layout />,
     loader: async () => {
       const profil = await queryClient.ensureQueryData(profilQueryOptions())
       if (profil === null) {
         throw redirect('/connexion')
+      }
+      if (profil.doitChangerMdp) {
+        throw redirect('/changer-mot-de-passe')
       }
       return null
     },
@@ -32,6 +53,7 @@ export const router = createBrowserRouter([
         lazy: () => import('./pages/ActiviteDetail').then((m) => ({ Component: m.ActiviteDetail })),
       },
       { path: 'budget', lazy: () => import('./pages/Budget').then((m) => ({ Component: m.Budget })) },
+      { path: 'execution', lazy: () => import('./pages/Execution').then((m) => ({ Component: m.Execution })) },
       {
         path: 'indicateurs',
         loader: gardeAccesIndicateurs,

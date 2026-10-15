@@ -96,7 +96,7 @@ export function CourbeDecaissement({ points }: CourbeDecaissementProps) {
         </span>
         {dernierPointRealise && ecart !== null && (
           <span className="ml-auto">
-            Écart au {FORMATEUR_MOIS.format(new Date(`${dernierPointRealise.mois}-01`))} :{' '}
+            Écart fin {FORMATEUR_MOIS.format(new Date(`${dernierPointRealise.mois}-01`))} :{' '}
             <span className={`chiffres font-semibold ${ecart < 0 ? 'text-bad' : 'text-ok'}`}>
               {ecart < 0 ? '−' : '+'}
               {formaterMds(Math.abs(ecart))} Md

@@ -6,6 +6,8 @@ import { useNavigate } from 'react-router'
 import { connecter, profilQueryOptions } from '@/lib/auth'
 import { ApiError } from '@/lib/api-client'
 import { queryClient } from '@/lib/query-client'
+import { BandeauAnsd } from '@/components/BandeauAnsd'
+import logoAnsd from '@/assets/ansd/logo-ansd.png'
 
 const schema = z.object({
   email: z.string().min(1, "L'adresse e-mail est requise.").email('Adresse e-mail invalide.'),
@@ -41,7 +43,7 @@ export function Connexion() {
     try {
       const profil = await connecter(valeurs.email, valeurs.motDePasse)
       queryClient.setQueryData(profilQueryOptions().queryKey, profil)
-      await navigate('/tableau-de-bord', { replace: true })
+      await navigate(profil.doitChangerMdp ? '/changer-mot-de-passe' : '/tableau-de-bord', { replace: true })
     } catch (e) {
       // § 8.2 : bandeau d'erreur non bloquant, la saisie reste en place.
       setErreur(e instanceof ApiError ? e.message : 'Une erreur est survenue. Réessayez.')
@@ -49,16 +51,15 @@ export function Connexion() {
   }
 
   return (
-    <div className="page-connexion grid min-h-screen bg-surface lg:grid-cols-[44%_1fr]">
+    <div className="page-connexion flex min-h-screen flex-col bg-surface">
+      <BandeauAnsd hauteur="haute">
+        <p className="font-titre text-lg leading-tight font-bold sm:text-2xl">SISEP</p>
+        <p className="hidden text-xs tracking-[.08em] text-white/85 uppercase sm:block">Système de suivi-évaluation · Projet PHASAOC</p>
+      </BandeauAnsd>
+      <div className="grid flex-1 lg:grid-cols-[44%_1fr]">
       <PanneauMarque />
 
-      <main className="flex min-h-screen flex-col">
-        <header className="flex items-center justify-between px-6 pt-6 sm:px-12 lg:px-16">
-          <p className="font-titre text-sm font-extrabold tracking-[.28em] text-navbg">
-            SISEP <span className="text-accent-clair">·</span> ANSD
-          </p>
-          <span className="chiffres rounded-full bg-hover px-3 py-1 text-xs text-muted">{annee}</span>
-        </header>
+      <main className="flex flex-col">
 
         <div className="flex flex-1 items-center justify-center px-6 py-10 sm:px-12">
           <div className="w-full max-w-md">
@@ -173,6 +174,7 @@ export function Connexion() {
           © {annee} Agence Nationale de la Statistique et de la Démographie — Tous droits réservés
         </footer>
       </main>
+      </div>
     </div>
   )
 }
@@ -181,7 +183,7 @@ export function Connexion() {
  * Panneau de marque. Les cercles et la trame de points sont décoratifs et
  * masqués aux lecteurs d'écran ; seul le texte porte de l'information.
  */
-function PanneauMarque() {
+export function PanneauMarque() {
   return (
     <aside
       className="relative hidden flex-col justify-between overflow-hidden p-10 text-white lg:flex xl:p-12"
@@ -201,15 +203,11 @@ function PanneauMarque() {
       <Cercle className="right-[12%] bottom-[30%] h-28 w-28" />
       <Cercle className="-bottom-20 -left-24 h-72 w-72" />
 
-      <div className="relative">
-        <span className="inline-flex items-center gap-2.5 rounded-full border border-white/20 bg-white/5 px-4 py-2 text-xs font-bold tracking-[.18em] backdrop-blur-sm">
-          <span className="h-2 w-2 rounded-full bg-[#3fd17a] shadow-[0_0_8px_#3fd17a]" aria-hidden="true" />
-          SYSTÈME DE SUIVI-ÉVALUATION
-        </span>
-      </div>
 
       <div className="relative flex flex-col items-center text-center">
-        <Monogramme />
+        <div className="rounded-[1.75rem] bg-white p-5 shadow-[0_18px_40px_-18px_rgb(0_0_0/0.5)]">
+          <img src={logoAnsd} alt="ANSD" className="h-28 w-auto xl:h-32" />
+        </div>
         <p className="mt-8 max-w-sm font-titre text-3xl leading-tight font-extrabold xl:text-[2rem]">
           Agence Nationale de la Statistique et de la Démographie
         </p>
@@ -217,8 +215,8 @@ function PanneauMarque() {
       </div>
 
       <div className="relative flex items-center gap-4 rounded-2xl border border-white/15 bg-white/[.06] p-4 backdrop-blur-sm">
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white font-titre text-sm font-extrabold text-navbg">
-          SE
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-0.5">
+          <img src={logoAnsd} alt="" className="h-full w-full object-contain" />
         </span>
         <p className="flex-1 text-[11px] leading-relaxed font-semibold tracking-[.12em] text-white/75">
           HARMONISATION ET AMÉLIORATION DES STATISTIQUES
@@ -240,21 +238,6 @@ function Cercle({ className }: { className: string }) {
   )
 }
 
-/**
- * Monogramme de SISEP, le même que dans la barre latérale. Il tient lieu de
- * logo faute de fichier officiel de l'ANSD dans le dépôt : un logo
- * institutionnel ne se redessine pas à la main.
- */
-function Monogramme() {
-  return (
-    <div className="flex h-36 w-36 items-center justify-center rounded-[2rem] bg-white/10 ring-1 ring-white/25 backdrop-blur-sm">
-      <span className="font-titre text-6xl font-extrabold tracking-tight">
-        S<span className="text-accent-clair">E</span>
-      </span>
-    </div>
-  )
-}
-
 /** Drapeau du Sénégal : trois bandes verticales, étoile verte au centre de la bande jaune. */
 function DrapeauSenegal() {
   return (
@@ -272,7 +255,7 @@ function DrapeauSenegal() {
  * saisie par un filet, comme un préfixe. Tout le cadre réagit au focus,
  * pas seulement le texte.
  */
-function Champ({
+export function Champ({
   id,
   libelle,
   icone,
@@ -328,7 +311,7 @@ function IconePersonne() {
   )
 }
 
-function IconeCadenas() {
+export function IconeCadenas() {
   return (
     <svg {...iconeProps}>
       <rect x="5" y="10.5" width="14" height="10" rx="2" />
@@ -337,7 +320,7 @@ function IconeCadenas() {
   )
 }
 
-function IconeCle() {
+export function IconeCle() {
   return (
     <svg {...iconeProps} className="h-4 w-4">
       <circle cx="8" cy="15" r="4" />
@@ -355,7 +338,7 @@ function IconeEntrer() {
   )
 }
 
-function IconeOeil() {
+export function IconeOeil() {
   return (
     <svg {...iconeProps}>
       <path d="M1.5 12S5 5 12 5s10.5 7 10.5 7-3.5 7-10.5 7S1.5 12 1.5 12Z" />
@@ -364,7 +347,7 @@ function IconeOeil() {
   )
 }
 
-function IconeOeilBarre() {
+export function IconeOeilBarre() {
   return (
     <svg {...iconeProps}>
       <path d="M3 3l18 18" />

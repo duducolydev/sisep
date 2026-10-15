@@ -22,8 +22,13 @@ class IndicateurRepository extends ServiceEntityRepository
         parent::__construct($registry, Indicateur::class);
     }
 
-    /** @return list<Indicateur> */
-    public function filtrer(?Projet $projet, ?TypeIndicateur $type, ?Composante $composante, ?Structure $structureResponsable = null): array
+    /**
+     * @param bool $objectifGeneral indicateurs sans composante seulement — les
+     *                              indicateurs transversaux de l'objectif général
+     *
+     * @return list<Indicateur>
+     */
+    public function filtrer(?Projet $projet, ?TypeIndicateur $type, ?Composante $composante, ?Structure $structureResponsable = null, bool $objectifGeneral = false): array
     {
         $qb = $this->createQueryBuilder('i')
             ->andWhere('i.supprimeLe IS NULL')
@@ -37,6 +42,8 @@ class IndicateurRepository extends ServiceEntityRepository
         }
         if (null !== $composante) {
             $qb->andWhere('i.composante = :composante')->setParameter('composante', $composante);
+        } elseif ($objectifGeneral) {
+            $qb->andWhere('i.composante IS NULL');
         }
         if (null !== $structureResponsable) {
             $qb->andWhere('i.structureResponsable = :structureResponsable')->setParameter('structureResponsable', $structureResponsable);

@@ -10,6 +10,7 @@ use App\Entity\Activite;
 use App\Entity\EtapeActivite;
 use App\Entity\Livrable;
 use App\Entity\PieceJointe;
+use App\Entity\SousActivite;
 use App\Entity\Utilisateur;
 use App\Http\EtapeActiviteNormalizer;
 use App\Http\ProblemResponseFactory;
@@ -17,6 +18,7 @@ use App\Repository\ActiviteRepository;
 use App\Repository\EtapeActiviteRepository;
 use App\Repository\GabaritEtapesRepository;
 use App\Repository\LivrableRepository;
+use App\Repository\SousActiviteRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -54,6 +56,7 @@ final class EtapeActiviteController
 
     public function __construct(
         private readonly ActiviteRepository $activites,
+        private readonly SousActiviteRepository $sousActivites,
         private readonly EtapeActiviteRepository $etapes,
         private readonly GabaritEtapesRepository $gabarits,
         private readonly LivrableRepository $livrables,
@@ -67,15 +70,24 @@ final class EtapeActiviteController
     ) {
     }
 
+    /** Étapes propres de l'activité — celles de ses lignes se lisent sur chaque ligne. */
     #[Route('/activites/{uuid}/etapes', name: 'app_activite_etapes_liste', methods: ['GET'], requirements: ['uuid' => '[0-9a-fA-F-]{36}'])]
     public function liste(string $uuid): JsonResponse
     {
         $activite = $this->trouverActivite($uuid);
         $this->exigerPermission($this->security, 'activites.consulter', $activite);
 
-        return new JsonResponse([
-            'donnees' => array_map($this->normalizer->normaliser(...), $activite->getEtapesActives()->toArray()),
-        ]);
+        return $this->listerEtapes($activite->getEtapesPropres());
+    }
+
+    /** Étapes d'une ligne du PTBA (sous-activité) — retours des RSE, octobre 2026. */
+    #[Route('/sous-activites/{uuid}/etapes', name: 'app_sous_activite_etapes_liste', methods: ['GET'], requirements: ['uuid' => '[0-9a-fA-F-]{36}'])]
+    public function listeLigne(string $uuid): JsonResponse
+    {
+        $ligne = $this->trouverLigne($uuid);
+        $this->exigerPermission($this->security, 'activites.consulter', $ligne);
+
+        return $this->listerEtapes($ligne->getEtapesActives());
     }
 
     /**
@@ -89,8 +101,23 @@ final class EtapeActiviteController
         $activite = $this->trouverActivite($uuid);
         $this->exigerPermission($this->security, 'activites.creer', $activite);
 
-        if ($activite->getEtapesActives()->count() > 0) {
-            return ProblemResponseFactory::creer(409, 'Étapes déjà définies', 'Cette activité a déjà des étapes : retirez-les avant d\'instancier un autre gabarit.');
+        return $this->instancierSur($activite, null, $request);
+    }
+
+    #[Route('/sous-activites/{uuid}/etapes/instancier', name: 'app_sous_activite_etapes_instancier', methods: ['POST'], requirements: ['uuid' => '[0-9a-fA-F-]{36}'])]
+    public function instancierLigne(string $uuid, Request $request): Response
+    {
+        $ligne = $this->trouverLigne($uuid);
+        $this->exigerPermission($this->security, 'activites.creer', $ligne);
+
+        return $this->instancierSur($ligne->getActivite(), $ligne, $request);
+    }
+
+    private function instancierSur(Activite $activite, ?SousActivite $ligne, Request $request): Response
+    {
+        $existantes = null !== $ligne ? $ligne->getEtapesActives() : $activite->getEtapesPropres();
+        if ($existantes->count() > 0) {
+            return ProblemResponseFactory::creer(409, 'Étapes déjà définies', 'Des étapes existent déjà ici : retirez-les avant d\'instancier un autre gabarit.');
         }
 
         /** @var array<string, mixed> $corps */
@@ -102,14 +129,12 @@ final class EtapeActiviteController
         }
 
         foreach ($gabarit->getEtapes() as $modele) {
-            $this->em->persist(new EtapeActivite($activite, $modele->getLibelle(), $modele->getOrdre()));
+            $this->em->persist(new EtapeActivite($activite, $modele->getLibelle(), $modele->getOrdre(), $ligne));
         }
 
         $this->em->flush();
 
-        return new JsonResponse([
-            'donnees' => array_map($this->normalizer->normaliser(...), $activite->getEtapesActives()->toArray()),
-        ], 201);
+        return $this->listerEtapes(null !== $ligne ? $ligne->getEtapesActives() : $activite->getEtapesPropres(), 201);
     }
 
     /** Ajoute une étape hors gabarit — une activité atypique n'a pas à adopter un modèle entier pour une seule étape de plus. */
@@ -119,6 +144,20 @@ final class EtapeActiviteController
         $activite = $this->trouverActivite($uuid);
         $this->exigerPermission($this->security, 'activites.creer', $activite);
 
+        return $this->ajouterSur($activite, null, $request);
+    }
+
+    #[Route('/sous-activites/{uuid}/etapes', name: 'app_sous_activite_etape_ajouter', methods: ['POST'], requirements: ['uuid' => '[0-9a-fA-F-]{36}'])]
+    public function ajouterLigne(string $uuid, Request $request): Response
+    {
+        $ligne = $this->trouverLigne($uuid);
+        $this->exigerPermission($this->security, 'activites.creer', $ligne);
+
+        return $this->ajouterSur($ligne->getActivite(), $ligne, $request);
+    }
+
+    private function ajouterSur(Activite $activite, ?SousActivite $ligne, Request $request): Response
+    {
         /** @var array<string, mixed> $corps */
         $corps = json_decode($request->getContent(), true) ?? [];
         $libelle = \is_string($corps['libelle'] ?? null) ? trim($corps['libelle']) : '';
@@ -127,11 +166,11 @@ final class EtapeActiviteController
         }
 
         $ordre = 0;
-        foreach ($activite->getEtapesActives() as $existante) {
+        foreach (null !== $ligne ? $ligne->getEtapesActives() : $activite->getEtapesPropres() as $existante) {
             $ordre = max($ordre, $existante->getOrdre());
         }
 
-        $etape = new EtapeActivite($activite, $libelle, $ordre + 1);
+        $etape = new EtapeActivite($activite, $libelle, $ordre + 1, $ligne);
         if (\is_string($corps['echeance'] ?? null) && '' !== $corps['echeance']) {
             $etape->setEcheance(new \DateTimeImmutable($corps['echeance']));
         }
@@ -323,6 +362,30 @@ final class EtapeActiviteController
         }
 
         return $activite;
+    }
+
+    /** @param iterable<EtapeActivite> $etapes */
+    private function listerEtapes(iterable $etapes, int $statut = 200): JsonResponse
+    {
+        $liste = [];
+        foreach ($etapes as $etape) {
+            $liste[] = $etape;
+        }
+        usort($liste, static fn (EtapeActivite $a, EtapeActivite $b) => $a->getOrdre() <=> $b->getOrdre());
+
+        return new JsonResponse(['donnees' => array_map($this->normalizer->normaliser(...), $liste)], $statut);
+    }
+
+    private function trouverLigne(string $uuid): SousActivite
+    {
+        $uuidObjet = $this->uuidOuNull($uuid);
+        $ligne = null !== $uuidObjet ? $this->sousActivites->findOneBy(['uuid' => $uuidObjet]) : null;
+
+        if (null === $ligne || $ligne->estSupprime()) {
+            throw new NotFoundHttpException('Sous-activité introuvable.');
+        }
+
+        return $ligne;
     }
 
     private function trouverEtape(string $uuid): EtapeActivite

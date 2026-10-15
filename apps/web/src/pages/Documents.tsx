@@ -21,6 +21,7 @@ import { Bouton } from '@/components/Bouton'
 import { IconeBouton, IconePlus, IconeRecherche, IconeSupprimer, IconeTelecharger } from '@/components/Icones'
 import { DeposerDocumentModale } from '@/components/DeposerDocumentModale'
 import { useToast } from '@/components/ToastProvider'
+import { useConfirmer } from '@/lib/confirmation'
 
 /**
  * Bibliothèque documentaire de l'UGP (§ 12 du CR du 22/09/2026).
@@ -37,6 +38,7 @@ import { useToast } from '@/components/ToastProvider'
  * `documents.gerer` — l'UGP tient sa bibliothèque.
  */
 export function Documents() {
+  const confirmer = useConfirmer()
   const [searchParams, setSearchParams] = useSearchParams()
   const [modaleOuverte, setModaleOuverte] = useState(false)
   const [actionEnCours, setActionEnCours] = useState<string | null>(null)
@@ -263,7 +265,11 @@ export function Documents() {
                           <IconeBouton
                             libelle="Retirer le document"
                             disabled={actionEnCours === document.uuid}
-                            onClick={() => void retirer(document)}
+                            onClick={async () => {
+                        if (await confirmer({ titre: 'Retirer le document', message: `« ${document.libelle ?? document.nomFichier} » sera retiré de la bibliothèque.`, action: 'Retirer' })) {
+                          void retirer(document)
+                        }
+                      }}
                             classeCouleur="text-muted hover:bg-bad-bg hover:text-bad"
                           >
                             <IconeSupprimer />

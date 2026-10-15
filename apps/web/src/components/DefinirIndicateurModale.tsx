@@ -97,9 +97,9 @@ export function DefinirIndicateurModale({ composantes, onFermer }: DefinirIndica
         </div>
 
         <div className="flex flex-col gap-1">
-          <label htmlFor="composante">Composante (optionnel)</label>
+          <label htmlFor="composante">Rattachement</label>
           <select id="composante" className="rounded-[var(--radius-controle)] border border-border px-3 py-2" {...register('composante')}>
-            <option value="">— Aucune —</option>
+            <option value="">Objectif général (indicateur transversal)</option>
             {composantes.map((c) => (
               <option key={c.uuid} value={c.uuid}>
                 {c.code} — {c.libelle}

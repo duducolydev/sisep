@@ -58,7 +58,7 @@ final class EngagementValidationService
             $nouveauTotal = $sommeValidee->ajouter($engagement->getMontant());
 
             if ($nouveauTotal->estSuperieurA($dotation->getMontant())) {
-                throw new ContrainteBudgetaireException(\sprintf('Le montant engagé atteindrait %d FCFA, au-delà de la dotation notifiée de %d FCFA.', $nouveauTotal->versFcfa(), $dotation->getMontant()->versFcfa()));
+                throw new ContrainteBudgetaireException(\sprintf('Le montant engagé atteindrait %s, au-delà de la dotation notifiée de %s.', $nouveauTotal->formater(), $dotation->getMontant()->formater()));
             }
 
             $engagement->valider($validateur);

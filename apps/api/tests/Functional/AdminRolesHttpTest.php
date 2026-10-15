@@ -99,11 +99,13 @@ final class AdminRolesHttpTest extends WebTestCase
 
         $lecteur = new Utilisateur('lecteur.admin.test@example.test', 'temp', 'Diop', 'Cheikh');
         $lecteur->setMotDePasseHash($hasher->hashPassword($lecteur, self::MOT_DE_PASSE));
+        $lecteur->marquerMdpChange();
         $this->em->persist($lecteur);
         $this->em->persist(new UtilisateurRole($lecteur, $roleLecteur, null));
 
         $coordonnateur = new Utilisateur('coordonnateur.admin.test@example.test', 'temp', 'Diagne', 'Aïssatou');
         $coordonnateur->setMotDePasseHash($hasher->hashPassword($coordonnateur, self::MOT_DE_PASSE));
+        $coordonnateur->marquerMdpChange();
         $this->em->persist($coordonnateur);
         $this->em->persist(new UtilisateurRole($coordonnateur, $roleCoordonnateur, null));
 

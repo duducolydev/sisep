@@ -50,7 +50,7 @@ export function CreerSousActiviteModale({ activiteUuid, ordreSuivant, onFermer }
   }
 
   return (
-    <Modale titre="Ajouter une sous-activité" onFermer={onFermer}>
+    <Modale titre="Ajouter une ligne d'activité" onFermer={onFermer}>
       {erreur && (
         <div role="alert" className="mb-4 rounded-[var(--radius-controle)] bg-bad-bg px-4 py-3 text-bad">
           {erreur}

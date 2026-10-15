@@ -69,6 +69,9 @@ final class IndicateurController
 
     private const TAILLE_MAX_OCTETS = 10 * 1024 * 1024;
 
+    /** Valeur du filtre `composante` désignant l'objectif général (aucune composante). */
+    private const OBJECTIF_GENERAL = 'general';
+
     public function __construct(
         private readonly IndicateurRepository $indicateurs,
         private readonly IndicateurValeurRepository $valeurs,
@@ -109,9 +112,12 @@ final class IndicateurController
             }
         }
 
+        // « general » : l'objectif général, c'est-à-dire les indicateurs
+        // transversaux rattachés à aucune composante (retours des RSE).
         $composante = null;
         $composanteUuid = $request->query->get('composante');
-        if (\is_string($composanteUuid)) {
+        $objectifGeneral = self::OBJECTIF_GENERAL === $composanteUuid;
+        if (\is_string($composanteUuid) && !$objectifGeneral) {
             $composante = $this->composantes->findOneBy(['uuid' => $this->uuidOuNull($composanteUuid)]);
         }
 
@@ -127,13 +133,14 @@ final class IndicateurController
         }
 
         if ($this->permissionsResolver->pour($utilisateur)->estGlobale('indicateurs.consulter')) {
-            $indicateurs = $this->indicateurs->filtrer($projet, $type, $composante, $structureResponsable);
+            $indicateurs = $this->indicateurs->filtrer($projet, $type, $composante, $structureResponsable, $objectifGeneral);
         } elseif ([] !== ($invites = $this->invitations->indicateursInvites($utilisateur))) {
             $indicateurs = array_values(array_filter(
                 $invites,
                 static fn (Indicateur $i) => (null === $projet || $i->getProjet() === $projet)
                     && (null === $type || $i->getType() === $type)
                     && (null === $composante || $i->getComposante() === $composante)
+                    && (!$objectifGeneral || null === $i->getComposante())
                     && (null === $structureResponsable || $i->getStructureResponsable() === $structureResponsable),
             ));
         } else {
@@ -241,6 +248,18 @@ final class IndicateurController
         }
         if (\array_key_exists('actif', $donnees) && \is_bool($donnees['actif'])) {
             $indicateur->setActif($donnees['actif']);
+        }
+        // Rattachement modifiable : un indicateur classé sous une composante
+        // peut rejoindre l'objectif général (null) et inversement.
+        if (\array_key_exists('composante', $donnees)) {
+            $composante = null;
+            if (\is_string($donnees['composante'])) {
+                $composante = $this->composantes->findOneBy(['uuid' => $this->uuidOuNull($donnees['composante'])]);
+                if (null === $composante) {
+                    return ProblemResponseFactory::creer(422, 'Composante introuvable');
+                }
+            }
+            $indicateur->setComposante($composante);
         }
 
         $this->em->flush();

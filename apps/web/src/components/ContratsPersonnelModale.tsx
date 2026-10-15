@@ -6,6 +6,7 @@ import { TYPE_CONTRAT_PAR_DEFAUT, creerContrat, supprimerContrat, type Personnel
 import { formaterDate } from '@/lib/format'
 import { ApiError } from '@/lib/api-client'
 import { queryClient } from '@/lib/query-client'
+import { useConfirmer } from '@/lib/confirmation'
 
 interface ContratsPersonnelModaleProps {
   personnel: Personnel
@@ -18,6 +19,7 @@ interface ContratsPersonnelModaleProps {
  * reconstituer l'historique des périodes contractuelles.
  */
 export function ContratsPersonnelModale({ personnel, onFermer }: ContratsPersonnelModaleProps) {
+  const confirmer = useConfirmer()
   const [dateDebut, setDateDebut] = useState('')
   const [dateFin, setDateFin] = useState('')
   const [type, setType] = useState(TYPE_CONTRAT_PAR_DEFAUT)
@@ -77,7 +79,11 @@ export function ContratsPersonnelModale({ personnel, onFermer }: ContratsPersonn
                 <IconeBouton
                   libelle="Retirer le contrat"
                   disabled={enCours}
-                  onClick={() => void executer(() => supprimerContrat(contrat.uuid))}
+                  onClick={async () => {
+                        if (await confirmer({ titre: 'Retirer le contrat', message: 'Ce contrat sera retiré de la fiche de l’agent.', action: 'Retirer' })) {
+                          void executer(() => supprimerContrat(contrat.uuid))
+                        }
+                      }}
                   classeCouleur="text-muted hover:bg-bad-bg hover:text-bad"
                 >
                   <IconeSupprimer />

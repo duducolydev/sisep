@@ -85,6 +85,10 @@ export const structuresQueryOptions = () =>
   })
 
 export interface SousActiviteDetail extends NoeudSousActivite {
+  /** Progression déduite des étapes de la ligne (0-1) — null tant qu'elle n'est pas structurée. */
+  progression: number | null
+  etapesTotal: number
+  etapesAchevees: number
   dateDebut: string | null
   structureResponsable: { uuid: string; sigle: string } | null
   notifie: number | null

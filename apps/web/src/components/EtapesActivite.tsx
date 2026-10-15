@@ -19,9 +19,14 @@ import { urlTelechargerPieceJointe } from '@/lib/exports'
 import { formaterDate, formaterTaux } from '@/lib/format'
 import { ApiError } from '@/lib/api-client'
 import { queryClient } from '@/lib/query-client'
+import { useConfirmer } from '@/lib/confirmation'
 
 interface EtapesActiviteProps {
   activiteUuid: string
+  /** Étapes d'une ligne du PTBA (sous-activité) plutôt que les étapes propres de l'activité. */
+  sousActiviteUuid?: string
+  /** Intitulé de la section ; absent, la section n'a pas de titre (étapes d'une ligne, déjà titrée par sa carte). */
+  titre?: string
   /** Structurer : instancier un gabarit, ajouter ou retirer une étape, définir un livrable attendu. Réservé à l'UGP. */
   peutStructurer: boolean
   /** Renseigner : niveau atteint, valeur, observation, quantité réalisée. Ouvert au responsable de l'activité. */
@@ -29,8 +34,9 @@ interface EtapesActiviteProps {
 }
 
 /** Suivi par étapes d'une activité (§ 6 du CR du 22/09/2026) — remplace le découpage libre en sous-activités. */
-export function EtapesActivite({ activiteUuid, peutStructurer, peutRenseigner }: EtapesActiviteProps) {
-  const { data: etapes } = useQuery(etapesActiviteQueryOptions(activiteUuid))
+export function EtapesActivite({ activiteUuid, sousActiviteUuid, titre, peutStructurer, peutRenseigner }: EtapesActiviteProps) {
+  const confirmer = useConfirmer()
+  const { data: etapes } = useQuery(etapesActiviteQueryOptions(activiteUuid, sousActiviteUuid))
   const { data: gabarits } = useQuery({ ...gabaritsEtapesQueryOptions(), enabled: peutStructurer })
 
   const [gabaritChoisi, setGabaritChoisi] = useState('')
@@ -58,7 +64,7 @@ export function EtapesActivite({ activiteUuid, peutStructurer, peutRenseigner }:
   return (
     <section>
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-semibold">Étapes</h2>
+        {titre !== undefined ? <h2 className="text-lg font-semibold">{titre}</h2> : <span />}
         {peutStructurer && liste.length > 0 && !ajoutOuvert && (
           <Bouton variante="discret" taille="mini" icone={<IconePlus />} onClick={() => setAjoutOuvert(true)}>
             Ajouter une étape
@@ -72,10 +78,14 @@ export function EtapesActivite({ activiteUuid, peutStructurer, peutRenseigner }:
         </div>
       )}
 
-      {liste.length === 0 && (
+      {/* Pendant le chargement, rien ne dit encore que l'activité n'est pas structurée. */}
+      {etapes === undefined && <p className="text-sm text-muted">Chargement des étapes…</p>}
+
+      {etapes !== undefined && liste.length === 0 && (
         <div className="rounded-[var(--radius-carte)] bg-surface px-4 py-4 shadow-[var(--shadow-carte)]">
           <p className="text-muted">
-            Cette activité n'est pas encore structurée en étapes : sa progression reste indéterminée.
+            {sousActiviteUuid !== undefined ? 'Cette ligne' : 'Cette activité'} n'est pas encore structurée en étapes : sa
+            progression reste indéterminée.
           </p>
           {peutStructurer && (
             <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -95,7 +105,7 @@ export function EtapesActivite({ activiteUuid, peutStructurer, peutRenseigner }:
               </select>
               <Bouton
                 disabled={enCours || gabaritChoisi === ''}
-                onClick={() => void executer(() => instancierGabarit(activiteUuid, gabaritChoisi))}
+                onClick={() => void executer(() => instancierGabarit(activiteUuid, gabaritChoisi, sousActiviteUuid))}
               >
                 Instancier
               </Bouton>
@@ -122,7 +132,7 @@ export function EtapesActivite({ activiteUuid, peutStructurer, peutRenseigner }:
             disabled={enCours || nouvelleEtape.trim() === ''}
             onClick={() =>
               void executer(async () => {
-                await ajouterEtape(activiteUuid, { libelle: nouvelleEtape.trim() })
+                await ajouterEtape(activiteUuid, { libelle: nouvelleEtape.trim() }, sousActiviteUuid)
                 setNouvelleEtape('')
                 setAjoutOuvert(false)
               })
@@ -163,7 +173,11 @@ export function EtapesActivite({ activiteUuid, peutStructurer, peutRenseigner }:
                     <IconeBouton
                       libelle="Retirer l'étape"
                       disabled={enCours}
-                      onClick={() => void executer(() => supprimerEtape(etape.uuid))}
+                      onClick={async () => {
+                        if (await confirmer({ titre: 'Retirer l’étape', message: `L’étape « ${etape.libelle} » sera retirée, avec son avancement : la progression de l’activité sera recalculée sans elle.`, action: 'Retirer' })) {
+                          void executer(() => supprimerEtape(etape.uuid))
+                        }
+                      }}
                       classeCouleur="text-muted hover:bg-bad-bg hover:text-bad"
                     >
                       <IconeSupprimer />
@@ -214,7 +228,11 @@ export function EtapesActivite({ activiteUuid, peutStructurer, peutRenseigner }:
                         <IconeBouton
                           libelle="Retirer le livrable"
                           disabled={enCours}
-                          onClick={() => void executer(() => supprimerLivrable(livrable.uuid))}
+                          onClick={async () => {
+                        if (await confirmer({ titre: 'Retirer le livrable', message: `Le livrable « ${livrable.libelle} » sera retiré de l’étape.`, action: 'Retirer' })) {
+                          void executer(() => supprimerLivrable(livrable.uuid))
+                        }
+                      }}
                           classeCouleur="text-muted hover:bg-bad-bg hover:text-bad"
                         >
                           <IconeAnnuler />

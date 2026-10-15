@@ -8,6 +8,8 @@ use App\Budget\DepenseValidationService;
 use App\Dto\CreerDepenseRequest;
 use App\Entity\Depense;
 use App\Entity\Utilisateur;
+use App\Enum\StatutEcriture;
+use App\Exception\ContrainteBudgetaireException;
 use App\Http\DepenseNormalizer;
 use App\Http\ProblemResponseFactory;
 use App\Repository\DepenseRepository;
@@ -100,6 +102,32 @@ final class DepenseController
         }
 
         $this->validationService->valider($depense, $utilisateur);
+
+        return new JsonResponse($this->normalizer->normaliser($depense));
+    }
+
+    /**
+     * Rejet d'une dépense saisie, symétrique de l'annulation d'un
+     * engagement : sans lui, une dépense erronée ou au-delà de l'engagement
+     * — que la validation refuse — resterait en brouillon sans issue, la
+     * saisie n'étant pas modifiable. Suppression logique par le statut,
+     * jamais physique.
+     */
+    #[Route('/{uuid}/annuler', name: 'app_depense_annuler', methods: ['POST'])]
+    public function annuler(string $uuid): JsonResponse
+    {
+        $depense = $this->trouver($uuid);
+
+        if (!$this->security->isGranted('budget.depense.valider', $depense->getEngagement()->getCible())) {
+            throw new AccessDeniedException();
+        }
+
+        if (StatutEcriture::BROUILLON !== $depense->getStatut()) {
+            throw new ContrainteBudgetaireException('Seule une dépense en brouillon peut être annulée.');
+        }
+
+        $depense->annuler();
+        $this->em->flush();
 
         return new JsonResponse($this->normalizer->normaliser($depense));
     }

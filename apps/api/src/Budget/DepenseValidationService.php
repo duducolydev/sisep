@@ -51,7 +51,7 @@ final class DepenseValidationService
             $nouveauTotal = $sommeValidee->ajouter($depense->getMontant());
 
             if ($nouveauTotal->estSuperieurA($engagement->getMontant())) {
-                throw new ContrainteBudgetaireException(\sprintf('Le montant décaissé atteindrait %d FCFA, au-delà du montant engagé de %d FCFA.', $nouveauTotal->versFcfa(), $engagement->getMontant()->versFcfa()));
+                throw new ContrainteBudgetaireException(\sprintf('Le montant décaissé atteindrait %s, au-delà du montant engagé de %s.', $nouveauTotal->formater(), $engagement->getMontant()->formater()));
             }
 
             $depense->valider($validateur);

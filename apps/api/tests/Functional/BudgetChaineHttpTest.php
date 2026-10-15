@@ -53,7 +53,7 @@ final class BudgetChaineHttpTest extends WebTestCase
             $client->request('POST', '/api/v1/engagements', server: ['CONTENT_TYPE' => 'application/json'], content: json_encode([
                 'activite' => $fixture['activite']->getUuid()->toRfc4122(),
                 'exercice' => $fixture['exercice']->getAnnee(),
-                'nature' => 'fonctionnement',
+                'nature' => 'autre_fonctionnement',
                 'montant' => 1_500_000,
                 'dateEngagement' => '2026-03-01',
             ], \JSON_THROW_ON_ERROR));
@@ -91,7 +91,7 @@ final class BudgetChaineHttpTest extends WebTestCase
             $client->request('POST', '/api/v1/engagements', server: ['CONTENT_TYPE' => 'application/json'], content: json_encode([
                 'activite' => $fixture['activite']->getUuid()->toRfc4122(),
                 'exercice' => $fixture['exercice']->getAnnee(),
-                'nature' => 'fonctionnement',
+                'nature' => 'autre_fonctionnement',
                 'montant' => 500_000,
                 'dateEngagement' => '2026-03-01',
             ], \JSON_THROW_ON_ERROR));
@@ -116,6 +116,21 @@ final class BudgetChaineHttpTest extends WebTestCase
             $probleme = $this->corps($client);
             self::assertSame('Contrainte budgétaire violée', $probleme['title']);
             self::assertStringContainsString('engagé', $probleme['detail']);
+            self::assertStringContainsString("600\u{202F}000 FCFA", $probleme['detail'], 'Les montants du message sont lisibles, pas des entiers bruts.');
+
+            // Refusée, la dépense doit pouvoir sortir du brouillon : le
+            // validateur l'annule, celui qui saisit ne le peut pas.
+            $this->connecter($client, $fixture['gestionnaire']->getEmail());
+            $client->request('POST', "/api/v1/depenses/{$depenseUuid}/annuler");
+            self::assertResponseStatusCodeSame(403);
+
+            $this->connecter($client, $fixture['coordonnateur']->getEmail());
+            $client->request('POST', "/api/v1/depenses/{$depenseUuid}/annuler");
+            self::assertResponseIsSuccessful();
+            self::assertSame('annule', $this->corps($client)['statut']);
+
+            $client->request('POST', "/api/v1/depenses/{$depenseUuid}/annuler");
+            self::assertResponseStatusCodeSame(422, 'Une dépense déjà annulée ne change plus de statut.');
         } finally {
             $this->rollback();
         }
@@ -140,7 +155,7 @@ final class BudgetChaineHttpTest extends WebTestCase
             $client->request('POST', '/api/v1/engagements', server: ['CONTENT_TYPE' => 'application/json'], content: json_encode([
                 'activite' => $fixture['activite']->getUuid()->toRfc4122(),
                 'exercice' => $fixture['exercice']->getAnnee(),
-                'nature' => 'fonctionnement',
+                'nature' => 'autre_fonctionnement',
                 'montant' => 200_000,
                 'dateEngagement' => '2026-03-01',
             ], \JSON_THROW_ON_ERROR));
@@ -226,11 +241,13 @@ final class BudgetChaineHttpTest extends WebTestCase
 
         $gestionnaire = new Utilisateur('gestionnaire.p3@example.test', 'temp', 'Fall', 'Khadija');
         $gestionnaire->setMotDePasseHash($hasher->hashPassword($gestionnaire, self::MOT_DE_PASSE));
+        $gestionnaire->marquerMdpChange();
         $this->em->persist($gestionnaire);
         $this->em->persist(new UtilisateurRole($gestionnaire, $roleGestionnaire, null));
 
         $coordonnateur = new Utilisateur('coordonnateur.p3@example.test', 'temp', 'Diagne', 'Aïssatou');
         $coordonnateur->setMotDePasseHash($hasher->hashPassword($coordonnateur, self::MOT_DE_PASSE));
+        $coordonnateur->marquerMdpChange();
         $this->em->persist($coordonnateur);
         $this->em->persist(new UtilisateurRole($coordonnateur, $roleCoordonnateur, null));
 
@@ -298,7 +315,7 @@ final class BudgetChaineHttpTest extends WebTestCase
             $client->request('POST', '/api/v1/engagements', server: ['CONTENT_TYPE' => 'application/json'], content: json_encode([
                 'activite' => $fixture['activite']->getUuid()->toRfc4122(),
                 'exercice' => $fixture['exercice']->getAnnee(),
-                'nature' => 'fonctionnement',
+                'nature' => 'autre_fonctionnement',
                 'montant' => 800_000,
                 'dateEngagement' => '2026-03-01',
             ], \JSON_THROW_ON_ERROR));

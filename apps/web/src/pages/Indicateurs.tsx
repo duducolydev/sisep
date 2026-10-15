@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useSearchParams, Link, useNavigate } from 'react-router'
-import { indicateursQueryOptions, type TypeIndicateur } from '@/lib/indicateurs'
+import { indicateursQueryOptions, libelleRattachement, OBJECTIF_GENERAL, valeurAffichee, type TypeIndicateur } from '@/lib/indicateurs'
 import { budgetExecutionQueryOptions } from '@/lib/budget'
 import { structuresQueryOptions } from '@/lib/composantes'
 import { urlExportCadreResultats } from '@/lib/exports'
@@ -34,6 +34,10 @@ export function Indicateurs() {
   const page = Math.max(1, Number(searchParams.get('page') ?? '1'))
 
   const { data: indicateurs, isLoading, isError } = useQuery(indicateursQueryOptions(type, composanteUuid, structureUuid))
+  // Catalogue complet, sans filtre : sert seulement à savoir quelles
+  // composantes portent des indicateurs, pour ne pas proposer un filtre vide
+  // (la composante 4, gestion de projet, n'en a aucun — retours des RSE).
+  const { data: catalogue } = useQuery(indicateursQueryOptions())
   const { data: composantes } = useQuery(budgetExecutionQueryOptions('composante'))
   const { data: structures } = useQuery(structuresQueryOptions())
 
@@ -67,7 +71,27 @@ export function Indicateurs() {
     setSearchParams(suivant, { replace: true })
   }
 
-  const indicateursPage = useMemo(() => trancherPage(indicateurs?.donnees ?? [], page, TAILLE_PAGE), [indicateurs, page])
+  const composantesAvecIndicateurs = useMemo(() => {
+    const avecIndicateurs = new Set((catalogue?.donnees ?? []).map((i) => i.composante?.uuid))
+    const toutes = composantes?.donnees ?? []
+
+    return catalogue && catalogue.donnees.length > 0 ? toutes.filter((c) => avecIndicateurs.has(c.uuid)) : toutes
+  }, [catalogue, composantes])
+
+  // Objectif général d'abord, puis composante par composante : l'ordre du
+  // cadre de résultats.
+  const indicateursOrdonnes = useMemo(
+    () =>
+      [...(indicateurs?.donnees ?? [])].sort((a, b) => {
+        const ca = a.composante?.code ?? ''
+        const cb = b.composante?.code ?? ''
+
+        return ca === cb ? a.code.localeCompare(b.code, 'fr', { numeric: true }) : ca.localeCompare(cb, 'fr', { numeric: true })
+      }),
+    [indicateurs],
+  )
+
+  const indicateursPage = useMemo(() => trancherPage(indicateursOrdonnes, page, TAILLE_PAGE), [indicateursOrdonnes, page])
   const totalPages = Math.max(1, Math.ceil((indicateurs?.donnees.length ?? 0) / TAILLE_PAGE))
 
   return (
@@ -120,10 +144,11 @@ export function Indicateurs() {
             aria-label="Composante"
             value={composanteUuid ?? ''}
             onChange={(e) => definirFiltre('composante', e.target.value)}
-            className="rounded-[var(--radius-controle)] border border-border bg-surface py-2 pr-3 pl-9"
+            className="w-full max-w-xs rounded-[var(--radius-controle)] border border-border bg-surface py-2 pr-3 pl-9"
           >
-            <option value="">Toutes les composantes</option>
-            {composantes?.donnees.map((c) => (
+            <option value="">Tout le cadre de résultats</option>
+            <option value={OBJECTIF_GENERAL}>Objectif général</option>
+            {composantesAvecIndicateurs.map((c) => (
               <option key={c.uuid} value={c.uuid}>
                 {c.code} — {c.libelle}
               </option>
@@ -176,7 +201,9 @@ export function Indicateurs() {
           <p className="mb-3 text-sm text-muted">
             Position de chaque indicateur entre sa référence (0 %) et sa cible (100 %), toutes unités confondues.
           </p>
-          <AtteinteGlobaleIndicateurs indicateurs={indicateurs.donnees} />
+          <AtteinteGlobaleIndicateurs
+            indicateurs={indicateurs.donnees.map((i) => ({ ...i, tauxAtteinte: valeurAffichee(i).tauxAtteinte }))}
+          />
         </section>
       )}
 
@@ -193,7 +220,15 @@ export function Indicateurs() {
               </tr>
             </thead>
             <tbody>
-              {indicateursPage.map((i) => (
+              {indicateursPage.map((i, index) => (
+                <Fragment key={i.uuid}>
+                  {libelleRattachement(i) !== (index > 0 ? libelleRattachement(indicateursPage[index - 1]) : null) && (
+                    <tr className="border-b border-border bg-nested">
+                      <th colSpan={5} scope="colgroup" className="px-4 py-2 text-left text-xs font-semibold tracking-wide text-muted uppercase">
+                        {libelleRattachement(i)}
+                      </th>
+                    </tr>
+                  )}
                 <tr
                   key={i.uuid}
                   onClick={(e) => {
@@ -216,6 +251,7 @@ export function Indicateurs() {
                     <ValeurIndicateurInline
                       indicateurUuid={i.uuid}
                       actuel={i.actuel}
+                      enAttente={i.enAttente}
                       unite={i.unite}
                       peutSaisir={i.peutSaisir}
                     />
@@ -224,9 +260,10 @@ export function Indicateurs() {
                     {formaterValeurIndicateur(i.valeurCible)} {i.unite}
                   </td>
                   <td className="px-4 py-3">
-                    <BarreAtteinte taux={i.tauxAtteinte} />
+                    <BarreAtteinte taux={valeurAffichee(i).tauxAtteinte} />
                   </td>
                 </tr>
+                </Fragment>
               ))}
               {indicateursPage.length === 0 && (
                 <tr>

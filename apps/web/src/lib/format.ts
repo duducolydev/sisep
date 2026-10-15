@@ -19,9 +19,11 @@ const formateurMds = new Intl.NumberFormat('fr-FR', {
   maximumFractionDigits: 2,
 })
 
+// Décimales seulement quand la valeur en porte : un dénombrement s'affiche
+// « 19 550 téléchargements », pas « 19 550,0 ».
 const formateurValeurIndicateur = new Intl.NumberFormat('fr-FR', {
-  minimumFractionDigits: 1,
-  maximumFractionDigits: 1,
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
 })
 
 /** Formatage à l'affichage uniquement — les montants restent des entiers FCFA en base (§ 3.3). */

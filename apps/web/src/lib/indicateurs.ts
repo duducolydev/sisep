@@ -28,6 +28,39 @@ export interface Indicateur {
   tauxAtteinte: number | null
   /** Hint serveur (§ 8) : indicateurs.saisir (portée-aware) OU une invitation active pour l'utilisateur courant sur cet indicateur précis. */
   peutSaisir: boolean
+  /**
+   * Saisie la plus récente quand elle attend encore sa validation, avec son
+   * taux d'atteinte provisoire — affichée aussitôt (retours des RSE), sans
+   * remplacer `actuel`/`tauxAtteinte`, qui restent les valeurs validées.
+   */
+  enAttente: { uuid: string; valeur: string; periode: string; tauxAtteinte: number | null } | null
+}
+
+/** Valeur du filtre `composante` pour les indicateurs transversaux, rattachés à aucune composante. */
+export const OBJECTIF_GENERAL = 'general'
+
+/** Libellé du rattachement d'un indicateur : sa composante, ou l'objectif général s'il n'en a pas. */
+export function libelleRattachement(indicateur: Pick<Indicateur, 'composante'>): string {
+  return indicateur.composante === null ? 'Objectif général' : `Composante ${indicateur.composante.code}`
+}
+
+/** Valeur à montrer comme « actuelle » : la saisie en attente si elle existe, sinon la dernière validée. */
+export function valeurAffichee(indicateur: Pick<Indicateur, 'actuel' | 'periodeActuelle' | 'tauxAtteinte' | 'enAttente'>) {
+  if (indicateur.enAttente !== null) {
+    return {
+      valeur: indicateur.enAttente.valeur,
+      periode: indicateur.enAttente.periode,
+      tauxAtteinte: indicateur.enAttente.tauxAtteinte,
+      enAttente: true,
+    }
+  }
+
+  return {
+    valeur: indicateur.actuel,
+    periode: indicateur.periodeActuelle,
+    tauxAtteinte: indicateur.tauxAtteinte,
+    enAttente: false,
+  }
 }
 
 export interface Desagregation {
@@ -114,6 +147,8 @@ export interface ModifierIndicateurEntree {
   dateCible?: string
   source?: string
   actif?: boolean
+  /** UUID de composante, ou `null` pour l'objectif général. */
+  composante?: string | null
 }
 
 export function modifierIndicateur(uuid: string, entree: ModifierIndicateurEntree) {

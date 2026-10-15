@@ -124,11 +124,13 @@ final class ParametresVigilanceImmediatHttpTest extends WebTestCase
 
         $coordonnateur = new Utilisateur('coordonnateur.param@example.test', 'temp', 'Diagne', 'Aïssatou');
         $coordonnateur->setMotDePasseHash($hasher->hashPassword($coordonnateur, self::MOT_DE_PASSE));
+        $coordonnateur->marquerMdpChange();
         $this->em->persist($coordonnateur);
         $this->em->persist(new UtilisateurRole($coordonnateur, $roleCoordonnateur, null));
 
         $lecteur = new Utilisateur('lecteur.param@example.test', 'temp', 'Diop', 'Cheikh');
         $lecteur->setMotDePasseHash($hasher->hashPassword($lecteur, self::MOT_DE_PASSE));
+        $lecteur->marquerMdpChange();
         $this->em->persist($lecteur);
         $this->em->persist(new UtilisateurRole($lecteur, $roleLecteur, null));
 
@@ -148,7 +150,7 @@ final class ParametresVigilanceImmediatHttpTest extends WebTestCase
 
         // Notifié + engagé, mais aucune dépense : taux d'exécution nul.
         $this->em->persist(new Dotation($activite, $exercice, Montant::fromFcfa(1_000_000), $coordonnateur));
-        $engagement = new Engagement($activite, $exercice, NatureEngagement::FONCTIONNEMENT, Montant::fromFcfa(1_000_000), new \DateTimeImmutable('2026-02-01'), $coordonnateur);
+        $engagement = new Engagement($activite, $exercice, NatureEngagement::AUTRE_FONCTIONNEMENT, Montant::fromFcfa(1_000_000), new \DateTimeImmutable('2026-02-01'), $coordonnateur);
         $engagement->valider($coordonnateur);
         $this->em->persist($engagement);
 

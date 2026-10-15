@@ -12,10 +12,12 @@ import { IconeBouton, IconeModifier, IconeSupprimer, IconeRecherche, IconePlus }
 import { Pagination } from '@/components/Pagination'
 import { Squelette } from '@/components/Squelette'
 import { trancherPage } from '@/lib/pagination'
+import { useConfirmer } from '@/lib/confirmation'
 
 const TAILLE_PAGE = 10
 
 export function AdminPartiesPrenantes() {
+  const confirmer = useConfirmer()
   const { data: structures, isLoading, isError } = useQuery(structuresDetailQueryOptions(true))
   const { data: pointsFocaux } = useQuery(pointsFocauxQueryOptions())
   const peutGerer = usePeut('structures.gerer')
@@ -180,7 +182,11 @@ export function AdminPartiesPrenantes() {
                             <IconeBouton
                               libelle={`Supprimer ${s.sigle}`}
                               disabled={suppressionEnCours === s.uuid}
-                              onClick={() => supprimer(s)}
+                              onClick={async () => {
+                        if (await confirmer({ titre: `Supprimer ${s.sigle}`, message: `La structure ${s.sigle} sera retirée de la liste des parties prenantes.`, action: 'Supprimer' })) {
+                          void supprimer(s)
+                        }
+                      }}
                               classeCouleur="text-muted hover:bg-bad-bg hover:text-bad"
                             >
                               <IconeSupprimer />

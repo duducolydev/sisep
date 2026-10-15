@@ -154,6 +154,7 @@ final class ActiviteStatutAutoHttpTest extends WebTestCase
 
         $coordonnateur = new Utilisateur('coordonnateur.statut.auto@example.test', 'temp', 'Diagne', 'Aïssatou');
         $coordonnateur->setMotDePasseHash($hasher->hashPassword($coordonnateur, self::MOT_DE_PASSE));
+        $coordonnateur->marquerMdpChange();
         $this->em->persist($coordonnateur);
         $this->em->persist(new UtilisateurRole($coordonnateur, $roleCoordonnateur, null));
 

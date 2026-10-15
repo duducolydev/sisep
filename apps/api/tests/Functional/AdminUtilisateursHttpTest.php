@@ -201,11 +201,13 @@ final class AdminUtilisateursHttpTest extends WebTestCase
 
         $coordonnateur = new Utilisateur('coordonnateur.utilisateurs.test@example.test', 'temp', 'Diagne', 'Aïssatou');
         $coordonnateur->setMotDePasseHash($hasher->hashPassword($coordonnateur, self::MOT_DE_PASSE));
+        $coordonnateur->marquerMdpChange();
         $this->em->persist($coordonnateur);
         $this->em->persist(new UtilisateurRole($coordonnateur, $roleCoordonnateur, null));
 
         $focalDsid = new Utilisateur('focal.dsid.utilisateurs.test@example.test', 'temp', 'Sarr', 'Ibrahima');
         $focalDsid->setMotDePasseHash($hasher->hashPassword($focalDsid, self::MOT_DE_PASSE));
+        $focalDsid->marquerMdpChange();
         $focalDsid->setStructure($dsid);
         $this->em->persist($focalDsid);
         $this->em->persist(new UtilisateurRole($focalDsid, $rolePointFocal, $dsid));

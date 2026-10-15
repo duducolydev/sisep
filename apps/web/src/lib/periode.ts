@@ -1,6 +1,6 @@
 import { useSearchParams } from 'react-router'
 
-export type GranularitePeriode = 'aucun' | 'trimestre' | 'mois' | 'jour'
+export type GranularitePeriode = 'aucun' | 'annee' | 'trimestre' | 'mois' | 'jour'
 
 export function trimestreDe(mois: number): number {
   return Math.ceil(mois / 3)
@@ -13,6 +13,8 @@ export function valeurParDefaut(granularite: GranularitePeriode): string {
   const mois = maintenant.getMonth() + 1
 
   switch (granularite) {
+    case 'annee':
+      return String(annee)
     case 'trimestre':
       return `${annee}-T${trimestreDe(mois)}`
     case 'mois':
@@ -39,6 +41,8 @@ export function correspondAPeriode(dateIso: string, granularite: GranularitePeri
   const mois = Number(dateIso.slice(5, 7))
 
   switch (granularite) {
+    case 'annee':
+      return annee === valeur
     case 'trimestre': {
       const [anneeValeur, trimestreValeur] = valeur.split('-T')
 

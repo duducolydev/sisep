@@ -10,6 +10,8 @@ import { DropzoneFichier } from './DropzoneFichier'
 interface ValeurIndicateurInlineProps {
   indicateurUuid: string
   actuel: string | null
+  /** Saisie non encore validée — montrée à la place de `actuel`, marquée « en attente ». */
+  enAttente?: { valeur: string } | null
   unite: string
   /** Hint serveur (§ 8) : indicateurs.saisir (portée-aware) OU une invitation active sur cet indicateur précis — usePeutSur() seul ne détecterait pas l'accès par invitation. */
   peutSaisir: boolean
@@ -32,7 +34,7 @@ const AUJOURDHUI = new Date().toISOString().slice(0, 10)
  * delta +/- depuis la dernière saisie (validée ou non), pas la valeur
  * absolue — évite de tout ressaisir à chaque mise à jour périodique.
  */
-export function ValeurIndicateurInline({ indicateurUuid, actuel, unite, peutSaisir }: ValeurIndicateurInlineProps) {
+export function ValeurIndicateurInline({ indicateurUuid, actuel, enAttente = null, unite, peutSaisir }: ValeurIndicateurInlineProps) {
   const [ouvert, setOuvert] = useState(false)
   const [mode, setMode] = useState<ModeSaisie>('ajustement')
   const [valeur, setValeur] = useState('')
@@ -103,7 +105,14 @@ export function ValeurIndicateurInline({ indicateurUuid, actuel, unite, peutSais
 
   return (
     <span className="inline-flex items-center justify-end gap-2">
-      <span className="chiffres">{actuel === null ? '—' : `${formaterValeurIndicateur(actuel)} ${unite}`}</span>
+      {enAttente !== null ? (
+        <span className="flex flex-col items-end">
+          <span className="chiffres">{`${formaterValeurIndicateur(enAttente.valeur)} ${unite}`}</span>
+          <span className="text-[11px] text-eyebrow">en attente de validation</span>
+        </span>
+      ) : (
+        <span className="chiffres">{actuel === null ? '—' : `${formaterValeurIndicateur(actuel)} ${unite}`}</span>
+      )}
 
       {peutSaisir && (
         <Popover.Root open={ouvert} onOpenChange={surChangementOuverture}>

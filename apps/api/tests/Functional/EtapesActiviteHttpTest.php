@@ -257,6 +257,85 @@ final class EtapesActiviteHttpTest extends WebTestCase
         }
     }
 
+    /**
+     * Retours des RSE : chaque ligne du PTBA (RNOCB…) a ses propres étapes.
+     * Progression d'une ligne = moyenne de ses étapes ; progression de
+     * l'activité = moyenne de ses lignes structurées, chaque ligne pesant
+     * pareil quel que soit son nombre d'étapes.
+     */
+    public function testChaqueLigneASesEtapesEtPeseAutantQueLesAutres(): void
+    {
+        [$client, $fixture] = $this->demarrer();
+
+        try {
+            $activiteUuid = $fixture['activiteDsid']->getUuid()->toRfc4122();
+            $this->connecter($client, $fixture['suiviEvaluation']->getEmail());
+
+            $lignes = [];
+            foreach (['RNOCB', 'ENES'] as $libelle) {
+                $client->request('POST', '/api/v1/sous-activites', server: ['CONTENT_TYPE' => 'application/json'], content: json_encode([
+                    'activite' => $activiteUuid,
+                    'libelle' => $libelle,
+                ], \JSON_THROW_ON_ERROR));
+                self::assertResponseStatusCodeSame(201);
+                $lignes[$libelle] = $this->corps($client)['uuid'];
+            }
+
+            // RNOCB : quatre étapes ; ENES : une seule.
+            $etapesRnocb = [];
+            foreach (['Recrutement', 'Formation des enquêteurs', 'Phase pilote', 'Dénombrement'] as $libelle) {
+                $client->request('POST', "/api/v1/sous-activites/{$lignes['RNOCB']}/etapes", server: ['CONTENT_TYPE' => 'application/json'], content: json_encode([
+                    'libelle' => $libelle,
+                ], \JSON_THROW_ON_ERROR));
+                self::assertResponseStatusCodeSame(201);
+                $etapesRnocb[] = $this->corps($client)['uuid'];
+            }
+            $client->request('POST', "/api/v1/sous-activites/{$lignes['ENES']}/etapes", server: ['CONTENT_TYPE' => 'application/json'], content: json_encode([
+                'libelle' => 'Collecte',
+            ], \JSON_THROW_ON_ERROR));
+            $etapeEnes = $this->corps($client)['uuid'];
+
+            $client->request('GET', "/api/v1/sous-activites/{$lignes['RNOCB']}/etapes");
+            self::assertSame(['Recrutement', 'Formation des enquêteurs', 'Phase pilote', 'Dénombrement'], array_column($this->corps($client)['donnees'], 'libelle'));
+            $client->request('GET', "/api/v1/activites/{$activiteUuid}/etapes");
+            self::assertCount(0, $this->corps($client)['donnees'], "Les étapes d'une ligne ne sont pas des étapes propres de l'activité.");
+
+            // Le point focal de la structure renseigne les étapes des lignes.
+            $this->connecter($client, $fixture['focalDsid']->getEmail());
+            $renseigner = function (string $etapeUuid, int $avancement) use ($client): void {
+                $client->request('PATCH', "/api/v1/etapes/{$etapeUuid}", server: ['CONTENT_TYPE' => 'application/json'], content: json_encode([
+                    'avancement' => $avancement,
+                    'dateMiseAJour' => '2026-10-15',
+                ], \JSON_THROW_ON_ERROR));
+                self::assertResponseIsSuccessful();
+            };
+            $renseigner($etapesRnocb[0], 100);
+            $renseigner($etapeEnes, 50);
+
+            // RNOCB : (100 + 0 + 0 + 0) / 4 = 25 % ; ENES : 50 %.
+            $client->request('GET', "/api/v1/activites/{$activiteUuid}");
+            $fiche = $this->corps($client);
+            $parLibelle = array_column($fiche['sousActivites'], null, 'libelle');
+            self::assertEqualsWithDelta(0.25, $parLibelle['RNOCB']['progression'], 0.0001);
+            self::assertSame(4, $parLibelle['RNOCB']['etapesTotal']);
+            self::assertSame(1, $parLibelle['RNOCB']['etapesAchevees']);
+            self::assertEqualsWithDelta(0.5, $parLibelle['ENES']['progression'], 0.0001);
+
+            // Activité : moyenne des lignes (25 + 50) / 2 = 37,5 %, et non la
+            // moyenne des cinq étapes (30 %) qui ferait peser RNOCB quatre fois.
+            self::assertEqualsWithDelta(0.375, $fiche['progression'], 0.0001);
+            self::assertSame(5, $fiche['etapesTotal']);
+
+            // Le terrain ne structure pas une ligne.
+            $client->request('POST', "/api/v1/sous-activites/{$lignes['ENES']}/etapes", server: ['CONTENT_TYPE' => 'application/json'], content: json_encode([
+                'libelle' => 'Étape ajoutée par le terrain',
+            ], \JSON_THROW_ON_ERROR));
+            self::assertResponseStatusCodeSame(403);
+        } finally {
+            $this->rollback();
+        }
+    }
+
     private function ajouterEtape(KernelBrowser $client, string $activiteUuid, string $libelle): string
     {
         $client->request('POST', "/api/v1/activites/{$activiteUuid}/etapes", server: ['CONTENT_TYPE' => 'application/json'], content: json_encode([
@@ -329,11 +408,13 @@ final class EtapesActiviteHttpTest extends WebTestCase
 
         $focalDsid = new Utilisateur('focal.dsid.etapes@example.test', 'temp', 'Sarr', 'Ibrahima');
         $focalDsid->setMotDePasseHash($hasher->hashPassword($focalDsid, self::MOT_DE_PASSE));
+        $focalDsid->marquerMdpChange();
         $this->em->persist($focalDsid);
         $this->em->persist(new UtilisateurRole($focalDsid, $rolePointFocal, $dsid));
 
         $suiviEvaluation = new Utilisateur('suivi.etapes@example.test', 'temp', 'Ndiaye', 'Moussa');
         $suiviEvaluation->setMotDePasseHash($hasher->hashPassword($suiviEvaluation, self::MOT_DE_PASSE));
+        $suiviEvaluation->marquerMdpChange();
         $this->em->persist($suiviEvaluation);
         $this->em->persist(new UtilisateurRole($suiviEvaluation, $roleSuiviEvaluation, null));
 
