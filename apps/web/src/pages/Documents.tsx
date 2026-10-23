@@ -14,11 +14,12 @@ import {
   type TypeRattachement,
 } from '@/lib/documents'
 import { formaterDate } from '@/lib/format'
-import { usePeut } from '@/lib/use-permissions'
+import { usePeut, usePeutRequalifierPiece } from '@/lib/use-permissions'
 import { queryClient } from '@/lib/query-client'
 import { Squelette } from '@/components/Squelette'
 import { Bouton } from '@/components/Bouton'
-import { IconeBouton, IconePlus, IconeRecherche, IconeSupprimer, IconeTelecharger } from '@/components/Icones'
+import { IconeBouton, IconeModifier, IconePlus, IconeRecherche, IconeSupprimer, IconeTelecharger } from '@/components/Icones'
+import { ModifierPieceJointeModale } from '@/components/ModifierPieceJointeModale'
 import { DeposerDocumentModale } from '@/components/DeposerDocumentModale'
 import { useToast } from '@/components/ToastProvider'
 import { useConfirmer } from '@/lib/confirmation'
@@ -47,6 +48,8 @@ export function Documents() {
   const [modaleOuverte, setModaleOuverte] = useState(false)
   const [actionEnCours, setActionEnCours] = useState<string | null>(null)
   const peutGerer = usePeut('documents.gerer')
+  const peutRequalifier = usePeutRequalifierPiece()
+  const [enModification, setEnModification] = useState<Document | null>(null)
   const peutExporter = usePeut('exports.generer')
   const afficherToast = useToast()
 
@@ -283,6 +286,11 @@ export function Documents() {
                         >
                           <IconeTelecharger />
                         </a>
+                        {peutRequalifier(document.deposeParUuid) && (
+                          <IconeBouton libelle="Modifier l'intitulé ou le type" onClick={() => setEnModification(document)}>
+                            <IconeModifier />
+                          </IconeBouton>
+                        )}
                         {peutGerer && (
                           <IconeBouton
                             libelle="Retirer le document"
@@ -306,6 +314,10 @@ export function Documents() {
           </div>
         )}
       </section>
+
+      {enModification !== null && (
+        <ModifierPieceJointeModale piece={enModification} invalider={[['documents']]} onFermer={() => setEnModification(null)} />
+      )}
 
       {modaleOuverte && cibleUuid !== undefined && (
         <DeposerDocumentModale

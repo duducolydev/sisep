@@ -14,12 +14,13 @@ import { useConfirmer } from '@/lib/confirmation'
 import { formaterDate, formaterValeurIndicateur } from '@/lib/format'
 import { ApiError } from '@/lib/api-client'
 import { queryClient } from '@/lib/query-client'
-import { usePeut } from '@/lib/use-permissions'
+import { usePeut, usePeutRequalifierPiece } from '@/lib/use-permissions'
+import type { PieceRequalifiable } from '@/lib/documents'
 import { usePeriodeFiltre } from '@/lib/periode'
 import { urlTelechargerPieceJointe, urlExportDonnees } from '@/lib/exports'
 import { BarreAtteinte } from '@/components/BarreAtteinte'
 import { BarresObjectifsIndicateur } from '@/components/BarresObjectifsIndicateur'
-import { CourbeIndicateur } from '@/components/CourbeIndicateur'
+import { EvolutionIndicateur } from '@/components/EvolutionIndicateur'
 import { Pastille } from '@/components/Pastille'
 import { SaisirValeurIndicateurModale } from '@/components/SaisirValeurIndicateurModale'
 import { InviterSectorielModale } from '@/components/InviterSectorielModale'
@@ -27,7 +28,8 @@ import { SelecteurPeriode } from '@/components/SelecteurPeriode'
 import { Squelette } from '@/components/Squelette'
 import { useToast } from '@/components/ToastProvider'
 import { Bouton } from '@/components/Bouton'
-import { IconeBouton, IconeTrombone, IconeAnnuler, IconePlus, IconeInviter, IconeValider } from '@/components/Icones'
+import { IconeBouton, IconeTrombone, IconeAnnuler, IconeModifier, IconePlus, IconeInviter, IconeValider } from '@/components/Icones'
+import { ModifierPieceJointeModale } from '@/components/ModifierPieceJointeModale'
 import { BoutonExporter } from '@/components/BoutonExporter'
 
 function formaterTaille(octets: number): string {
@@ -47,6 +49,8 @@ export function IndicateurDetail() {
   const [modaleOuverte, setModaleOuverte] = useState(false)
   const [modaleInvitationOuverte, setModaleInvitationOuverte] = useState(false)
   const [actionEnCours, setActionEnCours] = useState<string | null>(null)
+  const [pieceModifiee, setPieceModifiee] = useState<PieceRequalifiable | null>(null)
+  const peutRequalifier = usePeutRequalifierPiece()
   const [erreurAction, setErreurAction] = useState<string | null>(null)
 
   const peutValider = usePeut('indicateurs.valider')
@@ -194,7 +198,13 @@ export function IndicateurDetail() {
           {valeurs === undefined ? (
             <Squelette lignes={3} />
           ) : (
-            <CourbeIndicateur points={pointsCourbe} unite={indicateur.unite} tauxAtteinte={affiche.tauxAtteinte} />
+            <EvolutionIndicateur
+              points={pointsCourbe}
+              unite={indicateur.unite}
+              tauxAtteinte={affiche.tauxAtteinte}
+              valeurCible={Number(indicateur.valeurCible)}
+              dateCible={indicateur.dateCible}
+            />
           )}
         </div>
       </section>
@@ -298,11 +308,16 @@ export function IndicateurDetail() {
                     {v.piecesJointes.map((p) => (
                       <li key={p.uuid} className="flex items-center gap-2">
                         <IconeTrombone />
-                        <a href={urlTelechargerPieceJointe(p.uuid)} className="min-w-0 truncate text-accent hover:text-accent-d">
-                          {p.nomFichier}
+                        <a href={urlTelechargerPieceJointe(p.uuid)} title={p.nomFichier} className="min-w-0 truncate text-accent hover:text-accent-d">
+                          {p.libelle ?? p.nomFichier}
                         </a>
                         {p.typeDocumentLibelle && <span className="shrink-0 rounded-full bg-nested px-2 py-0.5 text-xs text-muted">{p.typeDocumentLibelle}</span>}
                         <span className="chiffres shrink-0 text-xs text-muted">{formaterTaille(p.tailleOctets)}</span>
+                        {peutRequalifier(p.deposeParUuid) && (
+                          <IconeBouton libelle={`Modifier l'intitulé ou le type de ${p.libelle ?? p.nomFichier}`} onClick={() => setPieceModifiee(p)}>
+                            <IconeModifier />
+                          </IconeBouton>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -320,6 +335,10 @@ export function IndicateurDetail() {
           </p>
         )}
       </section>
+
+      {pieceModifiee && uuid && (
+        <ModifierPieceJointeModale piece={pieceModifiee} invalider={[['indicateur', uuid]]} onFermer={() => setPieceModifiee(null)} />
+      )}
 
       {modaleInvitationOuverte && (
         <InviterSectorielModale indicateurUuid={indicateur.uuid} onFermer={() => setModaleInvitationOuverte(false)} />

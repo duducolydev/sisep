@@ -19,11 +19,13 @@ use App\Entity\InvitationIndicateur;
 use App\Entity\JournalActivite;
 use App\Entity\Permission;
 use App\Entity\Personnel;
+use App\Entity\PieceJointe;
 use App\Entity\PointFocal;
 use App\Entity\Role;
 use App\Entity\Structure;
 use App\Entity\TacheInitiative;
 use App\Entity\Utilisateur;
+use App\Entity\UtilisateurRole;
 use App\ValueObject\Montant;
 use Doctrine\Bundle\DoctrineBundle\Attribute\AsDoctrineListener;
 use Doctrine\ORM\Event\OnFlushEventArgs;
@@ -73,7 +75,21 @@ final class JournalActiviteSubscriber
         Contrat::class => 'contrat',
         EffectifEnqueteurs::class => 'effectif_enqueteurs',
         PointFocal::class => 'point_focal',
+        // Attribution d'un rôle à un compte : c'est elle qui ouvre les droits.
+        UtilisateurRole::class => 'attribution_role',
+        // Documents et justificatifs : dépôt, requalification (intitulé,
+        // type) et retrait — le retrait de la bibliothèque est physique.
+        PieceJointe::class => 'piece_jointe',
     ];
+
+    /**
+     * Champs dont le journal retient qu'ils ont changé, jamais la valeur :
+     * une empreinte de mot de passe lisible par tout titulaire de
+     * journal.consulter, et exportable, se casse hors ligne.
+     */
+    private const CHAMPS_MASQUES = ['motDePasseHash'];
+
+    private const VALEUR_MASQUEE = '(masqué)';
 
     /** @var list<array{entity: object, type: string, apres: array<string, mixed>}> */
     private array $creationsEnAttente = [];
@@ -123,7 +139,10 @@ final class JournalActiviteSubscriber
             if (null === $type) {
                 continue;
             }
-            $entree = $this->construireEntree('suppression', $type, $entity, []);
+            // L'état « avant » d'une suppression est l'entité entière : sans
+            // lui, le journal dirait qu'un rôle a été retiré sans dire lequel.
+            $origine = array_map(static fn ($valeur) => [$valeur, null], $uow->getOriginalEntityData($entity));
+            $entree = $this->construireEntree('suppression', $type, $entity, $origine);
             $em->persist($entree);
             $uow->computeChangeSet($metadataJournal, $entree);
         }
@@ -174,7 +193,7 @@ final class JournalActiviteSubscriber
     {
         $avant = [];
         foreach ($changeSet as $champ => [$ancien]) {
-            $avant[$champ] = $this->serialiser($ancien);
+            $avant[$champ] = $this->serialiserChamp($champ, $ancien);
         }
         $apres = $this->serialiserApres($changeSet);
 
@@ -203,10 +222,19 @@ final class JournalActiviteSubscriber
     {
         $apres = [];
         foreach ($changeSet as $champ => [, $nouveau]) {
-            $apres[$champ] = $this->serialiser($nouveau);
+            $apres[$champ] = $this->serialiserChamp($champ, $nouveau);
         }
 
         return $apres;
+    }
+
+    private function serialiserChamp(string $champ, mixed $valeur): mixed
+    {
+        if (null !== $valeur && \in_array($champ, self::CHAMPS_MASQUES, true)) {
+            return self::VALEUR_MASQUEE;
+        }
+
+        return $this->serialiser($valeur);
     }
 
     private function serialiser(mixed $valeur): mixed
@@ -218,6 +246,7 @@ final class JournalActiviteSubscriber
             $valeur instanceof Montant => $valeur->versFcfa(),
             $valeur instanceof Utilisateur => $valeur->getUuid()->toRfc4122(),
             $valeur instanceof Structure => $valeur->getUuid()->toRfc4122(),
+            $valeur instanceof Role => $valeur->getCode(),
             \is_object($valeur) && method_exists($valeur, 'getUuid') => (string) $valeur->getUuid(),
             \is_object($valeur) => $valeur::class,
             default => $valeur,

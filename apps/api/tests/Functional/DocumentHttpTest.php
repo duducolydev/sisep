@@ -7,6 +7,7 @@ namespace App\Tests\Functional;
 use App\Controller\DocumentController;
 use App\Entity\Activite;
 use App\Entity\Composante;
+use App\Entity\JournalActivite;
 use App\Entity\Permission;
 use App\Entity\PieceJointe;
 use App\Entity\Projet;
@@ -228,6 +229,57 @@ final class DocumentHttpTest extends WebTestCase
             files: ['fichier' => new UploadedFile($chemin, $nom, $mime, null, true)],
         );
         self::assertResponseStatusCodeSame(201);
+    }
+
+    /**
+     * Présentation au PHASAOC : corriger l'intitulé ou le type d'un document
+     * déposé sans le retirer. Le déposant ou l'UGP, personne d'autre ; la
+     * correction est journalisée.
+     */
+    public function testUnDocumentDeposeSeRequalifie(): void
+    {
+        [$client, $fixture] = $this->demarrer();
+
+        try {
+            // Justificatif d'étape déposé par le point focal.
+            $justificatif = new PieceJointe('etape_activite', (int) $fixture['activite']->getId(), 'pv.pdf', 'var/uploads/etapes/pv.pdf', 'application/pdf', 12, $fixture['focal']);
+            $this->em->persist($justificatif);
+            $this->em->flush();
+
+            $projetUuid = $fixture['projet']->getUuid()->toRfc4122();
+            $this->connecter($client, $fixture['coordonnateur']->getEmail());
+            $this->deposer($client, $projetUuid, 'Rapport T2', 'rapport.pdf', 'application/pdf');
+            $url = '/api/v1/pieces-jointes/'.$this->corps($client)['uuid'];
+
+            $client->request('PATCH', $url, server: ['CONTENT_TYPE' => 'application/json'], content: json_encode(['typeDocument' => 'autre'], \JSON_THROW_ON_ERROR));
+            self::assertResponseStatusCodeSame(422, '« Autre » sans précision est refusé, comme au dépôt.');
+
+            $client->request('PATCH', $url, server: ['CONTENT_TYPE' => 'application/json'], content: json_encode([
+                'libelle' => '  Rapport d\'avancement T2  ',
+                'typeDocument' => 'autre',
+                'typeDocumentPrecision' => 'Note trimestrielle',
+            ], \JSON_THROW_ON_ERROR));
+            self::assertResponseIsSuccessful();
+            $corps = $this->corps($client);
+            self::assertSame('Rapport d\'avancement T2', $corps['libelle']);
+            self::assertSame('Autre : Note trimestrielle', $corps['typeDocumentLibelle']);
+            self::assertSame('rapport.pdf', $corps['nomFichier'], 'Le fichier lui-même ne change pas.');
+
+            $modifications = $this->em->getRepository(JournalActivite::class)->findBy(['entiteType' => 'piece_jointe', 'action' => 'modification']);
+            self::assertCount(1, $modifications);
+
+            // Ni déposant ni UGP : refusé.
+            $this->connecter($client, $fixture['focal']->getEmail());
+            $client->request('PATCH', $url, server: ['CONTENT_TYPE' => 'application/json'], content: json_encode(['libelle' => 'Autre chose'], \JSON_THROW_ON_ERROR));
+            self::assertResponseStatusCodeSame(403);
+
+            // Son propre justificatif, en revanche, il le requalifie.
+            $client->request('PATCH', '/api/v1/pieces-jointes/'.$justificatif->getUuid()->toRfc4122(), server: ['CONTENT_TYPE' => 'application/json'], content: json_encode(['typeDocument' => 'proces_verbal'], \JSON_THROW_ON_ERROR));
+            self::assertResponseIsSuccessful();
+            self::assertSame('proces_verbal', $this->corps($client)['typeDocument']);
+        } finally {
+            $this->rollback();
+        }
     }
 
     public function testUnJustificatifMetierNEstPasRetirableParLaBibliotheque(): void

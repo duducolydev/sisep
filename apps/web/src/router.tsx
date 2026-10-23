@@ -90,8 +90,9 @@ export const router = createBrowserRouter([
         loader: gardePermission('indicateurs.definir'),
         lazy: () => import('./pages/administration/AdminIndicateurs').then((m) => ({ Component: m.AdminIndicateurs })),
       },
+      { path: 'administration/gabarits-etapes', element: <Navigate to="/administration/modeles-etapes" replace /> },
       {
-        path: 'administration/gabarits-etapes',
+        path: 'administration/modeles-etapes',
         loader: gardePermission('admin.parametres'),
         lazy: () =>
           import('./pages/administration/AdminGabaritsEtapes').then((m) => ({ Component: m.AdminGabaritsEtapes })),

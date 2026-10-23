@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent } from 'react'
+import { useState, type KeyboardEvent, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import type { NoeudActivite, NoeudComposante, NoeudSousActivite, NoeudSousComposante } from '@/lib/composantes'
 import { BarreExecution } from './BarreExecution'
@@ -23,14 +23,21 @@ interface ArbreExecutionProps {
   tauxAttendu?: number | null
   /** Recherche en cours : tout est déplié, pour que la ligne trouvée soit visible sans clic. */
   toutDeplie?: boolean
+  /** Boutons de gestion d'une ligne de l'arbre (modifier, archiver, ajouter) — absents en lecture seule. */
+  actions?: (cible: CibleArbre) => ReactNode
 }
+
+export type CibleArbre =
+  | { niveau: 'composante'; noeud: NoeudComposante }
+  | { niveau: 'sous_composante'; noeud: NoeudSousComposante; composante: NoeudComposante }
+  | { niveau: 'activite'; noeud: NoeudActivite; sousComposante: NoeudSousComposante }
 
 interface SousActiviteOuverte {
   activiteUuid: string
   sousActiviteUuid: string
 }
 
-export function ArbreExecution({ composantes, tauxAttendu, toutDeplie = false }: ArbreExecutionProps) {
+export function ArbreExecution({ composantes, tauxAttendu, toutDeplie = false, actions }: ArbreExecutionProps) {
   const [ouverts, setOuverts] = useState<Set<string>>(() => new Set(composantes.map((c) => c.uuid)))
   const [sousActiviteOuverte, setSousActiviteOuverte] = useState<SousActiviteOuverte | null>(null)
 
@@ -117,6 +124,7 @@ export function ArbreExecution({ composantes, tauxAttendu, toutDeplie = false }:
             ouverts={ouvertsEffectifs}
             tauxAttendu={tauxAttendu}
             onOuvrirSousActivite={setSousActiviteOuverte}
+            actions={actions}
           />
         ))}
       </ul>
@@ -139,6 +147,7 @@ function LigneComposante({
   ouverts,
   tauxAttendu,
   onOuvrirSousActivite,
+  actions,
 }: {
   composante: NoeudComposante
   ouvert: boolean
@@ -146,10 +155,13 @@ function LigneComposante({
   ouverts: Set<string>
   tauxAttendu?: number | null
   onOuvrirSousActivite: (cible: SousActiviteOuverte) => void
+  actions?: (cible: CibleArbre) => ReactNode
 }) {
   return (
     <li role="treeitem" aria-expanded={ouvert}>
-      <div className="grid grid-cols-[1fr_220px] items-center gap-4 rounded-[var(--radius-carte)] bg-surface px-4 py-3 shadow-[var(--shadow-carte)]">
+      <div
+        className={`grid ${actions ? 'grid-cols-[1fr_220px_auto]' : 'grid-cols-[1fr_220px]'} items-center gap-4 rounded-[var(--radius-carte)] bg-surface px-4 py-3 shadow-[var(--shadow-carte)]`}
+      >
         <button
           type="button"
           onClick={() => onBasculer(composante.uuid)}
@@ -161,6 +173,7 @@ function LigneComposante({
           <span className="font-titre">{composante.libelle}</span>
         </button>
         <BarreExecution notifie={composante.notifie} engage={composante.engage} depense={composante.depense} rythmeAttendu={tauxAttendu} />
+        {actions && <span className="flex items-center">{actions({ niveau: 'composante', noeud: composante })}</span>}
       </div>
 
       {ouvert && (
@@ -169,11 +182,13 @@ function LigneComposante({
             <LigneSousComposante
               key={sc.uuid}
               sousComposante={sc}
+              composante={composante}
               ouvert={ouverts.has(sc.uuid)}
               onBasculer={onBasculer}
               ouverts={ouverts}
               tauxAttendu={tauxAttendu}
               onOuvrirSousActivite={onOuvrirSousActivite}
+              actions={actions}
             />
           ))}
         </ul>
@@ -184,22 +199,26 @@ function LigneComposante({
 
 function LigneSousComposante({
   sousComposante,
+  composante,
   ouvert,
   onBasculer,
   ouverts,
   tauxAttendu,
   onOuvrirSousActivite,
+  actions,
 }: {
   sousComposante: NoeudSousComposante
+  composante: NoeudComposante
   ouvert: boolean
   onBasculer: (uuid: string) => void
   ouverts: Set<string>
   tauxAttendu?: number | null
   onOuvrirSousActivite: (cible: SousActiviteOuverte) => void
+  actions?: (cible: CibleArbre) => ReactNode
 }) {
   return (
     <li role="treeitem" aria-expanded={ouvert}>
-      <div className="grid grid-cols-[1fr_220px] items-center gap-4 rounded-[var(--radius-carte)] bg-nested px-4 py-2">
+      <div className={`grid ${actions ? 'grid-cols-[1fr_220px_auto]' : 'grid-cols-[1fr_220px]'} items-center gap-4 rounded-[var(--radius-carte)] bg-nested px-4 py-2`}>
         <button
           type="button"
           onClick={() => onBasculer(sousComposante.uuid)}
@@ -216,6 +235,7 @@ function LigneSousComposante({
           depense={sousComposante.depense}
           rythmeAttendu={tauxAttendu}
         />
+        {actions && <span className="flex items-center">{actions({ niveau: 'sous_composante', noeud: sousComposante, composante })}</span>}
       </div>
 
       {ouvert && (sousComposante.activites ?? []).length > 0 && (
@@ -224,10 +244,12 @@ function LigneSousComposante({
             <LigneActivite
               key={a.uuid}
               activite={a}
+              sousComposante={sousComposante}
               ouvert={ouverts.has(a.uuid)}
               onBasculer={onBasculer}
               tauxAttendu={tauxAttendu}
               onOuvrirSousActivite={onOuvrirSousActivite}
+              actions={actions}
             />
           ))}
         </ul>
@@ -238,22 +260,28 @@ function LigneSousComposante({
 
 function LigneActivite({
   activite,
+  sousComposante,
   ouvert,
   onBasculer,
   tauxAttendu,
   onOuvrirSousActivite,
+  actions,
 }: {
   activite: NoeudActivite
+  sousComposante: NoeudSousComposante
   ouvert: boolean
   onBasculer: (uuid: string) => void
   tauxAttendu?: number | null
   onOuvrirSousActivite: (cible: SousActiviteOuverte) => void
+  actions?: (cible: CibleArbre) => ReactNode
 }) {
   const sousActivites = activite.sousActivites ?? []
 
   return (
     <li role="treeitem" aria-expanded={ouvert}>
-      <div className="grid grid-cols-[1fr_100px_130px_220px_auto] items-center gap-4 rounded-[var(--radius-carte)] px-4 py-2 hover:bg-hover">
+      <div
+        className={`grid ${actions ? 'grid-cols-[1fr_100px_130px_220px_auto_auto]' : 'grid-cols-[1fr_100px_130px_220px_auto]'} items-center gap-4 rounded-[var(--radius-carte)] px-4 py-2 hover:bg-hover`}
+      >
         <button
           type="button"
           onClick={() => onBasculer(activite.uuid)}
@@ -275,6 +303,7 @@ function LigneActivite({
         >
           <IconeVoir />
         </Link>
+        {actions && <span className="flex items-center">{actions({ niveau: 'activite', noeud: activite, sousComposante })}</span>}
       </div>
 
       {ouvert && sousActivites.length > 0 && (

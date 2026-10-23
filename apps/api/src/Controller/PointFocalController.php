@@ -122,6 +122,9 @@ final class PointFocalController
         if (\array_key_exists('actif', $donnees) && \is_bool($donnees['actif'])) {
             $pointFocal->setActif($donnees['actif']);
         }
+        if (\array_key_exists('dateDesignation', $donnees)) {
+            $pointFocal->setDateDesignation(\is_string($donnees['dateDesignation']) && '' !== $donnees['dateDesignation'] ? new \DateTimeImmutable($donnees['dateDesignation']) : null);
+        }
         if (\array_key_exists('utilisateurUuid', $donnees)) {
             if (null === $donnees['utilisateurUuid']) {
                 $pointFocal->setUtilisateur(null);

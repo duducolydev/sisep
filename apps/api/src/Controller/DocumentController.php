@@ -289,6 +289,7 @@ final class DocumentController
             'libelle' => $document->getLibelle(),
             'nomFichier' => $document->getNomFichier(),
             'typeDocument' => $document->getTypeDocument()?->value,
+            'typeDocumentPrecision' => $document->getTypeDocumentPrecision(),
             'typeDocumentLibelle' => $document->libelleTypeDocument(),
             'mime' => $document->getMime(),
             'tailleOctets' => $document->getTailleOctets(),
@@ -296,6 +297,7 @@ final class DocumentController
             // Déduite du MIME à la demande, jamais stockée (§ 5.1).
             'famille' => FamilleDocument::depuisMime($document->getMime())->value,
             'deposePar' => $document->getCreePar()->getNomComplet(),
+            'deposeParUuid' => $document->getCreePar()->getUuid()->toRfc4122(),
             'creeLe' => $document->getCreeLe()->format(\DateTimeInterface::ATOM),
         ];
     }

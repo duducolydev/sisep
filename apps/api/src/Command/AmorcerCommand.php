@@ -78,7 +78,7 @@ final class AmorcerCommand extends Command
         $nbGabarits = $this->referentiel->semerGabaritsSiCatalogueVide();
         if ($nbGabarits > 0) {
             $this->em->flush();
-            $io->text(\sprintf("%d gabarits d'étapes de départ créés (catalogue vide).", $nbGabarits));
+            $io->text(\sprintf("%d modèles d'étapes de départ créés (catalogue vide).", $nbGabarits));
         }
 
         if ('' === $this->emailAdministrateur) {

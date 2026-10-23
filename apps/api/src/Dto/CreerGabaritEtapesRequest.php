@@ -20,7 +20,7 @@ final class CreerGabaritEtapesRequest
     public ?string $description = null;
 
     /** @var list<string> */
-    #[Assert\Count(min: 1, minMessage: 'Un gabarit doit comporter au moins une étape.')]
+    #[Assert\Count(min: 1, minMessage: 'Un modèle doit comporter au moins une étape.')]
     #[Assert\All([new Assert\NotBlank(message: 'Un libellé d\'étape ne peut pas être vide.'), new Assert\Length(max: 160)])]
     public array $etapes = [];
 }

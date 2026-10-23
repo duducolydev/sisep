@@ -1,6 +1,7 @@
 import { queryOptions } from '@tanstack/react-query'
 import { apiClient } from './api-client'
 import { ajouterNature, type NatureDocument } from './types-document'
+import type { PieceRequalifiable } from './documents'
 
 export interface Livrable {
   uuid: string
@@ -12,11 +13,7 @@ export interface Livrable {
   tauxRealisation: number | null
 }
 
-export interface PieceJointeEtape {
-  uuid: string
-  nomFichier: string
-  /** Nature choisie au dépôt (« Rapport », « Autre : … ») — null pour les dépôts antérieurs. */
-  typeDocumentLibelle: string | null
+export interface PieceJointeEtape extends PieceRequalifiable {
   mime: string
   tailleOctets: number
   creeLe: string

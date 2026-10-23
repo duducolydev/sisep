@@ -22,7 +22,9 @@ import { queryClient } from '@/lib/query-client'
 import { useConfirmer } from '@/lib/confirmation'
 import { JoindreFichierModale } from './JoindreFichierModale'
 import { Link } from 'react-router'
-import { usePeut } from '@/lib/use-permissions'
+import { usePeut, usePeutRequalifierPiece } from '@/lib/use-permissions'
+import { ModifierPieceJointeModale } from './ModifierPieceJointeModale'
+import type { PieceRequalifiable } from '@/lib/documents'
 
 interface EtapesActiviteProps {
   activiteUuid: string
@@ -45,6 +47,8 @@ export function EtapesActivite({ activiteUuid, sousActiviteUuid, titre, peutStru
 
   const [gabaritChoisi, setGabaritChoisi] = useState('')
   const [etapeRenseignee, setEtapeRenseignee] = useState<EtapeActivite | null>(null)
+  const [pieceModifiee, setPieceModifiee] = useState<PieceRequalifiable | null>(null)
+  const peutRequalifier = usePeutRequalifierPiece()
   const [nouvelleEtape, setNouvelleEtape] = useState('')
   const [ajoutOuvert, setAjoutOuvert] = useState(false)
   const [enCours, setEnCours] = useState(false)
@@ -93,13 +97,13 @@ export function EtapesActivite({ activiteUuid, sousActiviteUuid, titre, peutStru
           </p>
           {peutStructurer && (gabarits?.donnees ?? []).length === 0 && gabarits !== undefined && (
             <p className="mt-2 text-sm text-muted">
-              Aucun gabarit dans le catalogue.{' '}
+              Aucun modèle d'étapes pour le moment.{' '}
               {peutGererGabarits ? (
-                <Link to="/administration/gabarits-etapes" className="font-semibold text-accent hover:underline">
-                  Créer un gabarit
+                <Link to="/administration/modeles-etapes" className="font-semibold text-accent hover:underline">
+                  Créer un modèle
                 </Link>
               ) : (
-                "Un administrateur peut en créer dans Administration → Gabarits d'étapes."
+                "Un administrateur peut en créer dans Administration → Modèles d'étapes."
               )}{' '}
               Vous pouvez aussi ajouter les étapes une à une.
             </p>
@@ -110,10 +114,10 @@ export function EtapesActivite({ activiteUuid, sousActiviteUuid, titre, peutStru
                 value={gabaritChoisi}
                 onChange={(e) => setGabaritChoisi(e.target.value)}
                 disabled={enCours}
-                aria-label="Gabarit à instancier"
+                aria-label="Modèle d'étapes à appliquer"
                 className="rounded-[var(--radius-controle)] border border-border bg-surface px-3 py-2 text-sm"
               >
-                <option value="">Choisir un gabarit…</option>
+                <option value="">Choisir un modèle d'étapes…</option>
                 {(gabarits?.donnees ?? []).map((g) => (
                   <option key={g.uuid} value={g.uuid}>
                     {g.libelle} ({g.etapes.length} étapes)
@@ -124,7 +128,7 @@ export function EtapesActivite({ activiteUuid, sousActiviteUuid, titre, peutStru
                 disabled={enCours || gabaritChoisi === ''}
                 onClick={() => void executer(() => instancierGabarit(activiteUuid, gabaritChoisi, sousActiviteUuid))}
               >
-                Instancier
+                Appliquer le modèle
               </Bouton>
               {!ajoutOuvert && (
                 <Bouton variante="discret" icone={<IconePlus />} disabled={enCours} onClick={() => setAjoutOuvert(true)}>
@@ -269,10 +273,15 @@ export function EtapesActivite({ activiteUuid, sousActiviteUuid, titre, peutStru
                 {etape.piecesJointes.map((piece) => (
                   <span key={piece.uuid} className="flex items-center gap-1.5">
                     <IconeTrombone />
-                    <a href={urlTelechargerPieceJointe(piece.uuid)} className="truncate text-accent hover:text-accent-d">
-                      {piece.nomFichier}
+                    <a href={urlTelechargerPieceJointe(piece.uuid)} title={piece.nomFichier} className="truncate text-accent hover:text-accent-d">
+                      {piece.libelle ?? piece.nomFichier}
                     </a>
                     {piece.typeDocumentLibelle && <span className="shrink-0 rounded-full bg-nested px-2 py-0.5 text-xs text-muted">{piece.typeDocumentLibelle}</span>}
+                    {peutRequalifier(piece.deposeParUuid) && (
+                      <IconeBouton libelle={`Modifier l'intitulé ou le type de ${piece.libelle ?? piece.nomFichier}`} onClick={() => setPieceModifiee(piece)}>
+                        <IconeModifier />
+                      </IconeBouton>
+                    )}
                   </span>
                 ))}
                 {peutRenseigner && (
@@ -284,6 +293,10 @@ export function EtapesActivite({ activiteUuid, sousActiviteUuid, titre, peutStru
             </li>
           ))}
         </ul>
+      )}
+
+      {pieceModifiee && (
+        <ModifierPieceJointeModale piece={pieceModifiee} invalider={[['activite', activiteUuid]]} onFermer={() => setPieceModifiee(null)} />
       )}
 
       {etapeRenseignee && (

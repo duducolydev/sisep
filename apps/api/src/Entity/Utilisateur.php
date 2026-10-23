@@ -232,4 +232,9 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
             $this->attributionsRoles->add($attribution);
         }
     }
+
+    public function retirerAttributionRole(UtilisateurRole $attribution): void
+    {
+        $this->attributionsRoles->removeElement($attribution);
+    }
 }

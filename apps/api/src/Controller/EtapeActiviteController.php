@@ -118,7 +118,7 @@ final class EtapeActiviteController
     {
         $existantes = null !== $ligne ? $ligne->getEtapesActives() : $activite->getEtapesPropres();
         if ($existantes->count() > 0) {
-            return ProblemResponseFactory::creer(409, 'Étapes déjà définies', 'Des étapes existent déjà ici : retirez-les avant d\'instancier un autre gabarit.');
+            return ProblemResponseFactory::creer(409, 'Étapes déjà définies', 'Des étapes existent déjà ici : retirez-les avant d\'appliquer un autre modèle.');
         }
 
         /** @var array<string, mixed> $corps */
@@ -126,7 +126,7 @@ final class EtapeActiviteController
         $gabaritUuid = \is_string($corps['gabarit'] ?? null) ? $corps['gabarit'] : null;
         $gabarit = null !== $gabaritUuid ? $this->gabarits->findOneBy(['uuid' => $this->uuidOuNull($gabaritUuid)]) : null;
         if (null === $gabarit || $gabarit->estSupprime()) {
-            return ProblemResponseFactory::creer(422, 'Gabarit introuvable');
+            return ProblemResponseFactory::creer(422, 'Modèle d\'étapes introuvable');
         }
 
         foreach ($gabarit->getEtapes() as $modele) {

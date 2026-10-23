@@ -118,7 +118,7 @@ final class GabaritEtapesController
 
         if (\array_key_exists('etapes', $donnees)) {
             if (!\is_array($donnees['etapes']) || [] === $donnees['etapes']) {
-                return ProblemResponseFactory::creer(422, 'Données invalides', 'Un gabarit doit comporter au moins une étape.');
+                return ProblemResponseFactory::creer(422, 'Données invalides', 'Un modèle doit comporter au moins une étape.');
             }
             foreach ($donnees['etapes'] as $libelle) {
                 if (!\is_string($libelle) || '' === trim($libelle)) {
@@ -159,7 +159,7 @@ final class GabaritEtapesController
         $gabarit = null !== $uuidObjet ? $this->gabarits->findOneBy(['uuid' => $uuidObjet]) : null;
 
         if (null === $gabarit || $gabarit->estSupprime()) {
-            throw new NotFoundHttpException('Gabarit introuvable.');
+            throw new NotFoundHttpException('Modèle d\'étapes introuvable.');
         }
 
         return $gabarit;

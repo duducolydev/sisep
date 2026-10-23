@@ -133,6 +133,16 @@ final class ComposanteController
         $composante = $this->trouver($uuid);
         $this->exigerPermissionGlobale($this->security, $this->permissionsResolver, 'activites.supprimer');
 
+        // Archiver une composante qui contient encore des sous-composantes
+        // ferait disparaître leur budget de l'arbre sans le dire.
+        $enfants = (int) $this->em->getConnection()->fetchOne(
+            'SELECT COUNT(*) FROM sous_composantes WHERE composante_id = ? AND supprime_le IS NULL',
+            [$composante->getId()],
+        );
+        if ($enfants > 0) {
+            return ProblemResponseFactory::creer(409, 'Composante non vide', \sprintf('Cette composante contient encore %d sous-composante(s) : archivez-les ou déplacez-les d\'abord.', $enfants));
+        }
+
         $composante->supprimer();
         $this->em->flush();
 

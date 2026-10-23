@@ -37,18 +37,29 @@ export const LIBELLES_FAMILLE: Record<string, string> = Object.fromEntries(
   FAMILLES.map((f) => [f.valeur, f.libelle]),
 )
 
-export interface Document {
+/**
+ * Ce que toute pièce jointe expose pour être requalifiée (intitulé, type) —
+ * commun à la bibliothèque et aux justificatifs d'étape, de valeur
+ * d'indicateur et de projet.
+ */
+export interface PieceRequalifiable {
   uuid: string
-  /** Intitulé donné au dépôt ; `null` quand seul le nom de fichier existe. */
+  /** Intitulé donné au dépôt ou ajouté après coup ; `null` : le nom de fichier en tient lieu. */
   libelle: string | null
   nomFichier: string
+  /** Nature choisie au dépôt — null pour les dépôts antérieurs. */
+  typeDocument: string | null
+  typeDocumentPrecision: string | null
+  /** « Rapport », « Autre : … » — prêt à afficher. */
+  typeDocumentLibelle: string | null
+  deposeParUuid: string
+}
+
+export interface Document extends PieceRequalifiable {
   mime: string
   famille: FamilleDocument
   tailleOctets: number
   visibilite: string
-  /** Nature choisie au dépôt — null pour les dépôts antérieurs. */
-  typeDocument: string | null
-  typeDocumentLibelle: string | null
   deposePar: string
   creeLe: string
 }
@@ -118,6 +129,15 @@ export async function deposerDocument(
 
 export function retirerDocument(uuid: string) {
   return apiClient.delete<void>(`/documents/${uuid}`)
+}
+
+/** Corriger l'intitulé ou le type d'une pièce jointe — le fichier ne change pas. */
+export function requalifierPieceJointe(uuid: string, entree: { libelle: string; nature: NatureDocument }) {
+  return apiClient.patch<PieceRequalifiable>(`/pieces-jointes/${uuid}`, {
+    libelle: entree.libelle.trim() === '' ? null : entree.libelle.trim(),
+    typeDocument: entree.nature.type,
+    typeDocumentPrecision: entree.nature.type === 'autre' ? entree.nature.precision.trim() : null,
+  })
 }
 
 export function urlTelechargerDocument(uuid: string): string {

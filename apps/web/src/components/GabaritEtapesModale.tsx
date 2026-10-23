@@ -48,12 +48,12 @@ export function GabaritEtapesModale({ gabarit, onFermer }: GabaritEtapesModalePr
   async function enregistrer() {
     const etapesNettoyees = etapes.map((e) => e.trim()).filter((e) => e !== '')
     if (libelle.trim() === '') {
-      setErreur('Le libellé du gabarit est requis.')
+      setErreur('Le libellé du modèle est requis.')
 
       return
     }
     if (etapesNettoyees.length === 0) {
-      setErreur('Un gabarit doit comporter au moins une étape.')
+      setErreur('Un modèle doit comporter au moins une étape.')
 
       return
     }
@@ -84,7 +84,7 @@ export function GabaritEtapesModale({ gabarit, onFermer }: GabaritEtapesModalePr
   }
 
   return (
-    <Modale titre={gabarit ? 'Modifier le gabarit' : "Nouveau gabarit d'étapes"} onFermer={onFermer}>
+    <Modale titre={gabarit ? 'Modifier le modèle' : "Nouveau modèle d'étapes"} onFermer={onFermer}>
       {erreur && (
         <div role="alert" className="mb-4 rounded-[var(--radius-controle)] bg-bad-bg px-4 py-3 text-bad">
           {erreur}

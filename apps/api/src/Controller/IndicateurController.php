@@ -438,17 +438,30 @@ final class IndicateurController
         return new JsonResponse($this->valeurNormalizer->normaliser($valeur), 201);
     }
 
-    /** Sectoriels éligibles à une invitation (§ décision) — mirrors InitiativeController::responsablesEligibles(), filtré aux porteurs du rôle point_focal_structure. */
+    /**
+     * Sectoriels éligibles à une invitation : porteurs du rôle
+     * point_focal_structure, et comptes liés à une fiche de point focal
+     * (« Lier un compte » sur la fiche de la structure) — l'un sans l'autre
+     * laissait la liste vide pour un point focal pourtant désigné.
+     */
     #[Route('/sectoriels-eligibles', name: 'app_indicateur_sectoriels_eligibles', methods: ['GET'])]
     public function sectorielsEligibles(): JsonResponse
     {
         $this->exigerPermissionGlobale($this->security, $this->permissionsResolver, 'indicateurs.inviter');
 
+        $eligibles = [];
+        foreach ([...$this->utilisateurs->listerParRole('point_focal_structure'), ...$this->utilisateurs->listerLiesAUnPointFocal()] as $u) {
+            if ($u->estActif()) {
+                $eligibles[$u->getUuid()->toRfc4122()] = $u;
+            }
+        }
+        usort($eligibles, static fn (Utilisateur $a, Utilisateur $b) => [$a->getNom(), $a->getPrenom()] <=> [$b->getNom(), $b->getPrenom()]);
+
         return new JsonResponse([
             'donnees' => array_map(static fn (Utilisateur $u) => [
                 'uuid' => $u->getUuid()->toRfc4122(),
                 'nomComplet' => $u->getNomComplet(),
-            ], $this->utilisateurs->listerParRole('point_focal_structure')),
+            ], $eligibles),
         ]);
     }
 

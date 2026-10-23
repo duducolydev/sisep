@@ -17,12 +17,18 @@ import { formaterDate } from '@/lib/format'
 import { useConfirmer } from '@/lib/confirmation'
 import { urlExportDonnees } from '@/lib/exports'
 import { BoutonExporter } from '@/components/BoutonExporter'
+import { rolesQueryOptions } from '@/lib/admin'
+import { structuresDetailQueryOptions } from '@/lib/parties-prenantes'
 
 const TAILLE_PAGE = 10
 
 export function AdminUtilisateurs() {
   const confirmer = useConfirmer()
   const { data: utilisateurs, isLoading, isError } = useQuery(utilisateursQueryOptions())
+  const { data: rolesDisponibles } = useQuery(rolesQueryOptions())
+  const { data: structuresConnues } = useQuery(structuresDetailQueryOptions())
+  const libellesRoles = new Map((rolesDisponibles?.donnees ?? []).map((r) => [r.code, r.libelle]))
+  const siglesStructures = new Map((structuresConnues?.donnees ?? []).map((st) => [st.uuid, st.sigle]))
   const peutGerer = usePeut('admin.utilisateurs')
   const afficherToast = useToast()
 
@@ -153,6 +159,7 @@ export function AdminUtilisateurs() {
                 <th className="px-4 py-3 font-normal">Nom</th>
                 <th className="px-4 py-3 font-normal">Email</th>
                 <th className="px-4 py-3 font-normal">Structure</th>
+                <th className="px-4 py-3 font-normal">Rôles</th>
                 <th className="px-4 py-3 font-normal">Statut</th>
                 <th className="px-4 py-3 font-normal">Dernière connexion</th>
                 <th className="px-4 py-3" />
@@ -169,6 +176,18 @@ export function AdminUtilisateurs() {
                   </td>
                   <td className="px-4 py-3">{u.email}</td>
                   <td className="px-4 py-3">{u.structure?.sigle ?? '—'}</td>
+                  <td className="px-4 py-3 text-sm">
+                    {u.roles.length === 0 ? (
+                      <span className="text-muted">Aucun</span>
+                    ) : (
+                      u.roles.map((r) => (
+                        <span key={`${r.role}-${r.structure ?? ''}`} className="block">
+                          {libellesRoles.get(r.role) ?? r.role}
+                          {r.structure && <span className="text-muted"> ({siglesStructures.get(r.structure) ?? '…'})</span>}
+                        </span>
+                      ))
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     <span
                       className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium ${
@@ -217,7 +236,7 @@ export function AdminUtilisateurs() {
               ))}
               {utilisateursPage.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-muted">
+                  <td colSpan={7} className="px-4 py-6 text-center text-muted">
                     Aucun compte ne correspond à ces filtres.
                   </td>
                 </tr>

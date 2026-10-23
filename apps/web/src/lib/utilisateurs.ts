@@ -45,6 +45,21 @@ export function modifierUtilisateur(uuid: string, entree: ModifierUtilisateurEnt
   return apiClient.patch<Utilisateur>(`/admin/utilisateurs/${uuid}`, entree)
 }
 
+/**
+ * Mot de passe oublié : un nouveau mot de passe temporaire, envoyé par
+ * courriel et renvoyé une seule fois ici. L'ancien cesse de fonctionner.
+ */
+export function attribuerMotDePasseTemporaire(uuid: string) {
+  return apiClient.post<{ motDePasseTemporaire: string; courrielEnvoye: boolean }>(`/admin/utilisateurs/${uuid}/mot-de-passe-temporaire`)
+}
+
+/** Remplace l'ensemble des rôles du compte — `structure` absente : attribution globale. */
+export function definirRolesUtilisateur(uuid: string, roles: { role: string; structure: string | null }[]) {
+  return apiClient.put<Utilisateur>(`/admin/utilisateurs/${uuid}/roles`, {
+    roles: roles.map((r) => ({ role: r.role, ...(r.structure ? { structure: r.structure } : {}) })),
+  })
+}
+
 export function supprimerUtilisateur(uuid: string) {
   return apiClient.delete<void>(`/admin/utilisateurs/${uuid}`)
 }

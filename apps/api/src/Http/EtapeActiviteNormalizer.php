@@ -46,9 +46,13 @@ final class EtapeActiviteNormalizer
 
         return array_map(static fn ($p) => [
             'uuid' => $p->getUuid()->toRfc4122(),
+            'libelle' => $p->getLibelle(),
             'nomFichier' => $p->getNomFichier(),
             'typeDocument' => $p->getTypeDocument()?->value,
+            'typeDocumentPrecision' => $p->getTypeDocumentPrecision(),
             'typeDocumentLibelle' => $p->libelleTypeDocument(),
+            // Le déposant peut requalifier sa pièce (PATCH /pieces-jointes/{uuid}).
+            'deposeParUuid' => $p->getCreePar()->getUuid()->toRfc4122(),
             'mime' => $p->getMime(),
             'tailleOctets' => $p->getTailleOctets(),
             'creeLe' => $p->getCreeLe()->format(\DateTimeInterface::ATOM),

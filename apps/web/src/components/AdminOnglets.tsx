@@ -13,7 +13,7 @@ import { useUtilisateurCourant } from '@/lib/use-permissions'
  */
 const ONGLETS: { to: string; label: string; permission: string | null }[] = [
   { to: '/administration/indicateurs', label: 'Référentiel des indicateurs de performance', permission: 'indicateurs.definir' },
-  { to: '/administration/gabarits-etapes', label: "Gabarits d'étapes", permission: 'admin.parametres' },
+  { to: '/administration/modeles-etapes', label: "Modèles d'étapes", permission: 'admin.parametres' },
   { to: '/administration/parties-prenantes', label: 'Parties prenantes', permission: null },
   { to: '/administration/comptes', label: 'Comptes utilisateurs', permission: 'admin.utilisateurs' },
   { to: '/administration/roles', label: 'Rôles et permissions', permission: 'admin.roles' },

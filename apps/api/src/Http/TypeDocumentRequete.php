@@ -20,13 +20,26 @@ final class TypeDocumentRequete
     /** @return array{0: TypeDocument, 1: string|null}|JsonResponse */
     public static function lire(Request $request): array|JsonResponse
     {
-        $brut = $request->request->get('typeDocument');
+        return self::depuis($request->request->all());
+    }
+
+    /**
+     * Même lecture sur un corps JSON déjà décodé — la requalification d'un
+     * document déposé (PATCH /pieces-jointes/{uuid}).
+     *
+     * @param array<mixed> $donnees
+     *
+     * @return array{0: TypeDocument, 1: string|null}|JsonResponse
+     */
+    public static function depuis(array $donnees): array|JsonResponse
+    {
+        $brut = $donnees['typeDocument'] ?? null;
         $type = \is_string($brut) ? TypeDocument::tryFrom($brut) : null;
         if (null === $type) {
             return ProblemResponseFactory::creer(422, 'Type de document requis', 'Choisissez le type du document (rapport, compte-rendu, manuel…).');
         }
 
-        $precision = $request->request->get('typeDocumentPrecision');
+        $precision = $donnees['typeDocumentPrecision'] ?? null;
         $precision = \is_string($precision) ? trim($precision) : null;
         if (TypeDocument::AUTRE === $type && (null === $precision || '' === $precision)) {
             return ProblemResponseFactory::creer(422, 'Précision requise', 'Précisez le type de document lorsque « Autre » est choisi.');

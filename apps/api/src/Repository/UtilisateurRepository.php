@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Repository;
 
+use App\Entity\PointFocal;
 use App\Entity\Utilisateur;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
@@ -38,6 +39,26 @@ class UtilisateurRepository extends ServiceEntityRepository
             ->andWhere('role.code = :code')
             ->andWhere('u.supprimeLe IS NULL')
             ->setParameter('code', $codeRole)
+            ->orderBy('u.nom', 'ASC')
+            ->addOrderBy('u.prenom', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Comptes rattachés à une fiche de point focal active (« Lier un
+     * compte ») — un point focal désigné par sa structure est un sectoriel,
+     * même si son compte ne porte pas encore le rôle correspondant.
+     *
+     * @return list<Utilisateur>
+     */
+    public function listerLiesAUnPointFocal(): array
+    {
+        return $this->createQueryBuilder('u')
+            ->innerJoin(PointFocal::class, 'pf', 'WITH', 'pf.utilisateur = u')
+            ->andWhere('pf.actif = true')
+            ->andWhere('u.supprimeLe IS NULL')
+            ->distinct()
             ->orderBy('u.nom', 'ASC')
             ->addOrderBy('u.prenom', 'ASC')
             ->getQuery()

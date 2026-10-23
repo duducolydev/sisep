@@ -123,8 +123,8 @@ export interface Engagement {
  * la liste de saisie.
  */
 export const NATURES_ENGAGEMENT: { valeur: string; libelle: string; groupe?: 'Fonctionnement' }[] = [
-  { valeur: 'travaux', libelle: 'Travaux' },
-  { valeur: 'fournitures', libelle: 'Fournitures de biens' },
+  { valeur: 'travaux', libelle: 'Travaux (construction, réaménagement…)' },
+  { valeur: 'fournitures', libelle: 'Fournitures' },
   { valeur: 'acquisition_biens', libelle: 'Acquisition de biens' },
   { valeur: 'service_consultation', libelle: 'Service de consultation' },
   { valeur: 'service_courant', libelle: 'Service courant' },

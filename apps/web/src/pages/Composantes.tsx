@@ -1,9 +1,15 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router'
-import { arbreQueryOptions, projetCourantQueryOptions, structuresQueryOptions } from '@/lib/composantes'
+import { archiverElementPtba, arbreQueryOptions, projetCourantQueryOptions, structuresQueryOptions, type NiveauPtba } from '@/lib/composantes'
 import { filtrerArbre, type FiltresArbre } from '@/lib/arbre-filtrage'
-import { ArbreExecution } from '@/components/ArbreExecution'
+import { ArbreExecution, type CibleArbre } from '@/components/ArbreExecution'
+import { ElementPtbaModale } from '@/components/ElementPtbaModale'
+import { IconeBouton, IconeModifier, IconeSupprimer } from '@/components/Icones'
+import { useConfirmer } from '@/lib/confirmation'
+import { useToast } from '@/components/ToastProvider'
+import { ApiError } from '@/lib/api-client'
+import { queryClient } from '@/lib/query-client'
 import { VueEnsembleComposantes } from '@/components/VueEnsembleComposantes'
 import { usePeut, useUtilisateurCourant } from '@/lib/use-permissions'
 import { CreerActiviteModale } from '@/components/CreerActiviteModale'
@@ -25,6 +31,69 @@ export function Composantes() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [modaleOuverte, setModaleOuverte] = useState(false)
   const peutCreer = usePeut('activites.creer')
+  const peutModifier = usePeut('activites.modifier')
+  const peutArchiver = usePeut('activites.supprimer')
+  const confirmer = useConfirmer()
+  const afficherToast = useToast()
+  const [edition, setEdition] = useState<{ niveau: NiveauPtba; uuid?: string; parentUuid?: string; prefixeCode?: string } | null>(null)
+  const [erreurGestion, setErreurGestion] = useState<string | null>(null)
+
+  async function archiver(niveau: NiveauPtba, uuid: string, intitule: string) {
+    const noms = { composante: 'la composante', sous_composante: 'la sous-composante', activite: "l'activité" }
+    if (
+      !(await confirmer({
+        titre: `Archiver ${noms[niveau]}`,
+        message: `« ${intitule} » sera retirée de l'arbre. Elle reste en base et dans le journal ; l'archivage est refusé si elle contient encore des éléments ou porte un budget.`,
+        action: 'Archiver',
+      }))
+    ) {
+      return
+    }
+    setErreurGestion(null)
+    try {
+      await archiverElementPtba(niveau, uuid)
+      await queryClient.invalidateQueries({ queryKey: ['arbre'] })
+      afficherToast('Élément archivé.')
+    } catch (e) {
+      setErreurGestion(e instanceof ApiError ? e.message : 'Une erreur est survenue. Réessayez.')
+    }
+  }
+
+  /** Boutons de gestion d'une ligne de l'arbre — selon les droits de l'utilisateur. */
+  function actionsArbre(cible: CibleArbre) {
+    const { niveau, noeud } = cible
+    return (
+      <>
+        {peutCreer && niveau === 'composante' && (
+          <IconeBouton
+            libelle={`Ajouter une sous-composante à ${noeud.code}`}
+            onClick={() => setEdition({ niveau: 'sous_composante', parentUuid: noeud.uuid, prefixeCode: `${noeud.code}.` })}
+          >
+            <IconePlus />
+          </IconeBouton>
+        )}
+        {peutCreer && niveau === 'sous_composante' && (
+          <IconeBouton libelle={`Ajouter une activité à ${noeud.code}`} onClick={() => setModaleOuverte(true)}>
+            <IconePlus />
+          </IconeBouton>
+        )}
+        {(niveau === 'activite' ? peutModifier : peutCreer) && (
+          <IconeBouton libelle={`Modifier ${noeud.code}`} onClick={() => setEdition({ niveau, uuid: noeud.uuid })}>
+            <IconeModifier />
+          </IconeBouton>
+        )}
+        {peutArchiver && (
+          <IconeBouton
+            libelle={`Archiver ${noeud.code}`}
+            onClick={() => void archiver(niveau, noeud.uuid, `${noeud.code} — ${noeud.libelle}`)}
+            classeCouleur="text-muted hover:bg-bad-bg hover:text-bad"
+          >
+            <IconeSupprimer />
+          </IconeBouton>
+        )}
+      </>
+    )
+  }
   const peutExporter = usePeut('exports.generer')
   const { data: utilisateur } = useUtilisateurCourant()
 
@@ -81,6 +150,16 @@ export function Composantes() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
         {peutExporter && <BoutonExporter href={urlExportDonnees('composantes', { exercice: searchParams.get('exercice') })} libelle="Exporter" />}
+        {peutCreer && (
+          <button
+            type="button"
+            onClick={() => setEdition({ niveau: 'composante' })}
+            className="flex items-center gap-1.5 rounded-[var(--radius-controle)] border border-border bg-surface px-4 py-2 font-semibold transition-colors hover:border-accent hover:text-accent"
+          >
+            <IconePlus />
+            Nouvelle composante
+          </button>
+        )}
         {peutCreer && (
           <button
             type="button"
@@ -198,8 +277,28 @@ export function Composantes() {
           {/* Les graphiques suivent les filtres ci-dessus : résumer un périmètre
               différent de celui de l'arbre en dessous serait trompeur. */}
           <VueEnsembleComposantes composantes={composantesFiltrees} tauxAttendu={arbre.tauxAttendu} />
-          <ArbreExecution composantes={composantesFiltrees} tauxAttendu={arbre.tauxAttendu} toutDeplie={Boolean(filtres.recherche?.trim())} />
+          {erreurGestion && (
+            <div role="alert" className="mb-3 rounded-[var(--radius-controle)] bg-bad-bg px-4 py-3 text-bad">
+              {erreurGestion}
+            </div>
+          )}
+          <ArbreExecution
+            composantes={composantesFiltrees}
+            tauxAttendu={arbre.tauxAttendu}
+            toutDeplie={Boolean(filtres.recherche?.trim())}
+            actions={peutCreer || peutModifier || peutArchiver ? actionsArbre : undefined}
+          />
         </>
+      )}
+
+      {edition && (
+        <ElementPtbaModale
+          niveau={edition.niveau}
+          uuid={edition.uuid}
+          parentUuid={edition.parentUuid}
+          prefixeCode={edition.prefixeCode}
+          onFermer={() => setEdition(null)}
+        />
       )}
 
       {modaleOuverte && projet && (

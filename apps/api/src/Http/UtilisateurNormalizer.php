@@ -24,10 +24,12 @@ final class UtilisateurNormalizer
             'actif' => $utilisateur->estActif(),
             'doitChangerMdp' => $utilisateur->doitChangerMdp(),
             'derniereConnexion' => $utilisateur->getDerniereConnexion()?->format(\DateTimeInterface::ATOM),
-            'roles' => array_map(static fn ($attribution) => [
+            // array_values : après un retrait, la collection garde des clés
+            // trouées, qui feraient de la liste un objet JSON.
+            'roles' => array_values(array_map(static fn ($attribution) => [
                 'role' => $attribution->getRole()->getCode(),
                 'structure' => $attribution->getStructure()?->getUuid()->toRfc4122(),
-            ], $utilisateur->getAttributionsRoles()->toArray()),
+            ], $utilisateur->getAttributionsRoles()->toArray())),
         ];
     }
 }

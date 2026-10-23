@@ -10,7 +10,9 @@ import {
 import { urlTelechargerPieceJointe } from '@/lib/exports'
 import { ApiError } from '@/lib/api-client'
 import { queryClient } from '@/lib/query-client'
-import { IconeTrombone } from './Icones'
+import { IconeBouton, IconeModifier, IconeTrombone } from './Icones'
+import { ModifierPieceJointeModale } from './ModifierPieceJointeModale'
+import { usePeutRequalifierPiece } from '@/lib/use-permissions'
 import { DropzoneFichier } from './DropzoneFichier'
 import { ComboboxMultiple } from './ComboboxMultiple'
 import { ChoixTypeDocument } from './ChoixTypeDocument'
@@ -40,6 +42,8 @@ function formaterTaille(octets: number): string {
 export function DocumentsInitiative({ entiteType, entiteUuid, piecesJointes, peutAjouter }: DocumentsInitiativeProps) {
   const { data: utilisateurs } = useQuery(responsablesEligiblesQueryOptions())
   const [panneauOuvert, setPanneauOuvert] = useState(false)
+  const [pieceModifiee, setPieceModifiee] = useState<PieceJointeInitiative | null>(null)
+  const peutRequalifier = usePeutRequalifierPiece()
   const [fichier, setFichier] = useState<File | null>(null)
   const [visibilite, setVisibilite] = useState<VisibilitePieceJointe>('tous')
   const [agents, setAgents] = useState<string[]>([])
@@ -152,8 +156,8 @@ export function DocumentsInitiative({ entiteType, entiteUuid, piecesJointes, peu
           {piecesJointes.map((p) => (
             <li key={p.uuid} className="flex items-center gap-2">
               <span aria-hidden="true">📎</span>
-              <a href={urlTelechargerPieceJointe(p.uuid)} className="min-w-0 truncate text-accent hover:text-accent-d">
-                {p.nomFichier}
+              <a href={urlTelechargerPieceJointe(p.uuid)} title={p.nomFichier} className="min-w-0 truncate text-accent hover:text-accent-d">
+                {p.libelle ?? p.nomFichier}
               </a>
               {p.typeDocumentLibelle && <span className="shrink-0 rounded-full bg-nested px-2 py-0.5 text-xs text-muted">{p.typeDocumentLibelle}</span>}
               <span className="chiffres shrink-0 text-xs text-muted">{formaterTaille(p.tailleOctets)}</span>
@@ -162,9 +166,18 @@ export function DocumentsInitiative({ entiteType, entiteUuid, piecesJointes, peu
                   {p.visibilite === 'agents_specifiques' ? `${p.agentsVisibilite.length} agent(s)` : LIBELLES_VISIBILITE[p.visibilite]}
                 </span>
               )}
+              {peutRequalifier(p.deposeParUuid) && (
+                <IconeBouton libelle={`Modifier l'intitulé ou le type de ${p.libelle ?? p.nomFichier}`} onClick={() => setPieceModifiee(p)}>
+                  <IconeModifier />
+                </IconeBouton>
+              )}
             </li>
           ))}
         </ul>
+      )}
+
+      {pieceModifiee && (
+        <ModifierPieceJointeModale piece={pieceModifiee} invalider={[['initiatives']]} onFermer={() => setPieceModifiee(null)} />
       )}
     </div>
   )

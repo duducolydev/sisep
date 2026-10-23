@@ -169,6 +169,20 @@ final class ActiviteController
             $activite->setStatut($statut);
         }
 
+        // Changer la structure responsable change qui voit et renseigne
+        // l'activité (portée) : c'est un acte de structuration, réservé à
+        // l'UGP (activites.creer), comme la création.
+        if (\array_key_exists('structureResponsable', $donnees) && \is_string($donnees['structureResponsable'])) {
+            if (!$this->security->isGranted('activites.creer', $activite)) {
+                throw new AccessDeniedException();
+            }
+            $structure = $this->structures->findOneBy(['uuid' => $this->uuidOuNull($donnees['structureResponsable'])]);
+            if (null === $structure) {
+                return ProblemResponseFactory::creer(422, 'Structure introuvable');
+            }
+            $activite->setStructureResponsable($structure);
+        }
+
         $this->em->flush();
 
         return new JsonResponse($this->normaliserFicheComplete($activite, $request));
@@ -181,6 +195,21 @@ final class ActiviteController
 
         if (!$this->security->isGranted('activites.supprimer', $activite)) {
             throw new AccessDeniedException();
+        }
+
+        // Une activité qui porte un budget (dotation ou engagement non annulé,
+        // sur elle ou sur ses lignes) ne s'archive pas : son exécution
+        // disparaîtrait des totaux du projet.
+        $budget = (int) $this->connection->fetchOne(
+            'SELECT
+                (SELECT COUNT(*) FROM dotations d LEFT JOIN sous_activites sa ON sa.id = d.sous_activite_id
+                  WHERE d.activite_id = :id OR sa.activite_id = :id)
+              + (SELECT COUNT(*) FROM engagements e LEFT JOIN sous_activites sa ON sa.id = e.sous_activite_id
+                  WHERE (e.activite_id = :id OR sa.activite_id = :id) AND e.supprime_le IS NULL AND e.statut <> \'annule\')',
+            ['id' => $activite->getId()],
+        );
+        if ($budget > 0) {
+            return ProblemResponseFactory::creer(409, 'Activité budgétée', 'Cette activité porte des dotations ou des engagements : elle ne peut pas être archivée.');
         }
 
         $activite->supprimer();

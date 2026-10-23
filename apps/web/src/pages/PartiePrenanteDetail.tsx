@@ -10,6 +10,7 @@ import {
   lierCompteUtilisateur,
   type Rapport,
   type PointFocal,
+  modifierPointFocal,
 } from '@/lib/parties-prenantes'
 import { LIBELLES_TYPE_STRUCTURE } from '@/lib/types-structure'
 import { queryClient } from '@/lib/query-client'
@@ -23,7 +24,9 @@ import { usePeut } from '@/lib/use-permissions'
 import { Squelette } from '@/components/Squelette'
 import { useToast } from '@/components/ToastProvider'
 import { Bouton } from '@/components/Bouton'
-import { IconeLier, IconeAnnuler, IconeTransmettre } from '@/components/Icones'
+import { IconeBouton, IconeLier, IconeAnnuler, IconeModifier, IconePlus, IconeTransmettre, IconeValider } from '@/components/Icones'
+import { StructureModale } from '@/components/StructureModale'
+import { PointFocalModale } from '@/components/PointFocalModale'
 import { useConfirmer } from '@/lib/confirmation'
 
 const LIBELLES_STATUT_RAPPORT: Record<Rapport['statutAffiche'], string> = {
@@ -42,6 +45,10 @@ export function PartiePrenanteDetail() {
   const { data: pointsFocaux } = useQuery(pointsFocauxQueryOptions(uuid))
   const { data: rapports } = useQuery(rapportsQueryOptions())
   const peutGererPointsFocaux = usePeut('points_focaux.gerer')
+  const peutModifierStructure = usePeut('structures.gerer')
+  const [structureEnEdition, setStructureEnEdition] = useState(false)
+  // undefined : fermée ; null : création ; un point focal : modification.
+  const [pointFocalEnEdition, setPointFocalEnEdition] = useState<PointFocal | null | undefined>(undefined)
   const peutSaisirIndicateur = usePeut('indicateurs.saisir')
   // Module réservé à l'équipe PHASAOC (§ décision) : un sectoriel consultant
   // sa propre fiche structure ne doit plus voir cette section.
@@ -83,6 +90,17 @@ export function PartiePrenanteDetail() {
     }
   }
 
+  async function basculerActif(pointFocal: PointFocal) {
+    setErreurLiaison(null)
+    try {
+      await modifierPointFocal(pointFocal.uuid, { actif: !pointFocal.actif })
+      await queryClient.invalidateQueries({ queryKey: ['points-focaux'] })
+      afficherToast(pointFocal.actif ? 'Point focal désactivé.' : 'Point focal réactivé.')
+    } catch (e) {
+      setErreurLiaison(e instanceof ApiError ? e.message : 'Une erreur est survenue. Réessayez.')
+    }
+  }
+
   async function transmettre(rapport: Rapport, fichier: File) {
     setErreurTransmission(null)
     setRapportEnCoursTransmission(rapport.uuid)
@@ -106,7 +124,14 @@ export function PartiePrenanteDetail() {
         <p className="mt-2 text-[10px] font-semibold uppercase tracking-[.14em] text-eyebrow">
           {LIBELLES_TYPE_STRUCTURE[structure.type]}
         </p>
-        <h1 className="text-2xl">{structure.sigle}</h1>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <h1 className="text-2xl">{structure.sigle}</h1>
+          {peutModifierStructure && (
+            <Bouton variante="secondaire" icone={<IconeModifier />} onClick={() => setStructureEnEdition(true)}>
+              Modifier la structure
+            </Bouton>
+          )}
+        </div>
         <p className="text-muted">{structure.denomination}</p>
         <p className="mt-2 text-sm text-muted">
           {structure.telephone && <>Tél. <span className="chiffres">{structure.telephone}</span></>}
@@ -116,7 +141,14 @@ export function PartiePrenanteDetail() {
       </div>
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold">Points focaux</h2>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-lg font-semibold">Points focaux</h2>
+          {peutGererPointsFocaux && (
+            <Bouton variante="discret" taille="mini" icone={<IconePlus />} onClick={() => setPointFocalEnEdition(null)}>
+              Ajouter un point focal
+            </Bouton>
+          )}
+        </div>
         {erreurLiaison && (
           <div role="alert" className="mb-3 rounded-[var(--radius-controle)] bg-bad-bg px-4 py-3 text-bad">
             {erreurLiaison}
@@ -125,11 +157,39 @@ export function PartiePrenanteDetail() {
         {pointsFocaux && pointsFocaux.donnees.length > 0 ? (
           <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {pointsFocaux.donnees.map((p) => (
-              <li key={p.uuid} className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
-                <p className="font-semibold">
-                  {p.nomComplet}
-                  {p.principal && <span className="ml-2 rounded-full bg-accent-bg px-2 py-0.5 text-xs text-accent">Principal</span>}
-                </p>
+              <li key={p.uuid} className={`rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)] ${p.actif ? '' : 'opacity-60'}`}>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="font-semibold">
+                    {p.nomComplet}
+                    {p.principal && <span className="ml-2 rounded-full bg-accent-bg px-2 py-0.5 text-xs text-accent">Principal</span>}
+                    {!p.actif && <span className="ml-2 rounded-full bg-nested px-2 py-0.5 text-xs text-muted">Inactif</span>}
+                  </p>
+                  {peutGererPointsFocaux && (
+                    <span className="flex shrink-0 items-center">
+                      <IconeBouton libelle={`Modifier ${p.nomComplet}`} onClick={() => setPointFocalEnEdition(p)}>
+                        <IconeModifier />
+                      </IconeBouton>
+                      <IconeBouton
+                        libelle={p.actif ? `Désactiver ${p.nomComplet}` : `Réactiver ${p.nomComplet}`}
+                        onClick={async () => {
+                          if (
+                            !p.actif ||
+                            (await confirmer({
+                              titre: 'Désactiver le point focal',
+                              message: `${p.nomComplet} ne recevra plus les relances de reporting. La fiche reste consultable et peut être réactivée.`,
+                              action: 'Désactiver',
+                            }))
+                          ) {
+                            void basculerActif(p)
+                          }
+                        }}
+                        classeCouleur="text-muted hover:bg-bad-bg hover:text-bad"
+                      >
+                        {p.actif ? <IconeAnnuler /> : <IconeValider />}
+                      </IconeBouton>
+                    </span>
+                  )}
+                </div>
                 <p className="text-sm text-muted">{p.fonction}</p>
                 <p className="chiffres mt-1 text-xs text-muted">{p.telephone ?? p.email ?? '—'}</p>
                 {peutGererPointsFocaux && (
@@ -272,6 +332,15 @@ export function PartiePrenanteDetail() {
       )}
 
       {pointFocalALier && <LierCompteModale pointFocal={pointFocalALier} onFermer={() => setPointFocalALier(null)} />}
+      {structureEnEdition && <StructureModale structure={structure} onFermer={() => setStructureEnEdition(false)} />}
+      {pointFocalEnEdition !== undefined && (
+        <PointFocalModale
+          structureUuid={structure.uuid}
+          structureSigle={structure.sigle}
+          pointFocal={pointFocalEnEdition ?? undefined}
+          onFermer={() => setPointFocalEnEdition(undefined)}
+        />
+      )}
     </div>
   )
 }

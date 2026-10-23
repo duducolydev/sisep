@@ -102,7 +102,18 @@ export function creerPointFocal(entree: CreerPointFocalEntree) {
   return apiClient.post<PointFocal>('/points-focaux', entree)
 }
 
-export function modifierPointFocal(uuid: string, entree: Partial<Omit<CreerPointFocalEntree, 'structure'>> & { actif?: boolean }) {
+/** `null` vide le champ (téléphone, e-mail, date de désignation). */
+export interface ModifierPointFocalEntree {
+  nomComplet?: string
+  fonction?: string
+  telephone?: string | null
+  email?: string | null
+  principal?: boolean
+  dateDesignation?: string | null
+  actif?: boolean
+}
+
+export function modifierPointFocal(uuid: string, entree: ModifierPointFocalEntree) {
   return apiClient.patch<PointFocal>(`/points-focaux/${uuid}`, entree)
 }
 

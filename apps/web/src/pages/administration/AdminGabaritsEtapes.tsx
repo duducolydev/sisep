@@ -47,15 +47,15 @@ export function AdminGabaritsEtapes() {
 
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold">Gabarits d'étapes</h2>
+          <h2 className="text-lg font-semibold">Modèles d'étapes</h2>
           <p className="mt-1 max-w-2xl text-sm text-muted">
-            Modèles de découpage appliqués aux activités. Instancier un gabarit copie ses étapes : les modifier ensuite ne
+            Découpages types appliqués aux activités et à leurs lignes. Appliquer un modèle copie ses étapes : le modifier ensuite ne
             touche pas les activités déjà structurées.
           </p>
         </div>
         {peutGerer && (
           <Bouton taille="normale" icone={<IconePlus />} onClick={() => setModale({})}>
-            Nouveau gabarit
+            Nouveau modèle
           </Bouton>
         )}
       </div>
@@ -67,10 +67,10 @@ export function AdminGabaritsEtapes() {
       )}
 
       {isLoading && <Squelette lignes={3} />}
-      {isError && <p className="text-bad">Impossible de charger les gabarits. Réessayez.</p>}
+      {isError && <p className="text-bad">Impossible de charger les modèles d'étapes. Réessayez.</p>}
 
       {gabarits && gabarits.donnees.length === 0 && (
-        <p className="text-muted">Aucun gabarit pour le moment.</p>
+        <p className="text-muted">Aucun modèle d'étapes pour le moment.</p>
       )}
 
       {gabarits && gabarits.donnees.length > 0 && (
@@ -91,7 +91,7 @@ export function AdminGabaritsEtapes() {
 
                 {peutGerer && (
                   <div className="flex shrink-0 items-center gap-1">
-                    <IconeBouton libelle="Modifier le gabarit" onClick={() => setModale({ gabarit: g })}>
+                    <IconeBouton libelle="Modifier le modèle" onClick={() => setModale({ gabarit: g })}>
                       <IconeModifier />
                     </IconeBouton>
                     <Bouton
@@ -102,18 +102,18 @@ export function AdminGabaritsEtapes() {
                         void executer(
                           g.uuid,
                           () => modifierGabaritEtapes(g.uuid, { actif: !g.actif }),
-                          g.actif ? 'Gabarit retiré du catalogue.' : 'Gabarit remis au catalogue.',
+                          g.actif ? 'Modèle retiré du catalogue.' : 'Modèle remis au catalogue.',
                         )
                       }
                     >
                       {g.actif ? 'Retirer du catalogue' : 'Remettre au catalogue'}
                     </Bouton>
                     <IconeBouton
-                      libelle="Supprimer le gabarit"
+                      libelle="Supprimer le modèle"
                       disabled={actionEnCours === g.uuid}
                       onClick={async () => {
-                        if (await confirmer({ titre: 'Supprimer le gabarit', message: `Le gabarit « ${g.libelle} » sera supprimé. Les étapes déjà créées à partir de lui sur les activités restent en place.`, action: 'Supprimer' })) {
-                          void executer(g.uuid, () => supprimerGabaritEtapes(g.uuid), 'Gabarit supprimé.')
+                        if (await confirmer({ titre: 'Supprimer le modèle', message: `Le modèle « ${g.libelle} » sera supprimé. Les étapes déjà créées à partir de lui sur les activités restent en place.`, action: 'Supprimer' })) {
+                          void executer(g.uuid, () => supprimerGabaritEtapes(g.uuid), 'Modèle supprimé.')
                         }
                       }}
                       classeCouleur="text-muted hover:bg-bad-bg hover:text-bad"

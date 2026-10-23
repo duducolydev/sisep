@@ -19,7 +19,7 @@ final class LibellesExport
     ];
 
     private const NATURES = [
-        'travaux' => 'Travaux', 'fournitures' => 'Fournitures de biens', 'acquisition_biens' => 'Acquisition de biens',
+        'travaux' => 'Travaux (construction, réaménagement…)', 'fournitures' => 'Fournitures', 'acquisition_biens' => 'Acquisition de biens',
         'service_consultation' => 'Service de consultation', 'service_courant' => 'Service courant',
         'salaire' => 'Salaire', 'frais_mission' => 'Frais de mission', 'atelier' => 'Atelier',
         'remboursement_transport' => 'Remboursement de transport', 'autre_fonctionnement' => 'Autres natures de fonctionnement',

@@ -106,6 +106,9 @@ seront saisis.
 
 ## 6. Mettre à jour
 
+Faire d'abord la sauvegarde du § 7 : certaines migrations convertissent des
+données, et un retour arrière passe par elle.
+
 ```bash
 cd /opt/sisep && git pull        # ou rsync depuis le poste
 ./deploy/deployer.sh
@@ -127,7 +130,10 @@ Tout ce qui est saisi dans l'application : comptes utilisateurs, droits,
 écritures budgétaires, documents déposés, journal d'activité. La base vit
 dans le volume `sisep_prod_db` et les fichiers dans `sisep_prod_uploads` ;
 reconstruire et redémarrer les conteneurs ne touche ni à l'un ni à l'autre.
-Les migrations ne font qu'ajouter des colonnes ou des tables.
+Les migrations ajoutent surtout des colonnes ou des tables ; quelques-unes
+convertissent des valeurs existantes, et le disent dans leur description
+(`doctrine:migrations:status` les liste avant application). Ainsi, en
+octobre 2026, les empreintes de mot de passe sont masquées dans le journal.
 
 `--donnees` est le seul cas où l'application voit des valeurs remplacées :
 les imports réécrivent depuis les classeurs les coordonnées des points

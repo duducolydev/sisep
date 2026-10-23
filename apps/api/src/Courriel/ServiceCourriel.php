@@ -55,6 +55,28 @@ final class ServiceCourriel
         return $this->envoyer($utilisateur->getEmail(), 'Votre compte SISEP a été créé', 'Votre compte SISEP', $corps);
     }
 
+    public function motDePasseReinitialise(Utilisateur $utilisateur, string $motDePasseTemporaire): bool
+    {
+        $nom = $this->proteger($utilisateur->getNomComplet());
+        $email = $this->proteger($utilisateur->getEmail());
+        $motDePasse = $this->proteger($motDePasseTemporaire);
+        $bouton = $this->bouton($this->urlWeb.'/connexion', 'Me connecter');
+
+        $corps = <<<HTML
+            <p>Bonjour {$nom},</p>
+            <p>L'administrateur de SISEP vous a attribué un nouveau mot de passe temporaire. L'ancien ne fonctionne plus.</p>
+            <table role="presentation" style="border-collapse:collapse;margin:16px 0">
+              <tr><td style="padding:4px 16px 4px 0;color:#5b6472">Identifiant</td><td style="font-family:monospace">{$email}</td></tr>
+              <tr><td style="padding:4px 16px 4px 0;color:#5b6472">Mot de passe temporaire</td><td style="font-family:monospace;font-weight:700">{$motDePasse}</td></tr>
+            </table>
+            <p>Ce mot de passe est à usage unique : l'application vous demandera d'en choisir un nouveau dès votre connexion.</p>
+            {$bouton}
+            <p style="color:#5b6472;font-size:13px">Si vous n'avez pas demandé de nouveau mot de passe, signalez-le à la coordination du projet.</p>
+            HTML;
+
+        return $this->envoyer($utilisateur->getEmail(), 'Votre nouveau mot de passe SISEP', 'Nouveau mot de passe', $corps);
+    }
+
     public function relanceRapport(RapportPeriodique $rapport, string $destinataire, \DateTimeImmutable $maintenant): bool
     {
         $structure = $rapport->getStructure();

@@ -37,9 +37,9 @@ class PieceJointe
     /**
      * Intitulé donné par la personne qui dépose le document, distinct du nom
      * de fichier : « Rapport d'avancement T2 » se cherche, « doc_v3_final.pdf »
-     * non. Nullable, et de fait renseigné seulement par la bibliothèque
-     * documentaire — un justificatif joint à une étape ou à une valeur
-     * d'indicateur se désigne par ce qu'il accompagne.
+     * non. Saisi au dépôt dans la bibliothèque documentaire ; pour un
+     * justificatif (étape, valeur d'indicateur, projet), il s'ajoute après
+     * coup en modifiant la pièce. Nul : le nom de fichier en tient lieu.
      */
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $libelle = null;

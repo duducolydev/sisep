@@ -1,6 +1,7 @@
 import { queryOptions } from '@tanstack/react-query'
 import { apiClient } from './api-client'
 import { ajouterNature, type NatureDocument } from './types-document'
+import type { PieceRequalifiable } from './documents'
 
 export type TypeIndicateur = 'IOD' | 'IRI'
 export type SensIndicateur = 'croissant' | 'decroissant'
@@ -70,11 +71,7 @@ export interface Desagregation {
   valeur: string
 }
 
-export interface PieceJointeIndicateur {
-  uuid: string
-  nomFichier: string
-  /** Nature choisie au dépôt (« Rapport », « Autre : … ») — null pour les dépôts antérieurs. */
-  typeDocumentLibelle: string | null
+export interface PieceJointeIndicateur extends PieceRequalifiable {
   mime: string
   tailleOctets: number
   creeLe: string

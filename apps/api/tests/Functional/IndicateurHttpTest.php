@@ -6,10 +6,13 @@ namespace App\Tests\Functional;
 
 use App\Entity\Composante;
 use App\Entity\Permission;
+use App\Entity\PointFocal;
 use App\Entity\Projet;
 use App\Entity\Role;
+use App\Entity\Structure;
 use App\Entity\Utilisateur;
 use App\Entity\UtilisateurRole;
+use App\Enum\TypeStructure;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\MailerAssertionsTrait;
@@ -369,6 +372,37 @@ final class IndicateurHttpTest extends WebTestCase
 
             $client->request('GET', '/api/v1/indicateurs?composante='.$composante->getUuid()->toRfc4122());
             self::assertSame(['C1-1'], array_column($this->corps($client)['donnees'], 'code'));
+        } finally {
+            $this->rollback();
+        }
+    }
+
+    /**
+     * Un point focal désigné sur la fiche de sa structure (« Lier un
+     * compte ») est invitable, même si son compte ne porte pas le rôle
+     * point_focal_structure — la liste restait vide dans ce cas.
+     */
+    public function testUnCompteLieAUnPointFocalEstInvitable(): void
+    {
+        [$client, $fixture] = $this->demarrer();
+
+        try {
+            $structure = new Structure('PF-INV', 'Structure invitation', TypeStructure::DIRECTION_ANSD);
+            $this->em->persist($structure);
+            $lie = new Utilisateur('lie.p4@example.test', 'temp', 'Gueye', 'Malick');
+            $this->em->persist($lie);
+            $pointFocal = new PointFocal($structure, 'Malick Gueye', 'Point focal PHASAOC');
+            $pointFocal->setUtilisateur($lie);
+            $this->em->persist($pointFocal);
+            $this->em->flush();
+
+            $this->connecter($client, $fixture['coordonnateur']->getEmail());
+            $client->request('GET', '/api/v1/indicateurs/sectoriels-eligibles');
+            self::assertResponseIsSuccessful();
+            $noms = array_column($this->corps($client)['donnees'], 'nomComplet');
+            self::assertContains($fixture['sectoriel']->getNomComplet(), $noms, 'Le porteur du rôle reste éligible.');
+            self::assertContains($lie->getNomComplet(), $noms, 'Le compte lié à une fiche de point focal devient éligible.');
+            self::assertSame(\count($noms), \count(array_unique($noms)), 'Aucun doublon.');
         } finally {
             $this->rollback();
         }

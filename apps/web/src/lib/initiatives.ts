@@ -1,6 +1,7 @@
 import { queryOptions } from '@tanstack/react-query'
 import { apiClient } from './api-client'
 import { ajouterNature, type NatureDocument } from './types-document'
+import type { PieceRequalifiable } from './documents'
 
 /** Calculé (StatutInitiativeCalculator), jamais saisi — fusionne ce qui était auparavant un statut saisi et une vigilance calculée à part. */
 export type StatutInitiativeActivite = 'planifiee' | 'en_cours' | 'a_risque' | 'en_retard' | 'terminee'
@@ -33,11 +34,7 @@ export interface NoteInitiative {
   creePar: string | null
 }
 
-export interface PieceJointeInitiative {
-  uuid: string
-  nomFichier: string
-  /** Nature choisie au dépôt (« Rapport », « Autre : … ») — null pour les dépôts antérieurs. */
-  typeDocumentLibelle: string | null
+export interface PieceJointeInitiative extends PieceRequalifiable {
   mime: string
   tailleOctets: number
   creeLe: string

@@ -145,6 +145,53 @@ export function creerSousActivite(entree: CreerSousActiviteEntree) {
   return apiClient.post<SousActiviteDetail>('/sous-activites', entree)
 }
 
+/** Niveaux du PTBA gérables depuis l'arbre des composantes. */
+export type NiveauPtba = 'composante' | 'sous_composante' | 'activite'
+
+const CHEMINS_NIVEAU: Record<NiveauPtba, string> = {
+  composante: '/composantes',
+  sous_composante: '/sous-composantes',
+  activite: '/activites',
+}
+
+export interface ElementPtba {
+  uuid: string
+  code: string
+  libelle: string
+  description: string | null
+  structureResponsable?: { uuid: string; sigle: string }
+}
+
+export function elementPtbaQueryOptions(niveau: NiveauPtba, uuid: string | undefined) {
+  return queryOptions({
+    queryKey: ['ptba', niveau, uuid],
+    queryFn: () => apiClient.get<ElementPtba>(`${CHEMINS_NIVEAU[niveau]}/${uuid}`),
+    enabled: uuid !== undefined,
+    staleTime: 0,
+  })
+}
+
+export function creerComposante(entree: { code: string; libelle: string; description?: string | null }) {
+  return apiClient.post<ElementPtba>('/composantes', entree)
+}
+
+export function creerSousComposante(entree: { composante: string; code: string; libelle: string; description?: string | null }) {
+  return apiClient.post<ElementPtba>('/sous-composantes', entree)
+}
+
+export function modifierElementPtba(
+  niveau: NiveauPtba,
+  uuid: string,
+  entree: { code?: string; libelle?: string; description?: string | null; structureResponsable?: string },
+) {
+  return apiClient.patch<ElementPtba>(`${CHEMINS_NIVEAU[niveau]}/${uuid}`, entree)
+}
+
+/** Archivage (suppression logique) — refusé par le serveur tant que l'élément contient des enfants ou porte un budget. */
+export function archiverElementPtba(niveau: NiveauPtba, uuid: string) {
+  return apiClient.delete<void>(`${CHEMINS_NIVEAU[niveau]}/${uuid}`)
+}
+
 export function modifierStatutActivite(activiteUuid: string, statut: string) {
   return apiClient.patch<FicheActivite>(`/activites/${activiteUuid}`, { statut })
 }

@@ -126,6 +126,14 @@ final class SousComposanteController
         $sousComposante = $this->trouver($uuid);
         $this->exigerPermissionGlobale($this->security, $this->permissionsResolver, 'activites.supprimer');
 
+        $enfants = (int) $this->em->getConnection()->fetchOne(
+            'SELECT COUNT(*) FROM activites WHERE sous_composante_id = ? AND supprime_le IS NULL',
+            [$sousComposante->getId()],
+        );
+        if ($enfants > 0) {
+            return ProblemResponseFactory::creer(409, 'Sous-composante non vide', \sprintf('Cette sous-composante contient encore %d activité(s) : archivez-les d\'abord.', $enfants));
+        }
+
         $sousComposante->supprimer();
         $this->em->flush();
 

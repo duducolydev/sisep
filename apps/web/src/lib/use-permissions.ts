@@ -17,6 +17,18 @@ export function usePeut(code: string): boolean {
 }
 
 /**
+ * Requalifier une pièce jointe (intitulé, type) : son déposant, ou l'UGP
+ * (`documents.gerer` sur tout le projet) — même règle que
+ * PieceJointeController::modifier.
+ */
+export function usePeutRequalifierPiece(): (deposeParUuid: string) => boolean {
+  const { data } = useUtilisateurCourant()
+  const ugp = data?.permissionsPortee['documents.gerer'] === null
+
+  return (deposeParUuid) => ugp || data?.uuid === deposeParUuid
+}
+
+/**
  * Variante scopée par structure (§ 7.2) : un point focal DSID ne doit pas
  * voir un bouton d'édition sur une activité de la DPEE, même s'il détient le
  * code ailleurs. `structureUuid` nul (entité sans structure responsable)
