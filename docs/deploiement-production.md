@@ -174,27 +174,35 @@ Voir `docs/exploitation.md`, § 2. Sans la première tâche, aucun rapport
 trimestriel n'est attendu : l'écran « Mes rapports » des points focaux et la
 rubrique « Reporting trimestriel » des fiches restent vides.
 
-Créer d'abord le dossier des journaux : s'il manque, le shell ne peut pas
-ouvrir le fichier de redirection et **la tâche ne se lance pas du tout**, sans
-erreur visible.
+Le journal va dans le dossier personnel de l'utilisateur qui porte la
+crontab, créé par la ligne elle-même : si le dossier de redirection manque ou
+n'est pas accessible en écriture (un `/var/log/sisep` créé par `sudo`
+appartient à root), le shell ne peut pas ouvrir le fichier et **la tâche ne
+se lance pas du tout**, sans erreur visible.
+
+Lancer d'abord les deux commandes à la main, avec le même utilisateur : si
+Docker répond « permission denied », les lignes vont dans la crontab de root
+(`sudo crontab -e`), pas dans celle de l'utilisateur.
 
 ```bash
-sudo mkdir -p /var/log/sisep
+cd /opt/sisep
+docker compose -f docker-compose.prod.yml exec -T api php bin/console app:rapports:generer
+docker compose -f docker-compose.prod.yml exec -T api php bin/console app:alertes:envoyer --dry-run
 crontab -e
 ```
 
 Sur cette installation, les deux lignes deviennent :
 
 ```
-5 2 * * * cd /opt/sisep && docker compose -f docker-compose.prod.yml exec -T api php bin/console app:rapports:generer >> /var/log/sisep/rapports.log 2>&1
-0 7 * * * cd /opt/sisep && docker compose -f docker-compose.prod.yml exec -T api php bin/console app:alertes:envoyer >> /var/log/sisep/alertes.log 2>&1
+5 2 * * * cd /opt/sisep && mkdir -p "$HOME/logs/sisep" && docker compose -f docker-compose.prod.yml exec -T api php bin/console app:rapports:generer >> "$HOME/logs/sisep/rapports.log" 2>&1
+0 7 * * * cd /opt/sisep && mkdir -p "$HOME/logs/sisep" && docker compose -f docker-compose.prod.yml exec -T api php bin/console app:alertes:envoyer >> "$HOME/logs/sisep/alertes.log" 2>&1
 ```
 
-La seconde n'envoie rien tant que `MAILER_DSN` vaut `null://null` ; dans le
-cas contraire, la lancer d'abord à la main avec `--dry-run`.
+La seconde envoie de vrais courriels dès que `MAILER_DSN` est configuré :
+d'où le `--dry-run` préalable, qui montre ce qui partirait.
 
 Vérifier le lendemain : `crontab -l | grep sisep` et
-`tail /var/log/sisep/rapports.log`, qui doit se terminer par « N rapport(s)
+`tail ~/logs/sisep/rapports.log`, qui doit se terminer par « N rapport(s)
 T… généré(s) ». `deploy/deployer.sh` lance aussi `app:rapports:generer` à
 chaque déploiement.
 
