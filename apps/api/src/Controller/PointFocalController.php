@@ -11,6 +11,7 @@ use App\Http\ProblemResponseFactory;
 use App\Repository\PointFocalRepository;
 use App\Repository\StructureRepository;
 use App\Repository\UtilisateurRepository;
+use App\Security\PermissionsResolver;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -41,6 +42,7 @@ final class PointFocalController
         private readonly PointFocalNormalizer $normalizer,
         private readonly EntityManagerInterface $em,
         private readonly Security $security,
+        private readonly PermissionsResolver $permissionsResolver,
         private readonly SerializerInterface $serializer,
         private readonly ValidatorInterface $validator,
     ) {
@@ -49,6 +51,10 @@ final class PointFocalController
     #[Route('', name: 'app_point_focal_liste', methods: ['GET'])]
     public function liste(Request $request): JsonResponse
     {
+        // Noms, fonctions, téléphones, comptes liés : réservé à l'équipe du
+        // projet, pas aux points focaux eux-mêmes (décision du 26/10/2026).
+        $this->exigerPermissionGlobale($this->security, $this->permissionsResolver, 'parties_prenantes.consulter');
+
         $criteres = [];
         $structureUuid = $request->query->get('structure');
         if (\is_string($structureUuid)) {

@@ -13,6 +13,7 @@ Ce guide s'adresse à toutes les personnes qui utilisent le SISEP : l'équipe de
 - **Natures d'engagement** : « Fournitures de biens » devient « Fournitures », et « Travaux » devient « Travaux (construction, réaménagement…) ».
 - **Documents et justificatifs** : leur intitulé et leur type se corrigent après le dépôt, sans retirer le fichier.
 - **Indicateurs de performance** : l'évolution s'affiche en **diagramme en barres**, avec la cible en ligne de repère.
+- **Points focaux** : ils n'ont plus accès au module Parties prenantes ; ils transmettent les rapports de leur structure depuis le nouvel écran **Mes rapports**.
 - **Indicateurs** : le Responsable suivi-évaluation valide les valeurs saisies par les sectoriels (jamais sa propre saisie).
 - **Comptes** : les rôles d'un compte se modifient directement dans « Modifier un compte », et l'administrateur y attribue un nouveau mot de passe temporaire en cas d'oubli.
 - **Parties prenantes** : une structure se modifie depuis sa fiche, et ses points focaux s'y ajoutent, s'y modifient et s'y désactivent.
@@ -31,7 +32,7 @@ Ce guide s'adresse à toutes les personnes qui utilisent le SISEP : l'équipe de
 
 ### 1.2 L'écran
 
-- Le **menu**, à gauche, regroupe les écrans en deux blocs : **Pilotage** (tableau de bord, composantes, budget, exécution, indicateurs, projets, documents) et **Acteurs et paramètres** (parties prenantes, ressources humaines, administration). Le bouton **Replier** le réduit aux seules icônes.
+- Le **menu**, à gauche, regroupe les écrans en deux blocs : **Pilotage** (tableau de bord, composantes, budget, exécution, indicateurs, projets, documents) et **Acteurs et paramètres** (parties prenantes, ressources humaines, administration ; pour un point focal, **Mes rapports**). Le bouton **Replier** le réduit aux seules icônes.
 - Votre **nom et votre profil** figurent en bas du menu : un clic ouvre **Mon profil**.
 - La plupart des écrans ont des **filtres** en haut (composante, structure, statut, exercice, recherche) et un bouton **Exporter** pour récupérer la liste affichée dans un fichier Excel.
 
@@ -49,7 +50,7 @@ Chaque compte reçoit un ou plusieurs rôles. Un rôle peut valoir pour tout le 
 | Coordonnateur | Consulter et gérer l'arbre du PTBA (y compris archiver), valider la clôture des activités, **valider** les engagements, les dépenses et les valeurs d'indicateurs (sans les saisir), gérer les structures, les points focaux, les comptes, les rôles et les paramètres, consulter le journal, exporter, suivre les projets, les ressources humaines et les documents. |
 | Responsable suivi-évaluation | Créer et modifier les activités, valider leur clôture, **saisir et valider** les dotations, engagements et dépenses, définir les indicateurs, **saisir et valider** leurs valeurs, inviter un sectoriel, consulter le journal, exporter, suivre les projets, les ressources humaines et les documents. |
 | Gestionnaire budgétaire | Consulter les activités et les indicateurs, **saisir** les dotations, engagements et dépenses (sans les valider), exporter. |
-| Point focal de structure | Consulter les activités de sa structure, ainsi que celles dont une ligne est confiée à sa structure, et renseigner l'avancement de ce qui relève de sa structure (étapes, justificatifs) ; tenir à jour les points focaux de sa structure. Il saisit aussi les valeurs des indicateurs auxquels il a été invité. Ce rôle s'attribue toujours pour une structure précise. |
+| Point focal de structure | Consulter les activités de sa structure, ainsi que celles dont une ligne est confiée à sa structure, et renseigner l'avancement de ce qui relève de sa structure (étapes, justificatifs) ; transmettre les rapports périodiques de sa structure (**Mes rapports**). Il n'a pas accès au module Parties prenantes. Il saisit aussi les valeurs des indicateurs auxquels il a été invité. Ce rôle s'attribue toujours pour une structure précise. |
 | Lecteur | Consulter les activités et les indicateurs. |
 
 **Séparation de la saisie et de la validation.** Une écriture budgétaire (engagement, dépense) ou une valeur d'indicateur est saisie par une personne et validée par une autre. Les profils Administrateur et Responsable suivi-évaluation peuvent faire les deux, mais **jamais sur la même écriture** : l'application refuse que la personne qui a saisi un engagement, une dépense ou une valeur la valide elle-même. Toute écriture est enregistrée dans le journal, avec son état avant et après.
@@ -257,6 +258,8 @@ L'écran **Documents** est la bibliothèque de l'UGP : documents de cadrage du p
 
 L'écran **Parties prenantes** présente les structures bénéficiaires, leurs points focaux et les rapports périodiques qu'elles transmettent : structures, points focaux désignés, rapports reçus, rapports en retard.
 
+Il est réservé à l'équipe du projet (Coordonnateur, Responsable suivi-évaluation, Gestionnaire budgétaire, Lecteur, Administrateur). Les points focaux n'y ont pas accès : ni aux fiches des structures, ni aux points focaux, ni à la liaison des comptes. Seuls le Coordonnateur et l'Administrateur ajoutent, modifient ou désactivent un point focal et lui lient un compte.
+
 ### 10.1 La fiche d'une structure
 
 Un clic sur une structure ouvre sa fiche, avec ses activités, ses points focaux et ses rapports.
@@ -269,7 +272,12 @@ Un point focal qui doit se connecter au SISEP a besoin d'un **compte**, créé p
 
 ### 10.2 Rapports périodiques
 
-Chaque structure transmet un rapport après la fin de chaque trimestre, dans le délai fixé dans les paramètres (15 jours par défaut). Les rapports reçus se consultent sur la fiche de la structure ; les rapports en retard sont signalés et font l'objet de relances automatiques par courriel, adressées aux points focaux de la structure (partie 13). C'est une raison de plus de tenir leurs adresses à jour.
+Chaque structure transmet un rapport après la fin de chaque trimestre, dans le délai fixé dans les paramètres (15 jours par défaut).
+
+- **Le point focal** transmet le rapport de sa structure depuis l'écran **Mes rapports** : il y voit les rapports attendus de sa structure, et eux seuls, clique sur **Transmettre** et choisit le fichier (10 Mo au plus).
+- **L'équipe du projet** retrouve les rapports reçus sur la fiche de chaque structure ; le Coordonnateur peut aussi y transmettre un rapport à la place de la structure.
+
+Les rapports en retard sont signalés et font l'objet de relances automatiques par courriel, adressées aux points focaux de la structure, avec un lien vers **Mes rapports** (partie 13). C'est une raison de plus de tenir leurs adresses à jour.
 
 ### 10.3 Exports et import
 

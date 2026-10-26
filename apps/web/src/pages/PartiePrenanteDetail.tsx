@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useParams, Link } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -6,36 +6,26 @@ import {
   structureActivitesQueryOptions,
   pointsFocauxQueryOptions,
   rapportsQueryOptions,
-  transmettreRapport,
   lierCompteUtilisateur,
-  type Rapport,
   type PointFocal,
   modifierPointFocal,
 } from '@/lib/parties-prenantes'
 import { LIBELLES_TYPE_STRUCTURE } from '@/lib/types-structure'
 import { queryClient } from '@/lib/query-client'
-import { formaterDate } from '@/lib/format'
 import { indicateursQueryOptions } from '@/lib/indicateurs'
 import { Pastille } from '@/components/Pastille'
 import { BarreAtteinte } from '@/components/BarreAtteinte'
 import { LierCompteModale } from '@/components/LierCompteModale'
 import { ApiError } from '@/lib/api-client'
-import { usePeut } from '@/lib/use-permissions'
+import { usePeut, usePeutSur } from '@/lib/use-permissions'
+import { ListeRapports } from '@/components/ListeRapports'
 import { Squelette } from '@/components/Squelette'
 import { useToast } from '@/components/ToastProvider'
 import { Bouton } from '@/components/Bouton'
-import { IconeBouton, IconeLier, IconeAnnuler, IconeModifier, IconePlus, IconeTransmettre, IconeValider } from '@/components/Icones'
+import { IconeBouton, IconeLier, IconeAnnuler, IconeModifier, IconePlus, IconeValider } from '@/components/Icones'
 import { StructureModale } from '@/components/StructureModale'
 import { PointFocalModale } from '@/components/PointFocalModale'
 import { useConfirmer } from '@/lib/confirmation'
-
-const LIBELLES_STATUT_RAPPORT: Record<Rapport['statutAffiche'], string> = {
-  attendu: 'Attendu',
-  transmis: 'Transmis',
-  valide: 'Validé',
-  rejete: 'Rejeté',
-  retard: 'En retard',
-}
 
 export function PartiePrenanteDetail() {
   const confirmer = useConfirmer()
@@ -46,6 +36,7 @@ export function PartiePrenanteDetail() {
   const { data: rapports } = useQuery(rapportsQueryOptions())
   const peutGererPointsFocaux = usePeut('points_focaux.gerer')
   const peutModifierStructure = usePeut('structures.gerer')
+  const peutTransmettreRapports = usePeutSur('rapports.transmettre', uuid)
   const [structureEnEdition, setStructureEnEdition] = useState(false)
   // undefined : fermée ; null : création ; un point focal : modification.
   const [pointFocalEnEdition, setPointFocalEnEdition] = useState<PointFocal | null | undefined>(undefined)
@@ -56,9 +47,6 @@ export function PartiePrenanteDetail() {
   const { data: indicateurs } = useQuery({ ...indicateursQueryOptions(undefined, undefined, uuid), enabled: voitIndicateurs })
   const afficherToast = useToast()
 
-  const [rapportEnCoursTransmission, setRapportEnCoursTransmission] = useState<string | null>(null)
-  const [erreurTransmission, setErreurTransmission] = useState<string | null>(null)
-  const inputFichierRef = useRef<HTMLInputElement>(null)
   const [pointFocalALier, setPointFocalALier] = useState<PointFocal | null>(null)
   const [erreurLiaison, setErreurLiaison] = useState<string | null>(null)
   const [delierEnCours, setDelierEnCours] = useState<string | null>(null)
@@ -98,20 +86,6 @@ export function PartiePrenanteDetail() {
       afficherToast(pointFocal.actif ? 'Point focal désactivé.' : 'Point focal réactivé.')
     } catch (e) {
       setErreurLiaison(e instanceof ApiError ? e.message : 'Une erreur est survenue. Réessayez.')
-    }
-  }
-
-  async function transmettre(rapport: Rapport, fichier: File) {
-    setErreurTransmission(null)
-    setRapportEnCoursTransmission(rapport.uuid)
-    try {
-      await transmettreRapport(rapport.uuid, fichier)
-      await queryClient.invalidateQueries({ queryKey: ['rapports'] })
-      afficherToast('Rapport transmis.')
-    } catch (e) {
-      setErreurTransmission(e instanceof Error ? e.message : 'Une erreur est survenue. Réessayez.')
-    } finally {
-      setRapportEnCoursTransmission(null)
     }
   }
 
@@ -228,62 +202,7 @@ export function PartiePrenanteDetail() {
 
       <section>
         <h2 className="mb-3 text-lg font-semibold">Reporting trimestriel</h2>
-        {erreurTransmission && (
-          <div role="alert" className="mb-3 rounded-[var(--radius-controle)] bg-bad-bg px-4 py-3 text-bad">
-            {erreurTransmission}
-          </div>
-        )}
-        {rapportsStructure.length > 0 ? (
-          <ul className="flex flex-col gap-2">
-            {rapportsStructure.map((r) => (
-              <li
-                key={r.uuid}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-carte)] bg-surface px-4 py-3 shadow-[var(--shadow-carte)]"
-              >
-                <div>
-                  <span className="chiffres mr-2 text-muted">
-                    {r.periode} {r.exercice}
-                  </span>
-                  <span className="text-sm text-muted">Échéance {formaterDate(r.dateEcheance)}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Pastille statut={r.statutAffiche === 'retard' ? 'annule' : r.statut} />
-                  <span className="text-xs text-muted">{LIBELLES_STATUT_RAPPORT[r.statutAffiche]}</span>
-                  {r.pieceJointe && (
-                    <span className="text-xs text-muted" title={r.pieceJointe.nomFichier}>
-                      📎 {r.pieceJointe.nomFichier}
-                    </span>
-                  )}
-                  {'attendu' === r.statut && (
-                    <>
-                      <input
-                        ref={inputFichierRef}
-                        type="file"
-                        className="hidden"
-                        onChange={(e) => {
-                          const fichier = e.target.files?.[0]
-                          if (fichier) void transmettre(r, fichier)
-                          e.target.value = ''
-                        }}
-                      />
-                      <Bouton
-                        variante="discret"
-                        taille="mini"
-                        icone={<IconeTransmettre />}
-                        disabled={rapportEnCoursTransmission === r.uuid}
-                        onClick={() => inputFichierRef.current?.click()}
-                      >
-                        {rapportEnCoursTransmission === r.uuid ? 'Envoi…' : 'Transmettre'}
-                      </Bouton>
-                    </>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-muted">Aucun rapport pour le moment.</p>
-        )}
+        <ListeRapports rapports={rapportsStructure} peutTransmettre={() => peutTransmettreRapports} />
       </section>
 
       <section>

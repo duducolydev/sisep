@@ -29,6 +29,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Uid\Uuid;
 
@@ -92,8 +93,29 @@ final class RapportController
             }
         }
 
+        $utilisateur = $this->security->getUser();
+        if (!$utilisateur instanceof Utilisateur) {
+            return ProblemResponseFactory::creer(401, 'Authentification requise');
+        }
+        // L'équipe du projet voit tous les rapports ; un point focal, ceux des
+        // structures pour lesquelles il les transmet (« Mes rapports »).
+        $permissions = $this->permissionsResolver->pour($utilisateur);
+        $structuresAutorisees = null;
+        if (!$permissions->estGlobale('parties_prenantes.consulter') && !$permissions->estGlobale('rapports.transmettre')) {
+            $structuresAutorisees = $permissions->structuresAutorisees('rapports.transmettre');
+            if ([] === $structuresAutorisees) {
+                throw new AccessDeniedException();
+            }
+        }
+
         $maintenant = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
         $rapports = $this->rapports->filtrer($exercice, $periode, $filtreRetard ? StatutRapport::ATTENDU : $statut);
+        if (null !== $structuresAutorisees) {
+            $rapports = array_values(array_filter(
+                $rapports,
+                static fn (RapportPeriodique $r) => \in_array($r->getStructure()->getId(), $structuresAutorisees, true),
+            ));
+        }
         if ($filtreRetard) {
             $rapports = array_values(array_filter($rapports, static fn (RapportPeriodique $r) => $r->estEnRetard($maintenant)));
         }
@@ -103,12 +125,12 @@ final class RapportController
         ]);
     }
 
-    /** points_focaux.gerer (§ 7.2), portée-aware : un point focal transmet pour sa propre structure, la coordination pour toutes. */
+    /** rapports.transmettre (§ 7.2), portée-aware : un point focal transmet pour sa propre structure, la coordination pour toutes. */
     #[Route('/{uuid}/transmettre', name: 'app_rapport_transmettre', methods: ['POST'], requirements: ['uuid' => '[0-9a-fA-F-]{36}'])]
     public function transmettre(string $uuid, Request $request): Response
     {
         $rapport = $this->trouver($uuid);
-        $this->exigerPermission($this->security, 'points_focaux.gerer', $rapport);
+        $this->exigerPermission($this->security, 'rapports.transmettre', $rapport);
 
         $utilisateur = $this->security->getUser();
         if (!$utilisateur instanceof Utilisateur) {

@@ -56,6 +56,8 @@ final class ReferentielApplicatif
             ['indicateurs.inviter', 'indicateurs', 'Inviter un sectoriel à saisir un indicateur'],
             ['structures.gerer', 'structures', 'Gérer les structures'],
             ['points_focaux.gerer', 'points_focaux', 'Gérer les points focaux'],
+            ['parties_prenantes.consulter', 'structures', 'Consulter les parties prenantes, leurs points focaux, rapports et activités'],
+            ['rapports.transmettre', 'rapports', 'Transmettre le rapport périodique d\'une structure'],
             ['admin.roles', 'admin', 'Gérer les rôles et permissions'],
             ['admin.parametres', 'admin', 'Gérer les paramètres'],
             ['admin.utilisateurs', 'admin', 'Gérer les comptes utilisateurs'],
@@ -94,7 +96,8 @@ final class ReferentielApplicatif
         $accorder($coordonnateur, $permissions, [
             'activites.consulter', 'activites.creer', 'activites.modifier', 'activites.supprimer', 'activites.valider',
             'budget.engagement.valider', 'budget.depense.valider', 'indicateurs.consulter', 'indicateurs.valider',
-            'indicateurs.inviter', 'structures.gerer', 'points_focaux.gerer', 'admin.roles', 'admin.parametres',
+            'indicateurs.inviter', 'structures.gerer', 'points_focaux.gerer', 'parties_prenantes.consulter',
+            'rapports.transmettre', 'admin.roles', 'admin.parametres',
             'admin.utilisateurs', 'journal.consulter', 'exports.generer', 'initiatives.gerer',
             'rh.consulter', 'rh.gerer', 'documents.gerer',
         ]);
@@ -120,14 +123,14 @@ final class ReferentielApplicatif
             'budget.engagement.saisir', 'budget.engagement.valider',
             'budget.depense.saisir', 'budget.depense.valider',
             'indicateurs.consulter', 'indicateurs.definir', 'indicateurs.saisir', 'indicateurs.valider', 'indicateurs.inviter',
-            'journal.consulter', 'exports.generer', 'initiatives.gerer', 'admin.parametres',
+            'parties_prenantes.consulter', 'journal.consulter', 'exports.generer', 'initiatives.gerer', 'admin.parametres',
             'rh.consulter', 'rh.gerer', 'documents.gerer',
         ]);
 
         $gestionnaireBudgetaire = new Role('gestionnaire_budgetaire', 'Gestionnaire budgétaire', true);
         $accorder($gestionnaireBudgetaire, $permissions, [
             'activites.consulter', 'budget.engagement.saisir', 'budget.depense.saisir',
-            'indicateurs.consulter', 'exports.generer',
+            'indicateurs.consulter', 'parties_prenantes.consulter', 'exports.generer',
         ]);
 
         // Séparation saisir/valider (§ 7.2) : le gestionnaire budgétaire ne
@@ -139,9 +142,14 @@ final class ReferentielApplicatif
         // responsable, jamais la saisie ni la validation des indicateurs
         // (portée-aware pour activites.modifier, cf.
         // SousActivite::getStructurePourPortee()).
+        //
+        // Depuis le 26/10/2026, le point focal n'a plus accès au module Parties
+        // prenantes (fiches, points focaux, liaison de comptes) : il ne gère
+        // plus les points focaux, et transmet seulement les rapports
+        // périodiques de sa structure, depuis l'écran « Mes rapports ».
         $pointFocalStructure = new Role('point_focal_structure', 'Point focal de structure', true);
         $accorder($pointFocalStructure, $permissions, [
-            'activites.consulter', 'activites.modifier', 'points_focaux.gerer',
+            'activites.consulter', 'activites.modifier', 'rapports.transmettre',
         ]);
 
         // Rôle d'administration de la plateforme, pas un rôle opérationnel :
@@ -157,7 +165,7 @@ final class ReferentielApplicatif
         $this->em->persist($administrateur);
 
         $lecteur = new Role('lecteur', 'Lecteur', true);
-        $accorder($lecteur, $permissions, ['activites.consulter', 'indicateurs.consulter']);
+        $accorder($lecteur, $permissions, ['activites.consulter', 'indicateurs.consulter', 'parties_prenantes.consulter']);
 
         $roles = [
             'administrateur' => $administrateur,

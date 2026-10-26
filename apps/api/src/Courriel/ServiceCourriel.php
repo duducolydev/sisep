@@ -84,13 +84,13 @@ final class ServiceCourriel
         $echeance = $rapport->getDateEcheance()->format('d/m/Y');
         $joursDeRetard = (int) $rapport->getDateEcheance()->diff($maintenant)->days;
         $sigle = $this->proteger($structure->getSigle());
-        $bouton = $this->bouton($this->urlWeb.'/parties-prenantes/'.$structure->getUuid()->toRfc4122(), 'Transmettre le rapport');
+        $bouton = $this->bouton($this->urlWeb.'/mes-rapports', 'Transmettre le rapport');
 
         $corps = <<<HTML
             <p>Bonjour,</p>
             <p>Le rapport périodique <strong>{$this->proteger($periode)}</strong> de la structure <strong>{$sigle}</strong>
             était attendu pour le <strong>{$this->proteger($echeance)}</strong>, soit {$joursDeRetard} jour(s) de retard.</p>
-            <p>Merci de le transmettre depuis la fiche de votre structure dans SISEP.</p>
+            <p>Merci de le transmettre depuis l'écran « Mes rapports » de SISEP.</p>
             {$bouton}
             HTML;
 

@@ -132,6 +132,11 @@ export function Layout() {
   const voitIndicateurs = utilisateur?.aAccesIndicateurs ?? false
   // Le suivi RH porte des données contractuelles : réservé à l'UGP.
   const voitRh = utilisateur?.permissions.includes('rh.consulter') ?? false
+  // Parties prenantes : équipe du projet (droit global). Un point focal n'y a
+  // plus accès (décision du 26/10/2026) ; il transmet les rapports de sa
+  // structure depuis « Mes rapports » (droit limité à sa structure).
+  const voitPartiesPrenantes = utilisateur?.permissionsPortee['parties_prenantes.consulter'] === null
+  const voitMesRapports = Array.isArray(utilisateur?.permissionsPortee['rapports.transmettre'])
   const { data: indicateurs } = useQuery({ ...indicateursQueryOptions(), enabled: voitIndicateurs })
 
   const liensPilotage: LienNav[] = [
@@ -147,7 +152,10 @@ export function Layout() {
   ]
 
   const liensActeurs: LienNav[] = [
-    { to: '/parties-prenantes', label: 'Parties prenantes', icone: 'partiesPrenantes', compte: structures?.donnees.length },
+    ...(voitPartiesPrenantes
+      ? [{ to: '/parties-prenantes', label: 'Parties prenantes', icone: 'partiesPrenantes' as const, compte: structures?.donnees.length }]
+      : []),
+    ...(voitMesRapports ? [{ to: '/mes-rapports', label: 'Mes rapports', icone: 'documents' as const }] : []),
     ...(voitRh ? [{ to: '/ressources-humaines', label: 'Ressources humaines', icone: 'ressourcesHumaines' as const }] : []),
     ...(voitAdministration
       ? [

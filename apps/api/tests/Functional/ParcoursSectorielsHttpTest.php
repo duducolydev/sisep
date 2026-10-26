@@ -12,7 +12,9 @@ use App\Entity\Engagement;
 use App\Entity\EtapeActivite;
 use App\Entity\Exercice;
 use App\Entity\Indicateur;
+use App\Entity\PointFocal;
 use App\Entity\Projet;
+use App\Entity\RapportPeriodique;
 use App\Entity\SousActivite;
 use App\Entity\SousComposante;
 use App\Entity\Structure;
@@ -20,6 +22,7 @@ use App\Entity\Utilisateur;
 use App\Entity\UtilisateurRole;
 use App\Enum\FrequenceIndicateur;
 use App\Enum\NatureEngagement;
+use App\Enum\PeriodeTrimestre;
 use App\Enum\SensIndicateur;
 use App\Enum\TypeIndicateur;
 use App\Enum\TypeStructure;
@@ -27,6 +30,7 @@ use App\ValueObject\Montant;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 /**
@@ -230,6 +234,69 @@ final class ParcoursSectorielsHttpTest extends WebTestCase
         }
     }
 
+    /**
+     * Décision du 26/10/2026 : le point focal n'a plus accès aux parties
+     * prenantes — ni fiches, ni points focaux, ni liaison de comptes, ni
+     * activités d'une structure. Il transmet seulement les rapports de sa
+     * structure (« Mes rapports »). L'équipe du projet garde tout.
+     */
+    public function testLePointFocalNAccedePlusAuxPartiesPrenantesMaisTransmetSesRapports(): void
+    {
+        [$client, $f] = $this->demarrer();
+
+        try {
+            $csi = $f['structureCsi']->getUuid()->toRfc4122();
+            $pointFocal = $f['pointFocalCsi']->getUuid()->toRfc4122();
+            $json = ['CONTENT_TYPE' => 'application/json'];
+
+            $this->connecter($client, 'focal.csi@example.test');
+            $client->request('GET', '/api/v1/structures');
+            self::assertResponseIsSuccessful('La liste des sigles reste ouverte : filtres et formulaires.');
+            foreach (["/api/v1/structures/{$csi}", "/api/v1/structures/{$csi}/activites", '/api/v1/points-focaux', "/api/v1/points-focaux?structure={$csi}"] as $url) {
+                $client->request('GET', $url);
+                self::assertResponseStatusCodeSame(403, $url);
+            }
+            $client->request('PATCH', "/api/v1/points-focaux/{$pointFocal}", server: $json, content: json_encode([
+                'utilisateurUuid' => $f['focalCsi']->getUuid()->toRfc4122(),
+            ], \JSON_THROW_ON_ERROR));
+            self::assertResponseStatusCodeSame(403, 'Il ne lie plus de compte à une fiche point focal, même de sa structure.');
+            $client->request('POST', '/api/v1/points-focaux', server: $json, content: json_encode([
+                'structure' => $csi, 'nomComplet' => 'Nouveau', 'fonction' => 'Point focal',
+            ], \JSON_THROW_ON_ERROR));
+            self::assertResponseStatusCodeSame(403);
+
+            // Ses rapports, et eux seuls ; il transmet le sien, pas celui d'une autre structure.
+            $client->request('GET', '/api/v1/rapports');
+            self::assertResponseIsSuccessful();
+            self::assertSame([$f['rapportCsi']->getUuid()->toRfc4122()], array_column($this->corps($client)['donnees'], 'uuid'));
+            $client->request('POST', '/api/v1/rapports/'.$f['rapportCsi']->getUuid()->toRfc4122().'/transmettre', files: ['fichier' => $this->fichierRapport()]);
+            self::assertResponseIsSuccessful();
+            self::assertSame('transmis', $this->corps($client)['statut']);
+            $client->request('POST', '/api/v1/rapports/'.$f['rapportDpee']->getUuid()->toRfc4122().'/transmettre', files: ['fichier' => $this->fichierRapport()]);
+            self::assertResponseStatusCodeSame(403);
+
+            // L'équipe du projet : tout le module.
+            $this->connecter($client, 'rse@example.test');
+            foreach (["/api/v1/structures/{$csi}", "/api/v1/structures/{$csi}/activites", '/api/v1/points-focaux'] as $url) {
+                $client->request('GET', $url);
+                self::assertResponseIsSuccessful($url);
+            }
+            $client->request('GET', '/api/v1/rapports');
+            self::assertCount(2, $this->corps($client)['donnees']);
+        } finally {
+            $this->rollback();
+        }
+    }
+
+    private function fichierRapport(): UploadedFile
+    {
+        $chemin = tempnam(sys_get_temp_dir(), 'sisep_rapport_');
+        self::assertNotFalse($chemin);
+        file_put_contents($chemin, 'rapport trimestriel');
+
+        return new UploadedFile($chemin, 'rapport-T3.pdf', 'application/pdf', null, true);
+    }
+
     public function testUnPointFocalSansStructureEstRefuse(): void
     {
         [$client, $f] = $this->demarrer();
@@ -314,6 +381,14 @@ final class ParcoursSectorielsHttpTest extends WebTestCase
         $sousComposante = new SousComposante($composante, 'T1.1', 'Sous-composante parcours');
         $this->em->persist($sousComposante);
 
+        // Fiche point focal du CSI et rapports trimestriels de deux structures.
+        $pointFocalCsi = new PointFocal($structures['CSI'], 'Point focal CSI', 'Chef de division');
+        $this->em->persist($pointFocalCsi);
+        $rapportCsi = new RapportPeriodique($structures['CSI'], $exercice, PeriodeTrimestre::T3, new \DateTimeImmutable(date('Y').'-10-15'));
+        $rapportDpee = new RapportPeriodique($structures['DPEE'], $exercice, PeriodeTrimestre::T3, new \DateTimeImmutable(date('Y').'-10-15'));
+        $this->em->persist($rapportCsi);
+        $this->em->persist($rapportDpee);
+
         // Activité de la DPEE, dont une ligne est confiée au CSI — le cas de
         // 9 activités sur 26 au PTBA 2026.
         $activite = new Activite($sousComposante, 'T1.1.1', 'Activité partagée', $structures['DPEE']);
@@ -359,6 +434,10 @@ final class ParcoursSectorielsHttpTest extends WebTestCase
             'ligneDpee' => $ligneDpee,
             'indicateur' => $indicateur,
             'focalCsi' => $comptes['focal.csi'],
+            'structureCsi' => $structures['CSI'],
+            'pointFocalCsi' => $pointFocalCsi,
+            'rapportCsi' => $rapportCsi,
+            'rapportDpee' => $rapportDpee,
             ...$etapes,
         ]];
     }

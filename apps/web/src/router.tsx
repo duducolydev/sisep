@@ -79,11 +79,18 @@ export const router = createBrowserRouter([
       },
       {
         path: 'parties-prenantes',
+        loader: gardePermission('parties_prenantes.consulter'),
         lazy: () => import('./pages/PartiesPrenantes').then((m) => ({ Component: m.PartiesPrenantes })),
       },
       {
         path: 'parties-prenantes/:uuid',
+        loader: gardePermission('parties_prenantes.consulter'),
         lazy: () => import('./pages/PartiePrenanteDetail').then((m) => ({ Component: m.PartiePrenanteDetail })),
+      },
+      {
+        path: 'mes-rapports',
+        loader: gardePermission('rapports.transmettre'),
+        lazy: () => import('./pages/MesRapports').then((m) => ({ Component: m.MesRapports })),
       },
       {
         path: 'administration/indicateurs',

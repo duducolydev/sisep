@@ -73,12 +73,18 @@ final class StructureController
     #[Route('/{uuid}', name: 'app_structure_detail', methods: ['GET'], requirements: ['uuid' => '[0-9a-fA-F-]{36}'])]
     public function detail(string $uuid): JsonResponse
     {
+        // La liste des structures reste ouverte (sigles des filtres et des
+        // formulaires) ; la fiche d'une partie prenante, non — réservée à
+        // l'équipe du projet, pas aux points focaux (décision du 26/10/2026).
+        $this->exigerPermissionGlobale($this->security, $this->permissionsResolver, 'parties_prenantes.consulter');
+
         return new JsonResponse($this->normalizer->normaliser($this->trouver($uuid)));
     }
 
     #[Route('/{uuid}/activites', name: 'app_structure_activites', methods: ['GET'], requirements: ['uuid' => '[0-9a-fA-F-]{36}'])]
     public function activites(string $uuid): JsonResponse
     {
+        $this->exigerPermissionGlobale($this->security, $this->permissionsResolver, 'parties_prenantes.consulter');
         $structure = $this->trouver($uuid);
 
         // Le filtre SQL de portée (§ 7.2) s'applique automatiquement à
