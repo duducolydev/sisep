@@ -154,8 +154,10 @@ inexploitable :
 
 ```bash
 # Base
+# Guillemets simples : $MYSQL_ROOT_PASSWORD est lu dans le conteneur, qui
+# l'a dans son environnement ; le shell de l'hôte, lui, ne le connaît pas.
 docker compose -f docker-compose.prod.yml exec -T db \
-  mysqldump -u root -p"$MYSQL_ROOT_PASSWORD" --single-transaction sisep \
+  sh -c 'mysqldump -u root -p"$MYSQL_ROOT_PASSWORD" --single-transaction sisep' \
   | gzip > /var/backups/sisep-$(date +%F).sql.gz
 
 # Fichiers déposés
