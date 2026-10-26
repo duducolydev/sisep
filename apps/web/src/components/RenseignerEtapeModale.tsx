@@ -39,7 +39,13 @@ export function RenseignerEtapeModale({ etape, activiteUuid, onFermer }: Renseig
         observation: observation.trim() === '' ? null : observation.trim(),
         dateMiseAJour,
       })
-      await queryClient.invalidateQueries({ queryKey: ['activite', activiteUuid] })
+      // L'avancement d'une étape se lit aussi dans l'arbre des composantes,
+      // l'écran Exécution et le tableau de bord : tous à rafraîchir.
+      await Promise.all(
+        [['activite', activiteUuid], ['arbre'], ['execution'], ['synthese'], ['alertes']].map((queryKey) =>
+          queryClient.invalidateQueries({ queryKey }),
+        ),
+      )
       onFermer()
     } catch (e) {
       setErreur(e instanceof ApiError ? e.message : 'Une erreur est survenue. Réessayez.')

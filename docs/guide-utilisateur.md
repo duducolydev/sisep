@@ -13,6 +13,7 @@ Ce guide s'adresse à toutes les personnes qui utilisent le SISEP : l'équipe de
 - **Natures d'engagement** : « Fournitures de biens » devient « Fournitures », et « Travaux » devient « Travaux (construction, réaménagement…) ».
 - **Documents et justificatifs** : leur intitulé et leur type se corrigent après le dépôt, sans retirer le fichier.
 - **Indicateurs de performance** : l'évolution s'affiche en **diagramme en barres**, avec la cible en ligne de repère.
+- **Indicateurs** : le Responsable suivi-évaluation valide les valeurs saisies par les sectoriels (jamais sa propre saisie).
 - **Comptes** : les rôles d'un compte se modifient directement dans « Modifier un compte », et l'administrateur y attribue un nouveau mot de passe temporaire en cas d'oubli.
 - **Parties prenantes** : une structure se modifie depuis sa fiche, et ses points focaux s'y ajoutent, s'y modifient et s'y désactivent.
 
@@ -46,12 +47,12 @@ Chaque compte reçoit un ou plusieurs rôles. Un rôle peut valoir pour tout le 
 |---|---|
 | Administrateur | Tout. Rôle d'administration de la plateforme, à ne pas confier à une personne qui traite elle-même les écritures budgétaires. |
 | Coordonnateur | Consulter et gérer l'arbre du PTBA (y compris archiver), valider la clôture des activités, **valider** les engagements, les dépenses et les valeurs d'indicateurs (sans les saisir), gérer les structures, les points focaux, les comptes, les rôles et les paramètres, consulter le journal, exporter, suivre les projets, les ressources humaines et les documents. |
-| Responsable suivi-évaluation | Créer et modifier les activités, valider leur clôture, **saisir et valider** les dotations, engagements et dépenses, définir et saisir les indicateurs, inviter un sectoriel, consulter le journal, exporter, suivre les projets, les ressources humaines et les documents. |
+| Responsable suivi-évaluation | Créer et modifier les activités, valider leur clôture, **saisir et valider** les dotations, engagements et dépenses, définir les indicateurs, **saisir et valider** leurs valeurs, inviter un sectoriel, consulter le journal, exporter, suivre les projets, les ressources humaines et les documents. |
 | Gestionnaire budgétaire | Consulter les activités et les indicateurs, **saisir** les dotations, engagements et dépenses (sans les valider), exporter. |
-| Point focal de structure | Consulter les activités de sa structure et en renseigner l'avancement (étapes, justificatifs), tenir à jour les points focaux de sa structure. Il saisit aussi les valeurs des indicateurs auxquels il a été invité. |
+| Point focal de structure | Consulter les activités de sa structure, ainsi que celles dont une ligne est confiée à sa structure, et renseigner l'avancement de ce qui relève de sa structure (étapes, justificatifs) ; tenir à jour les points focaux de sa structure. Il saisit aussi les valeurs des indicateurs auxquels il a été invité. Ce rôle s'attribue toujours pour une structure précise. |
 | Lecteur | Consulter les activités et les indicateurs. |
 
-**Séparation de la saisie et de la validation.** Une écriture budgétaire (engagement, dépense) est saisie par une personne et validée par une autre. Les profils Administrateur et Responsable suivi-évaluation peuvent faire les deux, mais **jamais sur la même écriture** : l'application refuse que la personne qui a saisi un engagement ou une dépense le valide elle-même. Toute écriture est enregistrée dans le journal, avec son état avant et après.
+**Séparation de la saisie et de la validation.** Une écriture budgétaire (engagement, dépense) ou une valeur d'indicateur est saisie par une personne et validée par une autre. Les profils Administrateur et Responsable suivi-évaluation peuvent faire les deux, mais **jamais sur la même écriture** : l'application refuse que la personne qui a saisi un engagement, une dépense ou une valeur la valide elle-même. Toute écriture est enregistrée dans le journal, avec son état avant et après.
 
 ### 1.5 Conventions d'affichage
 
@@ -130,7 +131,9 @@ L'avancement ne se saisit pas en pourcentage global : il se renseigne **étape p
 2. Ou ajoutez une étape à la main, avec son libellé.
 3. Une étape peut porter des **livrables** (par exemple « Questionnaires imprimés », avec une quantité attendue).
 
-**Renseigner une étape** (point focal ou UGP) : cliquez sur **Renseigner l'étape** et indiquez :
+**Lignes confiées à une autre direction.** Une ligne peut relever d'une autre structure que l'activité (la fiche l'indique : « Ligne confiée à CSI »). Le point focal de cette structure trouve alors l'activité dans son arbre et renseigne les étapes de sa ligne, et d'elle seule ; le reste de l'activité lui est visible en lecture.
+
+**Renseigner une étape** (point focal ou UGP) : dépliez **Étapes** sur la ligne, cliquez sur **Renseigner l'étape** et indiquez :
 
 - le **niveau atteint** en pourcentage ;
 - la **date de mise à jour** ;
@@ -206,7 +209,9 @@ La valeur est enregistrée en brouillon : elle compte aussitôt dans l'affichage
 
 ### 7.3 Valider une valeur
 
-Le Coordonnateur valide les valeurs en attente depuis la série historique (bouton **Valider**). La valeur devient alors la valeur officielle de l'indicateur.
+Le Responsable suivi-évaluation — ou le Coordonnateur — valide les valeurs en attente depuis la série historique de l'indicateur (bouton **Valider**). Chaque valeur en attente indique qui l'a saisie. La valeur validée devient la valeur officielle de l'indicateur : valeur actuelle, taux d'atteinte, évolution, tableau de bord.
+
+Personne ne valide sa propre saisie : une valeur saisie (ou corrigée) par un Responsable suivi-évaluation est validée par un autre Responsable suivi-évaluation ou par le Coordonnateur ; le bouton **Valider** ne lui est pas proposé. Une valeur corrigée après validation repasse en attente.
 
 ### 7.4 Inviter un sectoriel
 
@@ -372,4 +377,7 @@ Vérifiez sa taille : 10 Mo pour un justificatif, 50 Mo pour un document de la b
 Il n'est pas calculable, en général faute de budget notifié ou de cible. Ce n'est pas une erreur de saisie.
 
 **Une valeur d'indicateur saisie n'apparaît pas comme officielle.**
-Elle attend sa validation : elle est affichée hachurée dans l'évolution et marquée « en attente de validation ».
+Elle attend sa validation par un Responsable suivi-évaluation ou le Coordonnateur : elle est affichée hachurée dans l'évolution et marquée « en attente de validation ».
+
+**Je ne vois pas le bouton « Valider » sur une valeur en attente.**
+C'est vous qui l'avez saisie ou corrigée : un autre Responsable suivi-évaluation ou le Coordonnateur doit la valider.

@@ -14,7 +14,7 @@ import { useConfirmer } from '@/lib/confirmation'
 import { formaterDate, formaterValeurIndicateur } from '@/lib/format'
 import { ApiError } from '@/lib/api-client'
 import { queryClient } from '@/lib/query-client'
-import { usePeut, usePeutRequalifierPiece } from '@/lib/use-permissions'
+import { usePeut, usePeutRequalifierPiece, useUtilisateurCourant } from '@/lib/use-permissions'
 import type { PieceRequalifiable } from '@/lib/documents'
 import { usePeriodeFiltre } from '@/lib/periode'
 import { urlTelechargerPieceJointe, urlExportDonnees } from '@/lib/exports'
@@ -51,6 +51,7 @@ export function IndicateurDetail() {
   const [actionEnCours, setActionEnCours] = useState<string | null>(null)
   const [pieceModifiee, setPieceModifiee] = useState<PieceRequalifiable | null>(null)
   const peutRequalifier = usePeutRequalifierPiece()
+  const { data: moi } = useUtilisateurCourant()
   const [erreurAction, setErreurAction] = useState<string | null>(null)
 
   const peutValider = usePeut('indicateurs.valider')
@@ -83,7 +84,13 @@ export function IndicateurDetail() {
     setActionEnCours(valeurUuid)
     try {
       await validerValeur(valeurUuid)
-      await queryClient.invalidateQueries({ queryKey: ['indicateur', uuid] })
+      // La valeur validée devient la valeur officielle partout : fiche,
+      // liste des indicateurs, cadre de résultats du tableau de bord.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['indicateur', uuid] }),
+        queryClient.invalidateQueries({ queryKey: ['indicateurs'] }),
+        queryClient.invalidateQueries({ queryKey: ['synthese'] }),
+      ])
       afficherToast('Valeur validée.')
     } catch (e) {
       setErreurAction(e instanceof ApiError ? e.message : 'Une erreur est survenue. Réessayez.')
@@ -276,8 +283,12 @@ export function IndicateurDetail() {
                     </span>
                   </span>
                   <div className="flex items-center gap-3">
+                    <span className="text-xs text-muted">
+                      {v.statut === 'brouillon' ? `Saisie par ${v.saisiPar.nomComplet}` : v.validePar ? `Validée par ${v.validePar}` : null}
+                    </span>
                     <Pastille statut={v.statut} />
-                    {v.statut === 'brouillon' && peutValider && (
+                    {/* Jamais sur sa propre saisie : le serveur la refuserait. */}
+                    {v.statut === 'brouillon' && peutValider && v.saisiPar.uuid !== moi?.uuid && (
                       <Bouton
                         variante="discret"
                         taille="mini"

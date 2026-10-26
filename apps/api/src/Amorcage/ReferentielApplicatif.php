@@ -108,12 +108,18 @@ final class ReferentielApplicatif
         // avant et après, et l'écran du budget expose ce fil. Aucun autre
         // rôle opérationnel ne cumule les deux : le gestionnaire budgétaire
         // saisit sans valider, le coordonnateur valide sans saisir.
+        //
+        // Même chose pour les indicateurs depuis le 26/10/2026 : le RSE valide
+        // les valeurs que saisissent les sectoriels (il est leur interlocuteur
+        // direct), et en saisit lui-même. Même contrepartie qu'au budget : le
+        // serveur refuse qu'une personne valide sa propre saisie
+        // (IndicateurController::validerValeur).
         $suiviEvaluation = new Role('responsable_suivi_evaluation', 'Responsable suivi-évaluation', true);
         $accorder($suiviEvaluation, $permissions, [
             'activites.consulter', 'activites.creer', 'activites.modifier', 'activites.valider',
             'budget.engagement.saisir', 'budget.engagement.valider',
             'budget.depense.saisir', 'budget.depense.valider',
-            'indicateurs.consulter', 'indicateurs.definir', 'indicateurs.saisir', 'indicateurs.inviter',
+            'indicateurs.consulter', 'indicateurs.definir', 'indicateurs.saisir', 'indicateurs.valider', 'indicateurs.inviter',
             'journal.consulter', 'exports.generer', 'initiatives.gerer', 'admin.parametres',
             'rh.consulter', 'rh.gerer', 'documents.gerer',
         ]);

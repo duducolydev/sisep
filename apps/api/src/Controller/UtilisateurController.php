@@ -43,6 +43,13 @@ final class UtilisateurController
 {
     use ApiControllerHelpersTrait;
 
+    /**
+     * Un point focal agit pour sa structure : attribué sur « toutes les
+     * structures », ce rôle ouvrirait la modification de toutes les
+     * activités du PTBA et la gestion de tous les points focaux.
+     */
+    private const ROLE_POINT_FOCAL = 'point_focal_structure';
+
     public function __construct(
         private readonly UtilisateurRepository $utilisateurs,
         private readonly RoleRepository $roles,
@@ -112,6 +119,9 @@ final class UtilisateurController
                 if (null === $roleStructure) {
                     return ProblemResponseFactory::creer(422, 'Structure introuvable pour l\'attribution de rôle');
                 }
+            }
+            if (null === $roleStructure && self::ROLE_POINT_FOCAL === $role->getCode()) {
+                return self::pointFocalSansStructure();
             }
 
             $roles[] = [$role, $roleStructure];
@@ -264,6 +274,9 @@ final class UtilisateurController
                     return ProblemResponseFactory::creer(422, 'Structure introuvable pour l\'attribution de rôle');
                 }
             }
+            if (null === $structure && self::ROLE_POINT_FOCAL === $role->getCode()) {
+                return self::pointFocalSansStructure();
+            }
             $voulus[$role->getCode().'|'.($structure?->getId() ?? '')] = [$role, $structure];
         }
 
@@ -328,5 +341,10 @@ final class UtilisateurController
         $utilisateur = null !== $uuidObjet ? $this->utilisateurs->findOneBy(['uuid' => $uuidObjet]) : null;
 
         return $utilisateur ?? throw new NotFoundHttpException('Compte utilisateur introuvable.');
+    }
+
+    private static function pointFocalSansStructure(): JsonResponse
+    {
+        return ProblemResponseFactory::creer(422, 'Structure requise', 'Un point focal agit pour une structure : choisissez-la comme portée du rôle « Point focal de structure ».');
     }
 }

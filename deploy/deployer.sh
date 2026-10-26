@@ -81,6 +81,11 @@ done
 etape "Migrations"
 $COMPOSE exec -T api php bin/console doctrine:migrations:migrate --no-interaction
 
+# L'arbre du PTBA est mis en cache une heure : une version de l'application
+# qui change ce qu'il contient (portée, calculs) doit repartir d'un cache vide.
+etape "Vidage du cache applicatif"
+$COMPOSE exec -T api php bin/console cache:pool:clear cache.app
+
 # --- Amorçage et données ---------------------------------------------------
 # `app:amorcer` se tait si le référentiel est déjà en place : on peut la
 # lancer à chaque déploiement sans risque.

@@ -80,7 +80,14 @@ export function SaisirValeurIndicateurModale({ indicateurUuid, onFermer }: Saisi
       if (fichier) {
         await televerserPieceJointeValeur(reponse.uuid, fichier, nature)
       }
-      await queryClient.invalidateQueries({ queryKey: ['indicateur', indicateurUuid] })
+      // La liste des indicateurs et le cadre de résultats du tableau de bord
+      // affichent aussi la valeur en attente : sans eux, jusqu'à 30 s
+      // d'ancien affichage (staleTime).
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['indicateur', indicateurUuid] }),
+        queryClient.invalidateQueries({ queryKey: ['indicateurs'] }),
+        queryClient.invalidateQueries({ queryKey: ['synthese'] }),
+      ])
       onFermer()
     } catch (e) {
       setErreur(e instanceof ApiError || e instanceof Error ? e.message : 'Une erreur est survenue. Réessayez.')

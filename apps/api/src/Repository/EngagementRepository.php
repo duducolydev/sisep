@@ -52,8 +52,17 @@ class EngagementRepository extends ServiceEntityRepository
      */
     public function filtrer(Activite|SousActivite|null $cible, ?Exercice $exercice, ?StatutEcriture $statut, int $page, int $taille): array
     {
+        // Portée par structure (§ 7.2) : le filtre `portee_activite` s'applique
+        // aux jointures sur Activite — une activité hors périmètre y devient
+        // nulle, et l'engagement qui s'y rattache sort de la liste. Sans ces
+        // jointures, un point focal recevait tous les engagements du projet,
+        // et l'hydratation de leur activité masquée échouait (500).
         $qb = $this->createQueryBuilder('e')
+            ->leftJoin('e.activite', 'a_portee')
+            ->leftJoin('e.sousActivite', 'l_portee')
+            ->leftJoin('l_portee.activite', 'la_portee')
             ->andWhere('e.supprimeLe IS NULL')
+            ->andWhere('a_portee.id IS NOT NULL OR la_portee.id IS NOT NULL')
             ->orderBy('e.dateEngagement', 'DESC');
 
         if ($cible instanceof Activite) {

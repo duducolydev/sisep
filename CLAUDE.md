@@ -30,7 +30,11 @@ Vite + TypeScript (`apps/web`), monorepo pnpm (`packages/shared`).
   l'écran du budget (`GET /journal/budget`), pas seulement dans
   l'administration. Aucun autre rôle ne peut cumuler les deux : le
   gestionnaire budgétaire saisit sans valider, le coordonnateur valide sans
-  saisir.
+  saisir. Même règle pour les valeurs d'indicateurs depuis le 26/10/2026 :
+  le RSE détient `indicateurs.saisir` et `indicateurs.valider` (il valide les
+  saisies des sectoriels), et le serveur refuse qu'une personne valide la
+  valeur qu'elle a saisie ou corrigée (`IndicateurController::validerValeur`,
+  `IndicateurValeur::ajusterValeur` change l'auteur).
 - Portée par structure en plus de la permission (`UtilisateurRole.structure`),
   appliquée comme filtre de requête (Doctrine SQL Filter) et non comme
   contrôle après lecture.

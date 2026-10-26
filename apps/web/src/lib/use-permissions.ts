@@ -17,6 +17,23 @@ export function usePeut(code: string): boolean {
 }
 
 /**
+ * Même règle que usePeutSur, pour plusieurs structures sur un même écran :
+ * les lignes d'une activité peuvent relever de directions différentes, et
+ * un hook ne s'appelle pas dans une boucle.
+ */
+export function usePeutSurStructure(code: string): (structureUuid: string | null | undefined) => boolean {
+  const { data } = useUtilisateurCourant()
+  const portee = data?.permissionsPortee[code]
+
+  return (structureUuid) => {
+    if (portee === undefined) return false
+    if (portee === null) return true
+
+    return structureUuid != null && portee.includes(structureUuid)
+  }
+}
+
+/**
  * Requalifier une pièce jointe (intitulé, type) : son déposant, ou l'UGP
  * (`documents.gerer` sur tout le projet) — même règle que
  * PieceJointeController::modifier.

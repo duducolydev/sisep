@@ -24,6 +24,11 @@ final class IndicateurValeurNormalizer
             'valeur' => $valeur->getValeur(),
             'commentaire' => $valeur->getCommentaire(),
             'statut' => $valeur->getStatut()->value,
+            'saisiPar' => [
+                'uuid' => $valeur->getSaisiPar()->getUuid()->toRfc4122(),
+                'nomComplet' => $valeur->getSaisiPar()->getNomComplet(),
+            ],
+            'validePar' => $valeur->getValidePar()?->getNomComplet(),
             'desagregations' => array_map(
                 $this->desagregationNormalizer->normaliser(...),
                 $valeur->getDesagregations()->toArray(),

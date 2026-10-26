@@ -8,7 +8,7 @@ use App\Entity\Trait\IdentifiantsTrait;
 use App\Entity\Trait\SuppressionLogiqueTrait;
 use App\Enum\StatutActivite;
 use App\Repository\SousActiviteRepository;
-use App\Security\PorteeParStructureInterface;
+use App\Security\PorteeEnConsultationInterface;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
@@ -25,7 +25,7 @@ use Doctrine\ORM\Mapping as ORM;
  */
 #[ORM\Entity(repositoryClass: SousActiviteRepository::class)]
 #[ORM\Table(name: 'sous_activites')]
-class SousActivite implements PorteeParStructureInterface
+class SousActivite implements PorteeEnConsultationInterface
 {
     use IdentifiantsTrait;
     use SuppressionLogiqueTrait;
@@ -127,6 +127,12 @@ class SousActivite implements PorteeParStructureInterface
     public function getStructurePourPortee(): ?Structure
     {
         return $this->structureResponsable ?? $this->activite->getStructurePourPortee();
+    }
+
+    /** En consultation, la ligne se lit avec son activité (cf. PorteeEnConsultationInterface). */
+    public function getStructuresConcernees(): array
+    {
+        return $this->activite->getStructuresConcernees();
     }
 
     public function getDateDebut(): ?\DateTimeImmutable

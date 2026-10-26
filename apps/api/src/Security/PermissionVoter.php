@@ -20,6 +20,8 @@ use Symfony\Component\Security\Core\Authorization\Voter\Voter;
  */
 final class PermissionVoter extends Voter
 {
+    private const CONSULTATION = 'activites.consulter';
+
     public function __construct(
         private readonly PermissionsResolver $permissionsResolver,
         private readonly EntityManagerInterface $em,
@@ -44,8 +46,21 @@ final class PermissionVoter extends Voter
             return $permissions->possede($attribute);
         }
 
+        // Consulter une activité, une ligne ou une étape : toute structure
+        // concernée par l'activité suffit (cf. PorteeEnConsultationInterface).
+        // Agir dessus reste borné à la structure du sujet lui-même.
+        if (self::CONSULTATION === $attribute && $subject instanceof PorteeEnConsultationInterface) {
+            foreach ($this->horsFiltrePortee(static fn () => $subject->getStructuresConcernees()) as $structure) {
+                if ($permissions->estAutorisePour($attribute, $structure->getId())) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         $structureId = $subject instanceof PorteeParStructureInterface
-            ? $this->resoudreStructureId($subject)
+            ? $this->horsFiltrePortee(static fn () => $subject->getStructurePourPortee()?->getId())
             : null;
 
         return $permissions->estAutorisePour($attribute, $structureId);
@@ -61,20 +76,31 @@ final class PermissionVoter extends Voter
      * 500) au lieu d'un refus propre (403). Le vote a besoin de la structure
      * réelle du sujet, indépendamment de ce que l'utilisateur a le droit de
      * lister.
+     *
+     * suspend()/restore(), pas disable()/enable() : enable() recrée une
+     * instance du filtre, sans la portée que PorteeStructureRequestListener
+     * lui avait donnée — tout le reste de la requête aurait lu les activités
+     * sans aucune restriction.
+     *
+     * @template T
+     *
+     * @param callable(): T $lecture
+     *
+     * @return T
      */
-    private function resoudreStructureId(PorteeParStructureInterface $subject): ?int
+    private function horsFiltrePortee(callable $lecture): mixed
     {
         $filtres = $this->em->getFilters();
         $etaitActif = $filtres->isEnabled('portee_activite');
         if ($etaitActif) {
-            $filtres->disable('portee_activite');
+            $filtres->suspend('portee_activite');
         }
 
         try {
-            return $subject->getStructurePourPortee()?->getId();
+            return $lecture();
         } finally {
             if ($etaitActif) {
-                $filtres->enable('portee_activite');
+                $filtres->restore('portee_activite');
             }
         }
     }

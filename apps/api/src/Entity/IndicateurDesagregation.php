@@ -64,4 +64,10 @@ class IndicateurDesagregation
     {
         return $this->valeur;
     }
+
+    /** Resaisie de la valeur dont elle est la ventilation — elle repasse en brouillon avec elle. */
+    public function corriger(string $valeur): void
+    {
+        $this->valeur = $valeur;
+    }
 }

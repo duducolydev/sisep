@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Doctrine\Filter;
 
 use App\Entity\Activite;
+use App\Security\PorteeActiviteSql;
 use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\ORM\Query\Filter\SQLFilter;
 
@@ -31,6 +32,16 @@ final class PorteeActiviteFilter extends SQLFilter
     {
         $this->actif = true;
         $this->structureIds = $structureIds;
+
+        // Doctrine met en cache le SQL généré (query cache, persistant en
+        // production) sous une clé qui inclut l'empreinte des filtres — et
+        // cette empreinte ne voit que les paramètres déclarés. Sans celui-ci,
+        // tous les comptes à portée partageaient la même clé : le SQL d'un
+        // point focal, ses ids de structures inscrits en dur, resservait au
+        // suivant (audit du 26/10/2026).
+        $ids = $structureIds;
+        sort($ids);
+        $this->setParameter('structures', implode(',', $ids));
     }
 
     public function addFilterConstraint(ClassMetadata $targetEntity, string $targetTableAlias): string
@@ -48,6 +59,8 @@ final class PorteeActiviteFilter extends SQLFilter
             $this->structureIds,
         );
 
-        return \sprintf('%s.structure_responsable_id IN (%s)', $targetTableAlias, implode(',', $idsEchappes));
+        // Responsable de l'activité ou d'une de ses lignes : la même règle
+        // que les lecteurs SQL, cf. PorteeActiviteSql.
+        return PorteeActiviteSql::condition($targetTableAlias, implode(',', $idsEchappes));
     }
 }

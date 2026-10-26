@@ -83,6 +83,9 @@ export interface IndicateurValeur {
   valeur: string
   commentaire: string | null
   statut: string
+  /** Auteur de la dernière saisie : lui seul ne peut pas la valider. */
+  saisiPar: { uuid: string; nomComplet: string }
+  validePar: string | null
   desagregations: Desagregation[]
   piecesJointes: PieceJointeIndicateur[]
 }

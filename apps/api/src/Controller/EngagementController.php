@@ -54,6 +54,10 @@ final class EngagementController
     #[Route('', name: 'app_engagement_liste', methods: ['GET'])]
     public function liste(Request $request): JsonResponse
     {
+        // Les engagements se lisent avec les activités qui les portent : même
+        // droit, et la portée par structure suit (cf. EngagementRepository).
+        $this->exigerPermission($this->security, 'activites.consulter');
+
         $page = max(1, $request->query->getInt('page', 1));
         $taille = min(100, max(1, $request->query->getInt('taille', 25)));
 

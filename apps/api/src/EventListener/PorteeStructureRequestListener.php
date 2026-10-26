@@ -48,6 +48,12 @@ final class PorteeStructureRequestListener
         $permissions = $this->permissionsResolver->pour($utilisateur);
 
         if ($permissions->estGlobale('activites.consulter')) {
+            // Noyau réutilisé d'une requête à l'autre (tests, serveur
+            // persistant) : ne jamais garder la portée du compte précédent.
+            if ($this->em->getFilters()->isEnabled('portee_activite')) {
+                $this->em->getFilters()->disable('portee_activite');
+            }
+
             return;
         }
 

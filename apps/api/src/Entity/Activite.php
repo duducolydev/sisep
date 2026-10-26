@@ -8,7 +8,7 @@ use App\Entity\Trait\IdentifiantsTrait;
 use App\Entity\Trait\SuppressionLogiqueTrait;
 use App\Enum\StatutActivite;
 use App\Repository\ActiviteRepository;
-use App\Security\PorteeParStructureInterface;
+use App\Security\PorteeEnConsultationInterface;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
@@ -23,7 +23,7 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\UniqueConstraint(name: 'uniq_activite_code', columns: ['sous_composante_id', 'code', 'supprime_le'])]
 #[ORM\Index(name: 'idx_activite_structure_responsable', columns: ['structure_responsable_id'])]
 #[ORM\Index(name: 'idx_activite_statut', columns: ['statut'])]
-class Activite implements PorteeParStructureInterface
+class Activite implements PorteeEnConsultationInterface
 {
     use IdentifiantsTrait;
     use SuppressionLogiqueTrait;
@@ -133,6 +133,20 @@ class Activite implements PorteeParStructureInterface
     public function getStructurePourPortee(): ?Structure
     {
         return $this->structureResponsable;
+    }
+
+    /** La structure responsable, puis celles des lignes actives qui en ont une autre. */
+    public function getStructuresConcernees(): array
+    {
+        $structures = [$this->structureResponsable];
+        foreach ($this->getSousActivitesActives() as $ligne) {
+            $structure = $ligne->getStructureResponsable();
+            if (null !== $structure && !\in_array($structure, $structures, true)) {
+                $structures[] = $structure;
+            }
+        }
+
+        return $structures;
     }
 
     public function setStructureResponsable(Structure $structureResponsable): void

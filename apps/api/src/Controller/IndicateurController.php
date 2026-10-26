@@ -15,6 +15,7 @@ use App\Entity\PieceJointe;
 use App\Entity\Utilisateur;
 use App\Enum\FrequenceIndicateur;
 use App\Enum\SensIndicateur;
+use App\Enum\StatutValeurIndicateur;
 use App\Enum\TypeIndicateur;
 use App\Http\IndicateurNormalizer;
 use App\Http\IndicateurValeurNormalizer;
@@ -341,7 +342,7 @@ final class IndicateurController
         }
 
         if (null !== $existante) {
-            $existante->ajusterValeur($valeurCalculee);
+            $existante->ajusterValeur($valeurCalculee, $utilisateur);
             $existante->setCommentaire($donnees->commentaire);
             $valeur = $existante;
         } else {
@@ -350,8 +351,18 @@ final class IndicateurController
             $this->em->persist($valeur);
         }
 
+        // Resaisie : une modalité déjà ventilée est corrigée, pas ajoutée une
+        // seconde fois — sinon « Femmes » apparaissait deux fois, avec
+        // l'ancienne et la nouvelle valeur.
         foreach ($desagregations as [$dimension, $modalite, $valeurDesagregation]) {
-            $this->em->persist(new IndicateurDesagregation($valeur, $dimension, $modalite, $valeurDesagregation));
+            $deja = $valeur->getDesagregations()->findFirst(
+                static fn (int $i, IndicateurDesagregation $d) => $d->getDimension() === $dimension && $d->getModalite() === $modalite,
+            );
+            if (null !== $deja) {
+                $deja->corriger($valeurDesagregation);
+            } else {
+                $this->em->persist(new IndicateurDesagregation($valeur, $dimension, $modalite, $valeurDesagregation));
+            }
         }
 
         $this->em->flush();
@@ -359,6 +370,11 @@ final class IndicateurController
         return new JsonResponse($this->valeurNormalizer->normaliser($valeur), null === $existante ? 201 : 200);
     }
 
+    /**
+     * indicateurs.valider : responsable suivi-évaluation, coordonnateur,
+     * administrateur. Refusé sur une valeur déjà validée (409) et sur sa
+     * propre saisie (422).
+     */
     #[Route('/valeurs/{uuid}/valider', name: 'app_indicateur_valeur_valider', methods: ['POST'])]
     public function validerValeur(string $uuid): JsonResponse
     {
@@ -373,6 +389,18 @@ final class IndicateurController
         $utilisateur = $this->security->getUser();
         if (!$utilisateur instanceof Utilisateur) {
             return new JsonResponse(['title' => 'Authentification requise', 'status' => 401], 401);
+        }
+
+        // Une valeur déjà validée ne se revalide pas : le faire réécrivait qui
+        // l'avait validée, et quand.
+        if (StatutValeurIndicateur::BROUILLON !== $valeur->getStatut()) {
+            return ProblemResponseFactory::creer(409, 'Valeur déjà validée', 'Seule une valeur en attente de validation peut être validée.');
+        }
+
+        // Séparation saisie/validation : le RSE saisit et valide (décision du
+        // 26/10/2026), jamais sa propre saisie — même règle qu'au budget.
+        if ($valeur->getSaisiPar()->getUuid()->equals($utilisateur->getUuid())) {
+            return ProblemResponseFactory::creer(422, 'Validation de sa propre saisie', 'Vous avez saisi cette valeur : un autre responsable suivi-évaluation ou le coordonnateur doit la valider.');
         }
 
         $valeur->valider($utilisateur);

@@ -7,6 +7,7 @@ namespace App\Query;
 use App\Budget\GrandeursDerivees;
 use App\Entity\Utilisateur;
 use App\Security\PermissionsResolver;
+use App\Security\PorteeActiviteSql;
 use Doctrine\DBAL\Connection;
 use Symfony\Bundle\SecurityBundle\Security;
 
@@ -85,8 +86,8 @@ final class BudgetExecutionReader
             if ([] === $structureIds) {
                 return [];
             }
-            $conditionPortee = ' AND a.structure_responsable_id IN ('.implode(',', array_fill(0, \count($structureIds), '?')).')';
-            $parametresPortee = $structureIds;
+            $conditionPortee = ' AND '.PorteeActiviteSql::condition('a', implode(',', array_fill(0, \count($structureIds), '?')));
+            $parametresPortee = [...$structureIds, ...$structureIds];
         }
 
         $sql = 'SELECT a.uuid, a.code, a.libelle, v.notifie, v.engage, v.depense

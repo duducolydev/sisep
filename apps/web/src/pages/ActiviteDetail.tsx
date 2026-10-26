@@ -14,7 +14,7 @@ import {
 } from '@/lib/budget'
 import { ApiError } from '@/lib/api-client'
 import { queryClient } from '@/lib/query-client'
-import { usePeut, usePeutSur } from '@/lib/use-permissions'
+import { usePeut, usePeutSur, usePeutSurStructure } from '@/lib/use-permissions'
 import { BarreExecution } from '@/components/BarreExecution'
 import { Pastille } from '@/components/Pastille'
 import { SaisirDotationModale } from '@/components/SaisirDotationModale'
@@ -48,6 +48,10 @@ export function ActiviteDetail() {
   // Structurer relève de l'UGP, renseigner relève du terrain (§ 6 du CR du 22/09/2026).
   const peutStructurerEtapes = usePeutSur('activites.creer', activite?.structureResponsable.uuid ?? null)
   const peutRenseignerEtapes = usePeutSur('activites.modifier', activite?.structureResponsable.uuid ?? null)
+  // Une ligne peut relever d'une autre direction que l'activité : c'est sa
+  // structure à elle qui décide qui la structure et la renseigne.
+  const peutStructurerSur = usePeutSurStructure('activites.creer')
+  const peutRenseignerSur = usePeutSurStructure('activites.modifier')
   const peutSaisirEngagement = usePeut('budget.engagement.saisir')
   const peutValiderEngagement = usePeut('budget.engagement.valider')
   const peutSaisirDepense = usePeut('budget.depense.saisir')
@@ -238,6 +242,9 @@ export function ActiviteDetail() {
                     <p>{sa.libelle}</p>
                     <p className="text-sm text-muted">
                       {sa.echeance ? `Échéance : ${formaterDate(sa.echeance)}` : 'Sans échéance'}
+                      {sa.structureResponsable && sa.structureResponsable.uuid !== activite.structureResponsable.uuid && (
+                        <> · Ligne confiée à {sa.structureResponsable.sigle}</>
+                      )}
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
@@ -248,8 +255,8 @@ export function ActiviteDetail() {
                 <EtapesLigne
                   activiteUuid={activite.uuid}
                   ligne={sa}
-                  peutStructurer={peutStructurerEtapes}
-                  peutRenseigner={peutRenseignerEtapes}
+                  peutStructurer={peutStructurerSur(sa.structureResponsable?.uuid ?? activite.structureResponsable.uuid)}
+                  peutRenseigner={peutRenseignerSur(sa.structureResponsable?.uuid ?? activite.structureResponsable.uuid)}
                 />
 
                 <div className="flex items-center justify-between">

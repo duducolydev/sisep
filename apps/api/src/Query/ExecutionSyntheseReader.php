@@ -6,6 +6,7 @@ namespace App\Query;
 
 use App\Entity\Utilisateur;
 use App\Security\PermissionsResolver;
+use App\Security\PorteeActiviteSql;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -390,9 +391,9 @@ final class ExecutionSyntheseReader
             if ([] === $structureIds) {
                 return [];
             }
-            $condition = ' AND a.structure_responsable_id IN (?)';
-            $parametres[] = $structureIds;
-            $types[] = ArrayParameterType::INTEGER;
+            $condition = ' AND '.PorteeActiviteSql::condition('a', '?');
+            array_push($parametres, $structureIds, $structureIds);
+            array_push($types, ArrayParameterType::INTEGER, ArrayParameterType::INTEGER);
         }
 
         return $this->connection->fetchAllAssociative(

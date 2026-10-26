@@ -118,10 +118,16 @@ class IndicateurValeur
      * valeur modifiée est une donnée non encore approuvée, jamais une
      * validation qui persiste silencieusement sur un nombre différent
      * (séparation saisie/validation, CLAUDE.md § 7.2).
+     *
+     * `saisiPar` devient l'auteur de cette resaisie : c'est lui qui ne peut
+     * pas la valider. Sans cela, un validateur qui corrige la valeur d'un
+     * sectoriel validerait ensuite son propre chiffre. L'auteur précédent
+     * reste dans journal_activite.
      */
-    public function ajusterValeur(string $nouvelleValeur): void
+    public function ajusterValeur(string $nouvelleValeur, Utilisateur $auteur): void
     {
         $this->valeur = $nouvelleValeur;
+        $this->saisiPar = $auteur;
         $this->statut = StatutValeurIndicateur::BROUILLON;
         $this->validePar = null;
         $this->valideLe = null;

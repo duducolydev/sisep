@@ -10,6 +10,7 @@ use App\Entity\Utilisateur;
 use App\Enum\StatutActivite;
 use App\Enum\Vigilance;
 use App\Security\PermissionsResolver;
+use App\Security\PorteeActiviteSql;
 use App\Vigilance\VigilanceCalculator;
 use Doctrine\DBAL\Connection;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -44,8 +45,8 @@ final class AlertesReader
             if ([] === $structureIds) {
                 return [];
             }
-            $conditionPortee = ' AND a.structure_responsable_id IN ('.implode(',', array_fill(0, \count($structureIds), '?')).')';
-            $parametresPortee = $structureIds;
+            $conditionPortee = ' AND '.PorteeActiviteSql::condition('a', implode(',', array_fill(0, \count($structureIds), '?')));
+            $parametresPortee = [...$structureIds, ...$structureIds];
         }
 
         $sql = 'SELECT a.uuid, a.code, a.libelle, a.date_fin_prevue, a.statut,

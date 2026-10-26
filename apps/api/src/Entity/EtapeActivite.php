@@ -8,7 +8,7 @@ use App\Entity\Trait\HorodatageTrait;
 use App\Entity\Trait\IdentifiantsTrait;
 use App\Entity\Trait\SuppressionLogiqueTrait;
 use App\Repository\EtapeActiviteRepository;
-use App\Security\PorteeParStructureInterface;
+use App\Security\PorteeEnConsultationInterface;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
@@ -37,7 +37,7 @@ use Doctrine\ORM\Mapping as ORM;
  */
 #[ORM\Entity(repositoryClass: EtapeActiviteRepository::class)]
 #[ORM\Table(name: 'etapes_activite')]
-class EtapeActivite implements PorteeParStructureInterface
+class EtapeActivite implements PorteeEnConsultationInterface
 {
     use IdentifiantsTrait;
     use HorodatageTrait;
@@ -113,6 +113,11 @@ class EtapeActivite implements PorteeParStructureInterface
         return null !== $this->sousActivite
             ? $this->sousActivite->getStructurePourPortee()
             : $this->activite->getStructurePourPortee();
+    }
+
+    public function getStructuresConcernees(): array
+    {
+        return $this->activite->getStructuresConcernees();
     }
 
     public function getLibelle(): string

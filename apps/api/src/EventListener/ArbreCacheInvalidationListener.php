@@ -5,12 +5,15 @@ declare(strict_types=1);
 namespace App\EventListener;
 
 use App\Entity\Activite;
+use App\Entity\Composante;
 use App\Entity\Depense;
 use App\Entity\Dotation;
 use App\Entity\Engagement;
 use App\Entity\EtapeActivite;
 use App\Entity\Realisation;
 use App\Entity\SousActivite;
+use App\Entity\SousComposante;
+use App\Entity\Structure;
 use Doctrine\Bundle\DoctrineBundle\Attribute\AsDoctrineListener;
 use Doctrine\ORM\Event\OnFlushEventArgs;
 use Doctrine\ORM\Event\PostFlushEventArgs;
@@ -28,8 +31,11 @@ use Symfony\Contracts\Cache\TagAwareCacheInterface;
  * 22/09/2026), pas seulement l'exécution budgétaire. Activité/Sous-activité
  * comptent pour la même raison : l'arbre affiche aussi leur `statut`
  * (§ 4.2 — cycle de vie saisi, distinct de l'avancement), qui peut changer
- * sans passer par une étape (ex. clôture via activites.valider). La
- * Réalisation reste listée pour les données historiques : plus aucune n'est
+ * sans passer par une étape (ex. clôture via activites.valider).
+ * Composante, Sous-composante et Structure comptent depuis que l'arbre se
+ * gère à l'écran (octobre 2026) : une composante créée, renommée ou
+ * archivée, ou le sigle d'une structure corrigé, doivent s'y voir aussitôt,
+ * pas une heure plus tard. La Réalisation reste listée pour les données historiques : plus aucune n'est
  * créée, mais une reprise de données peut encore en toucher.
  */
 #[AsDoctrineListener(event: Events::onFlush)]
@@ -61,6 +67,9 @@ final class ArbreCacheInvalidationListener
                 || $entite instanceof EtapeActivite
                 || $entite instanceof Activite
                 || $entite instanceof SousActivite
+                || $entite instanceof Composante
+                || $entite instanceof SousComposante
+                || $entite instanceof Structure
             ) {
                 $this->invalidationNecessaire = true;
 

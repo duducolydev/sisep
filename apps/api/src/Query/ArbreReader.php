@@ -6,6 +6,7 @@ namespace App\Query;
 
 use App\Entity\Utilisateur;
 use App\Security\PermissionsResolver;
+use App\Security\PorteeActiviteSql;
 use Doctrine\DBAL\Connection;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Contracts\Cache\ItemInterface;
@@ -226,8 +227,8 @@ final class ArbreReader
             if ([] === $structureIds) {
                 return [];
             }
-            $conditionPortee = ' AND a.structure_responsable_id IN ('.$this->placeholders($structureIds).')';
-            $parametresPortee = $structureIds;
+            $conditionPortee = ' AND '.PorteeActiviteSql::condition('a', $this->placeholders($structureIds));
+            $parametresPortee = [...$structureIds, ...$structureIds];
         }
 
         $sql = 'SELECT a.id, a.uuid, a.sous_composante_id, a.code, a.libelle, a.statut, a.ordre,
