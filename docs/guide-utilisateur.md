@@ -13,6 +13,8 @@ Ce guide s'adresse à toutes les personnes qui utilisent le SISEP : l'équipe de
 - **Natures d'engagement** : « Fournitures de biens » devient « Fournitures », et « Travaux » devient « Travaux (construction, réaménagement…) ».
 - **Documents et justificatifs** : leur intitulé et leur type se corrigent après le dépôt, sans retirer le fichier.
 - **Indicateurs de performance** : l'évolution s'affiche en **diagramme en barres**, avec la cible en ligne de repère.
+- **Tableau de bord** enrichi pour le reporting : indicateurs de pilotage, exécution physique et financière par composante, engagements par nature, activités par statut, exécution par structure ; le décaissement cumulé s'affiche en barres (aussi sur la page Budget).
+- **Projets** : le module est réservé à l'UGP.
 - **Points focaux** : ils n'ont plus accès au module Parties prenantes ; ils transmettent les rapports de leur structure depuis le nouvel écran **Mes rapports**.
 - **Indicateurs** : le Responsable suivi-évaluation valide les valeurs saisies par les sectoriels (jamais sa propre saisie).
 - **Comptes** : les rôles d'un compte se modifient directement dans « Modifier un compte », et l'administrateur y attribue un nouveau mot de passe temporaire en cas d'oubli.
@@ -49,7 +51,7 @@ Chaque compte reçoit un ou plusieurs rôles. Un rôle peut valoir pour tout le 
 | Administrateur | Tout. Rôle d'administration de la plateforme, à ne pas confier à une personne qui traite elle-même les écritures budgétaires. |
 | Coordonnateur | Consulter et gérer l'arbre du PTBA (y compris archiver), valider la clôture des activités, **valider** les engagements, les dépenses et les valeurs d'indicateurs (sans les saisir), gérer les structures, les points focaux, les comptes, les rôles et les paramètres, consulter le journal, exporter, suivre les projets, les ressources humaines et les documents. |
 | Responsable suivi-évaluation | Créer et modifier les activités, valider leur clôture, **saisir et valider** les dotations, engagements et dépenses, définir les indicateurs, **saisir et valider** leurs valeurs, inviter un sectoriel, consulter le journal, exporter, suivre les projets, les ressources humaines et les documents. |
-| Gestionnaire budgétaire | Consulter les activités et les indicateurs, **saisir** les dotations, engagements et dépenses (sans les valider), exporter. |
+| Gestionnaire budgétaire | Consulter les activités, les indicateurs et les projets, **saisir** les dotations, engagements et dépenses (sans les valider), exporter. |
 | Point focal de structure | Consulter les activités de sa structure, ainsi que celles dont une ligne est confiée à sa structure, et renseigner l'avancement de ce qui relève de sa structure (étapes, justificatifs) ; transmettre les rapports périodiques de sa structure (**Mes rapports**). Il n'a pas accès au module Parties prenantes. Il saisit aussi les valeurs des indicateurs auxquels il a été invité. Ce rôle s'attribue toujours pour une structure précise. |
 | Lecteur | Consulter les activités et les indicateurs. |
 
@@ -63,16 +65,27 @@ Chaque compte reçoit un ou plusieurs rôles. Un rôle peut valoir pour tout le 
 
 ## 2. Tableau de bord
 
-C'est l'écran d'accueil. Il donne la situation du projet en un coup d'œil :
+C'est l'écran d'accueil et la base du reporting. Il donne la situation du projet pour l'exercice choisi :
 
 - **Synthèse du projet** : budget notifié, engagements, dépenses exécutées et solde disponible.
+- **Indicateurs de pilotage** :
+  - **Progression des étapes** : moyenne des activités suivies en étapes ;
+  - **Décaissé / engagé** : part des engagements déjà payée ;
+  - **Activités terminées** sur le total du PTBA ;
+  - **Activités en alerte** : en retard ou à risque élevé ;
+  - **Atteinte des indicateurs** : moyenne des taux d'atteinte, avec le nombre de valeurs à valider ;
+  - **Rapports reçus** : rapports trimestriels des structures reçus sur ceux attendus, et ceux en retard.
+- **Arbre d'exécution** : l'exécution budgétaire de chaque composante.
+- **Décaissement cumulé**, en barres : pour chaque mois, le réalisé cumulé (bleu foncé) à côté de la trajectoire prévue (bleu clair), et l'écart à la fin du dernier mois.
+- **Exécution physique et financière par composante** : la progression des étapes (vert) à côté du taux d'exécution financière (bleu). Un écart important entre les deux signale une dépense en avance ou en retard sur le travail fait.
+- **Engagements par nature** : montant et part des engagements validés de l'exercice, par nature (travaux, fournitures, consultations…).
 - **Points d'attention** : les activités en retard ou à risque, au regard du rythme attendu à la date du jour.
-- **Décaissement cumulé** au fil des mois.
-- **Arbre d'exécution** : l'avancement de chaque composante.
-- **Cadre de résultats** : la situation des indicateurs de performance.
+- **Cadre de résultats** : le taux d'atteinte de chaque indicateur de performance.
+- **Activités par statut** : planifiées, en cours, terminées, suspendues, annulées.
+- **Exécution par structure** : l'exécution budgétaire des structures responsables d'activités, les plus dotées d'abord.
 - **Activité récente** : les dernières opérations enregistrées.
 
-Le bouton **Exporter** produit la synthèse au format Excel.
+Chacun ne voit que ce que son profil permet : le cadre de résultats et l'atteinte des indicateurs pour l'équipe du projet, le reporting des structures pour ceux qui consultent les parties prenantes. Le bouton **Exporter** produit la synthèse au format Excel.
 
 ## 3. Composantes : l'arbre du PTBA
 
@@ -174,7 +187,7 @@ Quand une activité est achevée, le Coordonnateur ou le Responsable suivi-éval
 
 L'écran **Budget** consolide l'exécution financière du projet :
 
-- l'**exécution financière pluriannuelle** et le **décaissement cumulé** ;
+- l'**exécution financière pluriannuelle** et le **décaissement cumulé**, en barres mois par mois (réalisé et trajectoire prévue) ;
 - la **synthèse par composante** ;
 - les **activités les moins exécutées**, pour cibler les relances ;
 - **toutes les activités**, avec leurs montants notifiés, engagés et dépensés.
@@ -230,6 +243,8 @@ Le catalogue se gère dans **Administration > Indicateurs** : code, libellé, d�
 ## 8. Projets
 
 L'écran **Projets** suit les projets transverses de l'ANSD, liés ou non au PTBA : leurs activités, leurs tâches, leurs échéances et leur avancement.
+
+Il est réservé à l'UGP : Coordonnateur, Responsable suivi-évaluation, Gestionnaire budgétaire et Administrateur. Les points focaux et le profil Lecteur ne le voient pas ; seuls des membres de l'UGP peuvent être désignés responsables d'une activité ou d'une tâche.
 
 - **Nouveau projet** crée un projet ; on y ajoute ensuite des activités, puis des tâches.
 - Chaque activité affiche sa progression et un statut : à jour, **en retard** ou **à risque** lorsque la progression reste faible alors qu'une bonne part de la durée est écoulée.

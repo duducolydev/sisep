@@ -64,6 +64,7 @@ final class ReferentielApplicatif
             ['journal.consulter', 'journal', "Consulter le journal d'activité"],
             ['documents.gerer', 'documents', 'Déposer et retirer des documents de la bibliothèque'],
             ['exports.generer', 'exports', 'Générer un export'],
+            ['initiatives.consulter', 'initiatives', 'Consulter le suivi des projets (module réservé à l\'UGP)'],
             ['initiatives.gerer', 'initiatives', 'Gérer le suivi des projets'],
             ['rh.consulter', 'rh', 'Consulter le suivi des ressources humaines'],
             ['rh.gerer', 'rh', 'Gérer le personnel, les contrats et les effectifs'],
@@ -98,7 +99,7 @@ final class ReferentielApplicatif
             'budget.engagement.valider', 'budget.depense.valider', 'indicateurs.consulter', 'indicateurs.valider',
             'indicateurs.inviter', 'structures.gerer', 'points_focaux.gerer', 'parties_prenantes.consulter',
             'rapports.transmettre', 'admin.roles', 'admin.parametres',
-            'admin.utilisateurs', 'journal.consulter', 'exports.generer', 'initiatives.gerer',
+            'admin.utilisateurs', 'journal.consulter', 'exports.generer', 'initiatives.consulter', 'initiatives.gerer',
             'rh.consulter', 'rh.gerer', 'documents.gerer',
         ]);
 
@@ -123,14 +124,14 @@ final class ReferentielApplicatif
             'budget.engagement.saisir', 'budget.engagement.valider',
             'budget.depense.saisir', 'budget.depense.valider',
             'indicateurs.consulter', 'indicateurs.definir', 'indicateurs.saisir', 'indicateurs.valider', 'indicateurs.inviter',
-            'parties_prenantes.consulter', 'journal.consulter', 'exports.generer', 'initiatives.gerer', 'admin.parametres',
+            'parties_prenantes.consulter', 'journal.consulter', 'exports.generer', 'initiatives.consulter', 'initiatives.gerer', 'admin.parametres',
             'rh.consulter', 'rh.gerer', 'documents.gerer',
         ]);
 
         $gestionnaireBudgetaire = new Role('gestionnaire_budgetaire', 'Gestionnaire budgétaire', true);
         $accorder($gestionnaireBudgetaire, $permissions, [
             'activites.consulter', 'budget.engagement.saisir', 'budget.depense.saisir',
-            'indicateurs.consulter', 'parties_prenantes.consulter', 'exports.generer',
+            'indicateurs.consulter', 'parties_prenantes.consulter', 'initiatives.consulter', 'exports.generer',
         ]);
 
         // Séparation saisir/valider (§ 7.2) : le gestionnaire budgétaire ne

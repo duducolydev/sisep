@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import type { NoeudComposante } from '@/lib/composantes'
+import { progressionComposante, type NoeudComposante } from '@/lib/composantes'
 import { formaterFcfa, formaterMds, formaterTaux } from '@/lib/format'
 
 interface VueEnsembleComposantesProps {
@@ -106,10 +106,7 @@ function construireLigne(composante: NoeudComposante): LigneComposante {
   const engage = composante.engage ?? 0
   const depense = composante.depense ?? 0
 
-  const progressions = (composante.sousComposantes ?? [])
-    .flatMap((sc) => sc.activites ?? [])
-    .map((a) => a.avancement)
-    .filter((a): a is number => a !== null && a !== undefined)
+  const { progression, suivies } = progressionComposante(composante)
 
   return {
     uuid: composante.uuid,
@@ -120,9 +117,8 @@ function construireLigne(composante: NoeudComposante): LigneComposante {
     engageNonDepense: Math.max(0, engage - depense),
     disponible: Math.max(0, notifie - engage),
     tauxExecution: notifie === 0 ? null : depense / notifie,
-    progression:
-      progressions.length === 0 ? null : progressions.reduce((somme, p) => somme + p, 0) / progressions.length,
-    activitesSuivies: progressions.length,
+    progression,
+    activitesSuivies: suivies,
   }
 }
 

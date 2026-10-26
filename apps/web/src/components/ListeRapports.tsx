@@ -7,7 +7,7 @@ import { Bouton } from './Bouton'
 import { IconeTransmettre } from './Icones'
 import { useToast } from './ToastProvider'
 
-export const LIBELLES_STATUT_RAPPORT: Record<Rapport['statutAffiche'], string> = {
+const LIBELLES_STATUT_RAPPORT: Record<Rapport['statutAffiche'], string> = {
   attendu: 'Attendu',
   transmis: 'Transmis',
   valide: 'Validé',

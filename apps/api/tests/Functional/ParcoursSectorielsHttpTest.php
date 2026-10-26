@@ -225,10 +225,12 @@ final class ParcoursSectorielsHttpTest extends WebTestCase
             };
 
             self::assertSame([1_000_000], $montants('focal.csi@example.test'), 'La ligne du CSI, pas l\'activité de la DSID.');
-            self::assertSame([2_000_000], $montants('focal.dsid@example.test'));
+            $dsid = $montants('focal.dsid@example.test');
+            sort($dsid);
+            self::assertSame([500_000, 2_000_000], $dsid);
             $tous = $montants('rse@example.test');
             sort($tous);
-            self::assertSame([1_000_000, 2_000_000], $tous);
+            self::assertSame([500_000, 1_000_000, 2_000_000], $tous);
         } finally {
             $this->rollback();
         }
@@ -283,6 +285,58 @@ final class ParcoursSectorielsHttpTest extends WebTestCase
             }
             $client->request('GET', '/api/v1/rapports');
             self::assertCount(2, $this->corps($client)['donnees']);
+        } finally {
+            $this->rollback();
+        }
+    }
+
+    /** Tableau de bord : répartition des engagements validés par nature, la plus lourde d'abord. */
+    public function testLaSyntheseRepartitLesEngagementsValidesParNature(): void
+    {
+        [$client, $f] = $this->demarrer();
+
+        try {
+            $this->connecter($client, 'rse@example.test');
+            $client->request('GET', '/api/v1/projets/'.$f['projet']->getUuid()->toRfc4122().'/synthese');
+            self::assertResponseIsSuccessful();
+            $synthese = $this->corps($client);
+            self::assertSame([
+                ['nature' => 'fournitures', 'montant' => 2_000_000, 'nombre' => 1],
+                ['nature' => 'travaux', 'montant' => 1_000_000, 'nombre' => 1],
+            ], $synthese['engagementsParNature'], 'Le brouillon de 500 000 FCFA n\'est pas compté.');
+            self::assertSame(3_000_000, $synthese['engage'], 'Même périmètre que le montant engagé.');
+        } finally {
+            $this->rollback();
+        }
+    }
+
+    /** Décision du 26/10/2026 : le module Projets est réservé à l'UGP. */
+    public function testLeModuleProjetsEstReserveALUgp(): void
+    {
+        [$client] = $this->demarrer();
+
+        try {
+            foreach (['focal.csi@example.test', 'lecteur@example.test'] as $email) {
+                $this->connecter($client, $email);
+                $client->request('GET', '/api/v1/auth/moi');
+                self::assertArrayNotHasKey('initiatives.consulter', $this->corps($client)['permissionsPortee'], $email);
+                foreach (['/api/v1/initiatives', '/api/v1/initiatives/responsables-eligibles'] as $url) {
+                    $client->request('GET', $url);
+                    self::assertResponseStatusCodeSame(403, "{$email} : {$url}");
+                }
+            }
+
+            foreach (['rse@example.test', 'coord@example.test', 'gestion@example.test'] as $email) {
+                $this->connecter($client, $email);
+                $client->request('GET', '/api/v1/initiatives');
+                self::assertResponseIsSuccessful($email);
+            }
+
+            // Seuls des comptes de l'UGP peuvent être désignés responsables.
+            $client->request('GET', '/api/v1/initiatives/responsables-eligibles');
+            $eligibles = array_column($this->corps($client)['donnees'], 'nomComplet');
+            sort($eligibles);
+            self::assertSame(['coord Test', 'gestion Test', 'rse Test'], $eligibles);
         } finally {
             $this->rollback();
         }
@@ -363,6 +417,8 @@ final class ParcoursSectorielsHttpTest extends WebTestCase
             'focal.csi' => ['point_focal_structure', 'CSI'],
             'focal.dpee' => ['point_focal_structure', 'DPEE'],
             'focal.dsid' => ['point_focal_structure', 'DSID'],
+            'lecteur' => ['lecteur', null],
+            'gestion' => ['gestionnaire_budgetaire', null],
         ] as $nom => [$codeRole, $sigle]) {
             $u = new Utilisateur($nom.'@example.test', 'temp', 'Test', $nom);
             $u->setMotDePasseHash($hasher->hashPassword($u, self::MOT_DE_PASSE));
@@ -411,9 +467,20 @@ final class ParcoursSectorielsHttpTest extends WebTestCase
         // Un engagement sur la ligne du CSI, un autre sur une activité de la DSID.
         $activiteDsid = new Activite($sousComposante, 'T1.1.2', 'Activité DSID', $structures['DSID']);
         $this->em->persist($activiteDsid);
-        foreach ([[$ligneCsi, 1_000_000], [$activiteDsid, 2_000_000]] as [$cible, $montant]) {
+        foreach ([$ligneCsi, $activiteDsid] as $cible) {
             $this->em->persist(new Dotation($cible, $exercice, Montant::fromFcfa(5_000_000), $comptes['rse']));
-            $this->em->persist(new Engagement($cible, $exercice, NatureEngagement::TRAVAUX, Montant::fromFcfa($montant), new \DateTimeImmutable(), $comptes['rse']));
+        }
+        // Validés par le coordonnateur, sauf un troisième resté en brouillon.
+        foreach ([
+            [$ligneCsi, 1_000_000, NatureEngagement::TRAVAUX, true],
+            [$activiteDsid, 2_000_000, NatureEngagement::FOURNITURES, true],
+            [$activiteDsid, 500_000, NatureEngagement::TRAVAUX, false],
+        ] as [$cible, $montant, $nature, $valide]) {
+            $engagement = new Engagement($cible, $exercice, $nature, Montant::fromFcfa($montant), new \DateTimeImmutable(), $comptes['rse']);
+            if ($valide) {
+                $engagement->valider($comptes['coord']);
+            }
+            $this->em->persist($engagement);
         }
 
         $indicateur = new Indicateur(

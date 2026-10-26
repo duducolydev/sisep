@@ -69,6 +69,34 @@ export const projetCourantQueryOptions = () =>
     staleTime: Infinity,
   })
 
+/** Progression d'une composante (0-100) : moyenne de ses activités suivies en étapes ; null si aucune. */
+export function progressionComposante(composante: NoeudComposante): { progression: number | null; suivies: number } {
+  const progressions = (composante.sousComposantes ?? [])
+    .flatMap((sc) => sc.activites ?? [])
+    .map((a) => a.avancement)
+    .filter((a): a is number => a !== null && a !== undefined)
+
+  return {
+    progression: progressions.length === 0 ? null : progressions.reduce((somme, p) => somme + p, 0) / progressions.length,
+    suivies: progressions.length,
+  }
+}
+
+/**
+ * Progression du projet (0-100) : moyenne des composantes suivies — le
+ * chiffre « Progression des étapes » de la page Composantes, repris tel
+ * quel par le tableau de bord pour que les deux écrans disent la même chose.
+ */
+export function progressionProjet(composantes: NoeudComposante[]): { progression: number | null; suivies: number } {
+  const parComposante = composantes.map(progressionComposante)
+  const suivies = parComposante.filter((c) => c.progression !== null)
+
+  return {
+    progression: suivies.length === 0 ? null : suivies.reduce((somme, c) => somme + (c.progression ?? 0), 0) / suivies.length,
+    suivies: parComposante.reduce((somme, c) => somme + c.suivies, 0),
+  }
+}
+
 export const arbreQueryOptions = (projetUuid: string | undefined, niveaux: 3 | 4 = 4, exercice?: number) =>
   queryOptions({
     queryKey: ['arbre', projetUuid, niveaux, exercice ?? null],

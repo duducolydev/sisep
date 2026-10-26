@@ -112,7 +112,9 @@ export function Layout() {
 
   const { data: composantes } = useQuery(budgetExecutionQueryOptions('composante'))
   const { data: structures } = useQuery(structuresQueryOptions())
-  const { data: initiatives } = useQuery(initiativesQueryOptions())
+  // Module Projets réservé à l'UGP (décision du 26/10/2026).
+  const voitProjets = utilisateur?.permissionsPortee['initiatives.consulter'] === null
+  const { data: initiatives } = useQuery({ ...initiativesQueryOptions(), enabled: voitProjets })
 
   // Masquage uniquement cosmétique (§ 8) : l'accès réel est tranché par le
   // PermissionVoter côté serveur, pas par cette condition.
@@ -147,7 +149,7 @@ export function Layout() {
     ...(voitIndicateurs
       ? [{ to: '/indicateurs', label: 'Indicateurs de performance', icone: 'indicateurs' as const, compte: indicateurs?.donnees.length }]
       : []),
-    { to: '/initiatives', label: 'Projets', icone: 'diligences', compte: initiatives?.donnees.length },
+    ...(voitProjets ? [{ to: '/initiatives', label: 'Projets', icone: 'diligences' as const, compte: initiatives?.donnees.length }] : []),
     { to: '/documents', label: 'Documents', icone: 'documents' },
   ]
 

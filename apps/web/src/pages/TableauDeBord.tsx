@@ -1,19 +1,24 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router'
-import { projetCourantQueryOptions, arbreQueryOptions } from '@/lib/composantes'
+import { projetCourantQueryOptions, arbreQueryOptions, progressionProjet } from '@/lib/composantes'
 import { decaissementQueryOptions } from '@/lib/budget'
 import { indicateursQueryOptions } from '@/lib/indicateurs'
 import { syntheseQueryOptions, alertesQueryOptions, activiteRecenteQueryOptions } from '@/lib/tableau-de-bord'
 import { usePeriodeFiltre } from '@/lib/periode'
 import { formaterMds, formaterTaux, formaterDate } from '@/lib/format'
 import { ArbreExecution } from '@/components/ArbreExecution'
-import { CourbeDecaissement } from '@/components/CourbeDecaissement'
-import { BarreAtteinte } from '@/components/BarreAtteinte'
+import { BarresDecaissement } from '@/components/BarresDecaissement'
 import { PastilleVigilance } from '@/components/PastilleVigilance'
 import { SelecteurExercice } from '@/components/SelecteurExercice'
 import { SelecteurPeriode } from '@/components/SelecteurPeriode'
 import { IconeVoir } from '@/components/Icones'
-import { usePeut } from '@/lib/use-permissions'
+import { usePeut, useUtilisateurCourant } from '@/lib/use-permissions'
+import { rapportsQueryOptions } from '@/lib/parties-prenantes'
+import { AtteinteGlobaleIndicateurs } from '@/components/AtteinteGlobaleIndicateurs'
+import { PhysiqueFinancierParComposante } from '@/components/tableau-de-bord/PhysiqueFinancierParComposante'
+import { EngagementsParNature } from '@/components/tableau-de-bord/EngagementsParNature'
+import { ExecutionParStructure } from '@/components/tableau-de-bord/ExecutionParStructure'
+import { RepartitionStatutsActivites } from '@/components/tableau-de-bord/RepartitionStatutsActivites'
 import { urlExportDonnees } from '@/lib/exports'
 import { BoutonExporter } from '@/components/BoutonExporter'
 
@@ -38,6 +43,27 @@ export function TableauDeBord() {
   const peutExporter = usePeut('exports.generer')
   const { data: indicateurs } = useQuery({ ...indicateursQueryOptions(), enabled: voitIndicateurs })
   const { data: activiteRecente } = useQuery(activiteRecenteQueryOptions(projet?.uuid))
+  // Reporting des structures : réservé à l'équipe du projet (parties prenantes).
+  const { data: moi } = useUtilisateurCourant()
+  const voitReporting = moi?.permissionsPortee['parties_prenantes.consulter'] === null
+  const { data: rapports } = useQuery({
+    ...rapportsQueryOptions({ exercice: exercice ?? synthese?.exercice }),
+    enabled: voitReporting && synthese !== undefined,
+  })
+
+  // Indicateurs de pilotage — tous dérivés de données déjà servies, jamais
+  // stockés ; un taux sans dénominateur reste « — ».
+  const activites = (arbre?.composantes ?? []).flatMap((c) => (c.sousComposantes ?? []).flatMap((sc) => sc.activites ?? []))
+  const activitesTerminees = activites.filter((a) => a.statut === 'terminee').length
+  const physique = progressionProjet(arbre?.composantes ?? [])
+  const enRetard = (alertes?.alertes ?? []).filter((a) => a.vigilance === 'en_retard').length
+  const risqueEleve = (alertes?.alertes ?? []).filter((a) => a.vigilance === 'risque_eleve').length
+  const indicateursAvecTaux = (indicateurs?.donnees ?? []).filter((i) => i.tauxAtteinte !== null)
+  const atteinteMoyenne =
+    indicateursAvecTaux.length > 0 ? indicateursAvecTaux.reduce((s, i) => s + (i.tauxAtteinte ?? 0), 0) / indicateursAvecTaux.length : null
+  const valeursEnAttente = (indicateurs?.donnees ?? []).filter((i) => i.enAttente !== null).length
+  const rapportsRecus = (rapports?.donnees ?? []).filter((r) => r.statut === 'transmis' || r.statut === 'valide').length
+  const rapportsEnRetard = (rapports?.donnees ?? []).filter((r) => r.enRetard).length
 
   const alertesFiltrees = (alertes?.alertes ?? []).filter((a) => a.dateFinPrevue === null || correspondAPeriode(a.dateFinPrevue))
   const activiteRecenteFiltree = (activiteRecente?.evenements ?? []).filter((e) => correspondAPeriode(e.horodatage))
@@ -49,7 +75,7 @@ export function TableauDeBord() {
           <p className="font-titre text-eyebrow uppercase tracking-wide">Tableau de bord</p>
           <h1 className="text-2xl">Synthèse du projet</h1>
           <p className="text-muted">
-            Exercice {synthese?.exercice ?? '—'} · indicateurs de performance clés, arbre d'exécution, décaissement cumulé, points d'attention — § 2.1.
+            Exercice {synthese?.exercice ?? '—'} · exécution financière et physique, décaissement, engagements, structures, cadre de résultats et reporting — § 2.1.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -97,6 +123,46 @@ export function TableauDeBord() {
         />
       </section>
 
+      <section aria-label="Indicateurs de pilotage" className="grid grid-cols-2 gap-3.5 md:grid-cols-3 xl:grid-cols-6">
+        <CartePilotage
+          libelle="Progression des étapes"
+          valeur={formaterTaux(physique.progression === null ? null : physique.progression / 100)}
+          detail={arbre ? `moyenne sur ${physique.suivies} activité${physique.suivies > 1 ? 's' : ''} suivie${physique.suivies > 1 ? 's' : ''}` : undefined}
+        />
+        <CartePilotage
+          libelle="Décaissé / engagé"
+          valeur={formaterTaux(synthese && synthese.engage > 0 ? synthese.depense / synthese.engage : null)}
+          detail="part des engagements payée"
+        />
+        <CartePilotage
+          libelle="Activités terminées"
+          valeur={arbre ? `${activitesTerminees} / ${activites.length}` : '—'}
+          detail={activites.length > 0 ? `${Math.round((activitesTerminees / activites.length) * 100)} % du PTBA` : undefined}
+        />
+        <CartePilotage
+          libelle="Activités en alerte"
+          valeur={alertes ? String(enRetard + risqueEleve) : '—'}
+          detail={alertes ? `${enRetard} en retard · ${risqueEleve} risque élevé` : undefined}
+          ton={enRetard + risqueEleve > 0 ? 'alerte' : 'neutre'}
+        />
+        {voitIndicateurs && (
+          <CartePilotage
+            libelle="Atteinte indicateurs"
+            valeur={formaterTaux(atteinteMoyenne)}
+            detail={`moyenne · ${valeursEnAttente} valeur${valeursEnAttente > 1 ? 's' : ''} à valider`}
+            ton={valeursEnAttente > 0 ? 'attente' : 'neutre'}
+          />
+        )}
+        {voitReporting && (
+          <CartePilotage
+            libelle="Rapports reçus"
+            valeur={rapports ? `${rapportsRecus} / ${rapports.donnees.length}` : '—'}
+            detail={rapports ? `trimestriels · ${rapportsEnRetard} en retard` : undefined}
+            ton={rapportsEnRetard > 0 ? 'alerte' : 'neutre'}
+          />
+        )}
+      </section>
+
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.6fr_1fr]">
         <div className="flex min-w-0 flex-col gap-8">
           <section>
@@ -117,7 +183,21 @@ export function TableauDeBord() {
           <section>
             <h2 className="mb-3 text-lg font-semibold">Décaissement cumulé</h2>
             <div className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
-              <CourbeDecaissement points={decaissement?.points ?? []} />
+              <BarresDecaissement points={decaissement?.points ?? []} />
+            </div>
+          </section>
+
+          <section>
+            <h2 className="mb-3 text-lg font-semibold">Exécution physique et financière par composante</h2>
+            <div className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
+              {arbre ? <PhysiqueFinancierParComposante composantes={arbre.composantes} /> : <p className="text-sm text-muted">Chargement…</p>}
+            </div>
+          </section>
+
+          <section>
+            <h2 className="mb-3 text-lg font-semibold">Engagements par nature</h2>
+            <div className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
+              {synthese ? <EngagementsParNature lignes={synthese.engagementsParNature} /> : <p className="text-sm text-muted">Chargement…</p>}
             </div>
           </section>
         </div>
@@ -158,19 +238,24 @@ export function TableauDeBord() {
                   <IconeVoir />
                 </Link>
               </div>
-              <ul className="flex flex-col gap-3">
-                {(indicateurs?.donnees ?? []).slice(0, 5).map((i) => (
-                  <li key={i.uuid}>
-                    <Link to={`/indicateurs/${i.uuid}`} className="mb-1 block truncate text-sm">
-                      <span className="chiffres mr-2 text-muted">{i.code}</span>
-                      {i.libelle}
-                    </Link>
-                    <BarreAtteinte taux={i.tauxAtteinte} />
-                  </li>
-                ))}
-              </ul>
+              <AtteinteGlobaleIndicateurs indicateurs={indicateurs?.donnees ?? []} />
             </section>
           )}
+
+          <section className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
+            <h2 className="mb-3 text-lg font-semibold">Activités par statut</h2>
+            {arbre ? <RepartitionStatutsActivites composantes={arbre.composantes} /> : <p className="text-sm text-muted">Chargement…</p>}
+          </section>
+
+          <section className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
+            <h2 className="mb-1 text-lg font-semibold">Exécution par structure</h2>
+            <p className="mb-3 text-xs text-muted">Structures responsables d'activités, les plus dotées d'abord.</p>
+            {arbre ? (
+              <ExecutionParStructure composantes={arbre.composantes} tauxAttendu={arbre.tauxAttendu} />
+            ) : (
+              <p className="text-sm text-muted">Chargement…</p>
+            )}
+          </section>
 
           <section className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
             <div className="mb-3 flex items-center justify-between">
@@ -196,6 +281,33 @@ export function TableauDeBord() {
           </section>
         </div>
       </div>
+    </div>
+  )
+}
+
+const TONS_PILOTAGE = {
+  neutre: 'text-text',
+  alerte: 'text-bad',
+  attente: 'text-eyebrow',
+} as const
+
+/** Indicateur de pilotage : une valeur (taux ou décompte) et son contexte en clair. */
+function CartePilotage({
+  libelle,
+  valeur,
+  detail,
+  ton = 'neutre',
+}: {
+  libelle: string
+  valeur: string
+  detail?: string
+  ton?: keyof typeof TONS_PILOTAGE
+}) {
+  return (
+    <div className="min-w-0 rounded-[var(--radius-carte)] bg-surface px-4 py-3 shadow-[var(--shadow-carte)]">
+      <p className="text-[10.5px] font-semibold uppercase leading-tight tracking-[.13em] text-muted">{libelle}</p>
+      <p className={`chiffres mt-1 text-xl font-extrabold tracking-tight ${TONS_PILOTAGE[ton]}`}>{valeur}</p>
+      {detail && <p className="text-xs leading-snug text-muted">{detail}</p>}
     </div>
   )
 }

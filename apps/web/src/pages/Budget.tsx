@@ -8,7 +8,7 @@ import { urlExportBudget } from '@/lib/exports'
 import { usePeut } from '@/lib/use-permissions'
 import { JournalBudgetaire } from '@/components/JournalBudgetaire'
 import { BarreExecution } from '@/components/BarreExecution'
-import { CourbeDecaissement } from '@/components/CourbeDecaissement'
+import { BarresDecaissement } from '@/components/BarresDecaissement'
 import { BarresMontantsExecution } from '@/components/BarresMontantsExecution'
 import { BarresTauxExecution } from '@/components/BarresTauxExecution'
 import { IconeRecherche } from '@/components/Icones'
@@ -175,7 +175,7 @@ export function Budget() {
           <h2 className="text-lg font-semibold">Décaissement cumulé</h2>
         </div>
         <div className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
-          <CourbeDecaissement points={decaissement?.points ?? []} />
+          <BarresDecaissement points={decaissement?.points ?? []} />
         </div>
       </section>
 

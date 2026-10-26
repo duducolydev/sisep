@@ -19,7 +19,12 @@ final class SyntheseReader
     {
     }
 
-    /** @return array{notifie: int, engage: int, depense: int, disponible: ?int, tauxEngagement: ?float, tauxExecution: ?float} */
+    /**
+     * @return array{
+     *     notifie: int, engage: int, depense: int, disponible: ?int, tauxEngagement: ?float, tauxExecution: ?float,
+     *     engagementsParNature: list<array{nature: string, montant: int, nombre: int}>
+     * }
+     */
     public function lire(int $projetId, int $exerciceId): array
     {
         $ligne = $this->connection->fetchAssociative(
@@ -43,6 +48,37 @@ final class SyntheseReader
             'disponible' => GrandeursDerivees::disponible($notifie, $engage),
             'tauxEngagement' => GrandeursDerivees::taux($engage, $notifie),
             'tauxExecution' => GrandeursDerivees::taux($depense, $notifie),
+            'engagementsParNature' => $this->engagementsParNature($projetId, $exerciceId),
         ];
+    }
+
+    /**
+     * Répartition des engagements validés par nature (travaux, fournitures,
+     * consultations…) — même périmètre que le montant engagé des vues
+     * d'exécution : validés, non supprimés, de l'exercice, sur des
+     * activités du projet. Pour le reporting du tableau de bord.
+     *
+     * @return list<array{nature: string, montant: int, nombre: int}>
+     */
+    private function engagementsParNature(int $projetId, int $exerciceId): array
+    {
+        $lignes = $this->connection->fetchAllAssociative(
+            "SELECT e.nature, SUM(e.montant) AS montant, COUNT(*) AS nombre
+             FROM engagements e
+             LEFT JOIN sous_activites sa ON sa.id = e.sous_activite_id
+             JOIN activites a ON a.id = COALESCE(e.activite_id, sa.activite_id)
+             JOIN sous_composantes sc ON sc.id = a.sous_composante_id
+             JOIN composantes c ON c.id = sc.composante_id
+             WHERE c.projet_id = ? AND e.exercice_id = ? AND e.statut = 'valide' AND e.supprime_le IS NULL
+             GROUP BY e.nature
+             ORDER BY montant DESC",
+            [$projetId, $exerciceId],
+        );
+
+        return array_map(static fn (array $l) => [
+            'nature' => (string) $l['nature'],
+            'montant' => (int) $l['montant'],
+            'nombre' => (int) $l['nombre'],
+        ], $lignes);
     }
 }

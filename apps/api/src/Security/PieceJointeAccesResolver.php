@@ -21,6 +21,9 @@ final class PieceJointeAccesResolver
 
     private const CODE_SECTORIEL = 'point_focal_structure';
 
+    /** entiteType des pièces jointes du module Projets (InitiativeController). */
+    private const ENTITES_PROJETS = ['initiative_activite', 'tache_initiative'];
+
     public function __construct(private readonly PermissionsResolver $permissionsResolver)
     {
     }
@@ -31,7 +34,14 @@ final class PieceJointeAccesResolver
             return true;
         }
 
-        if ($this->permissionsResolver->pour($utilisateur)->estGlobale('initiatives.gerer')) {
+        $permissions = $this->permissionsResolver->pour($utilisateur);
+        // Pièces des projets : le module est réservé à l'UGP, quelle que soit
+        // la visibilité choisie au dépôt (décision du 26/10/2026).
+        if (\in_array($piece->getEntiteType(), self::ENTITES_PROJETS, true) && !$permissions->estGlobale('initiatives.consulter')) {
+            return false;
+        }
+
+        if ($permissions->estGlobale('initiatives.gerer')) {
             return true;
         }
 

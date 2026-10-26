@@ -55,6 +55,8 @@ final class InitiativeController
 {
     use ApiControllerHelpersTrait;
 
+    private const CONSULTATION = 'initiatives.consulter';
+
     private const TAILLE_MAX_OCTETS = 10 * 1024 * 1024;
 
     public function __construct(
@@ -78,6 +80,8 @@ final class InitiativeController
     #[Route('/initiatives', name: 'app_initiative_liste', methods: ['GET'])]
     public function liste(): JsonResponse
     {
+        $this->exigerConsultation();
+
         return new JsonResponse([
             'donnees' => array_map($this->normalizer->normaliser(...), $this->initiatives->listerNonSupprimees()),
         ]);
@@ -86,25 +90,35 @@ final class InitiativeController
     /**
      * Liste légère (uuid + nom) pour peupler un sélecteur de collègues —
      * volontairement distincte de /admin/utilisateurs (admin.utilisateurs,
-     * coordonnateur seul) : n'expose aucune donnée sensible (juste uuid +
-     * nom), donc ouverte à tout utilisateur authentifié. Sert à la fois au
-     * choix des responsables d'une activité et à celui des agents visés par
-     * la visibilité « Agents spécifiques » d'un document.
+     * coordonnateur seul). Sert à la fois au choix des responsables d'une
+     * activité et à celui des agents visés par la visibilité « Agents
+     * spécifiques » d'un document. Le module étant réservé à l'UGP, seuls
+     * les comptes qui y ont accès sont proposés : un responsable qui ne
+     * verrait pas le projet ne pourrait pas s'en occuper.
      */
     #[Route('/initiatives/responsables-eligibles', name: 'app_initiative_responsables_eligibles', methods: ['GET'])]
     public function responsablesEligibles(): JsonResponse
     {
+        $this->exigerConsultation();
+
+        $eligibles = array_filter(
+            $this->utilisateurs->listerNonSupprimes(),
+            fn (Utilisateur $u) => $u->estActif() && $this->permissionsResolver->pour($u)->estGlobale(self::CONSULTATION),
+        );
+
         return new JsonResponse([
-            'donnees' => array_map(static fn (Utilisateur $u) => [
+            'donnees' => array_values(array_map(static fn (Utilisateur $u) => [
                 'uuid' => $u->getUuid()->toRfc4122(),
                 'nomComplet' => $u->getNomComplet(),
-            ], $this->utilisateurs->listerNonSupprimes()),
+            ], $eligibles)),
         ]);
     }
 
     #[Route('/initiatives/{uuid}', name: 'app_initiative_detail', methods: ['GET'], requirements: ['uuid' => '[0-9a-fA-F-]{36}'])]
     public function detail(string $uuid): JsonResponse
     {
+        $this->exigerConsultation();
+
         return new JsonResponse($this->normalizer->normaliser($this->trouverInitiative($uuid)));
     }
 
@@ -476,6 +490,7 @@ final class InitiativeController
      */
     private function exigerResponsableOuGerer(InitiativeActivite $activite, ?TacheInitiative $tache = null): void
     {
+        $this->exigerConsultation();
         $utilisateur = $this->security->getUser();
         $peutTout = $utilisateur instanceof Utilisateur
             && $this->permissionsResolver->pour($utilisateur)->estGlobale('initiatives.gerer');
@@ -485,6 +500,16 @@ final class InitiativeController
         if (!$peutTout && !$estResponsableActivite && !$estResponsableTache) {
             throw new AccessDeniedException();
         }
+    }
+
+    /**
+     * Module Projets réservé à l'UGP (décision du 26/10/2026) : ni les
+     * points focaux ni le profil lecteur n'y ont accès, en lecture comme en
+     * écriture — y compris s'ils avaient été désignés responsables.
+     */
+    private function exigerConsultation(): void
+    {
+        $this->exigerPermissionGlobale($this->security, $this->permissionsResolver, self::CONSULTATION);
     }
 
     private function trouverInitiative(string $uuid): Initiative

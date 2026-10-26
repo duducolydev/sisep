@@ -446,12 +446,19 @@ final class InitiativeHttpTest extends WebTestCase
 
         $permInitiatives = new Permission('initiatives.gerer', 'initiatives', 'Gérer le suivi des projets');
         $this->em->persist($permInitiatives);
+        // Le module est réservé aux comptes qui détiennent initiatives.consulter
+        // (l'UGP, cf. ParcoursSectorielsHttpTest) : tous les rôles de cette
+        // fixture l'ont, pour éprouver la visibilité des pièces entre eux.
+        $permConsulter = new Permission('initiatives.consulter', 'initiatives', 'Consulter le suivi des projets');
+        $this->em->persist($permConsulter);
 
         $roleCoordonnateur = new Role('coordonnateur_initiative_test', 'Coordonnateur', true);
         $roleCoordonnateur->accorder($permInitiatives);
+        $roleCoordonnateur->accorder($permConsulter);
         $this->em->persist($roleCoordonnateur);
 
         $roleSansRien = new Role('lecteur_initiative_test', 'Lecteur', true);
+        $roleSansRien->accorder($permConsulter);
         $this->em->persist($roleSansRien);
 
         $coordonnateur = new Utilisateur('coordonnateur.initiative.test@example.test', 'temp', 'Diagne', 'Aïssatou');
@@ -477,8 +484,10 @@ final class InitiativeHttpTest extends WebTestCase
         // dur — la base de test n'est jamais semée (app:db:seed), donc pas de
         // collision d'unicité sur Role::$code.
         $roleMembrePhasaoc = new Role('responsable_suivi_evaluation', 'Responsable suivi-évaluation', true);
+        $roleMembrePhasaoc->accorder($permConsulter);
         $this->em->persist($roleMembrePhasaoc);
         $roleSectoriel = new Role('point_focal_structure', 'Point focal de structure', true);
+        $roleSectoriel->accorder($permConsulter);
         $this->em->persist($roleSectoriel);
 
         $membrePhasaoc = new Utilisateur('membre.phasaoc.initiative.test@example.test', 'temp', 'Diop', 'Cheikh');

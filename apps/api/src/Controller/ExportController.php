@@ -133,6 +133,7 @@ final class ExportController
     public function initiativesXlsx(): Response
     {
         $this->exigerPermissionGlobale($this->security, $this->permissionsResolver, 'exports.generer');
+        $this->exigerPermissionGlobale($this->security, $this->permissionsResolver, 'initiatives.consulter');
 
         return $this->reponseXlsx($this->initiativeXlsxExporter->exporter(), 'suivi-projets.xlsx');
     }
@@ -141,6 +142,7 @@ final class ExportController
     public function initiativesPdf(): Response
     {
         $this->exigerPermissionGlobale($this->security, $this->permissionsResolver, 'exports.generer');
+        $this->exigerPermissionGlobale($this->security, $this->permissionsResolver, 'initiatives.consulter');
 
         return new Response($this->initiativePdfExporter->exporter(), 200, [
             'Content-Type' => 'application/pdf',

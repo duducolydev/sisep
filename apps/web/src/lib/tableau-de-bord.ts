@@ -1,6 +1,13 @@
 import { queryOptions } from '@tanstack/react-query'
 import { apiClient } from './api-client'
 
+/** Engagements validés de l'exercice pour une nature (travaux, fournitures…). */
+export interface EngagementsNature {
+  nature: string
+  montant: number
+  nombre: number
+}
+
 export interface Synthese {
   exercice: number
   notifie: number
@@ -9,6 +16,8 @@ export interface Synthese {
   disponible: number | null
   tauxEngagement: number | null
   tauxExecution: number | null
+  /** Le plus lourd d'abord. */
+  engagementsParNature: EngagementsNature[]
 }
 
 export const syntheseQueryOptions = (projetUuid: string | undefined, exercice?: number) =>
