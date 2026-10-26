@@ -92,6 +92,13 @@ $COMPOSE exec -T api php bin/console cache:pool:clear cache.app
 etape "Référentiel des droits et compte d'administration"
 $COMPOSE exec -T api php bin/console app:amorcer
 
+# Les rapports trimestriels attendus du trimestre en cours, pour chaque
+# structure active. C'est le rôle de la tâche planifiée quotidienne ; la
+# lancer ici aussi garantit qu'ils existent dès le déploiement, même si la
+# tâche n'est pas (encore) en place. Idempotente, n'envoie aucun courriel.
+etape "Rapports trimestriels du trimestre en cours"
+$COMPOSE exec -T api php bin/console app:rapports:generer
+
 BASE_VIDE=$($COMPOSE exec -T api php bin/console dbal:run-sql \
     "SELECT COUNT(*) FROM composantes" 2>/dev/null | grep -oE '[0-9]+' | head -1 || echo 0)
 

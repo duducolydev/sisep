@@ -170,15 +170,33 @@ Le nom du volume dépend du nom du projet compose : le vérifier avec
 
 ## 8. Tâches planifiées
 
-Voir `docs/exploitation.md`, § 2. Sur cette installation, les deux lignes
-deviennent :
+Voir `docs/exploitation.md`, § 2. Sans la première tâche, aucun rapport
+trimestriel n'est attendu : l'écran « Mes rapports » des points focaux et la
+rubrique « Reporting trimestriel » des fiches restent vides.
+
+Créer d'abord le dossier des journaux : s'il manque, le shell ne peut pas
+ouvrir le fichier de redirection et **la tâche ne se lance pas du tout**, sans
+erreur visible.
+
+```bash
+sudo mkdir -p /var/log/sisep
+crontab -e
+```
+
+Sur cette installation, les deux lignes deviennent :
 
 ```
 5 2 * * * cd /opt/sisep && docker compose -f docker-compose.prod.yml exec -T api php bin/console app:rapports:generer >> /var/log/sisep/rapports.log 2>&1
 0 7 * * * cd /opt/sisep && docker compose -f docker-compose.prod.yml exec -T api php bin/console app:alertes:envoyer >> /var/log/sisep/alertes.log 2>&1
 ```
 
-La seconde n'envoie rien tant que `MAILER_DSN` vaut `null://null`.
+La seconde n'envoie rien tant que `MAILER_DSN` vaut `null://null` ; dans le
+cas contraire, la lancer d'abord à la main avec `--dry-run`.
+
+Vérifier le lendemain : `crontab -l | grep sisep` et
+`tail /var/log/sisep/rapports.log`, qui doit se terminer par « N rapport(s)
+T… généré(s) ». `deploy/deployer.sh` lance aussi `app:rapports:generer` à
+chaque déploiement.
 
 ## 9. Ce qui reste à faire après la mise en ligne
 
