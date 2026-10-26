@@ -18,6 +18,7 @@ use App\Entity\Utilisateur;
 use App\Enum\FamilleDocument;
 use App\Enum\TypeDocument;
 use App\Export\LibellesExport;
+use App\Export\RevueMiParcoursXlsxExporter;
 use App\Export\TableurExport;
 use App\Query\ActiviteRecenteReader;
 use App\Query\AlertesReader;
@@ -91,7 +92,23 @@ final class ExportDonneesController
         private readonly UtilisateurRepository $utilisateurs,
         private readonly RoleRepository $roles,
         private readonly JournalActiviteRepository $journal,
+        private readonly RevueMiParcoursXlsxExporter $revueMiParcours,
     ) {
+    }
+
+    /**
+     * Classeur de la revue à mi-parcours : synthèse, cadre de résultats face
+     * aux objectifs intermédiaires, exécution, activités, reporting. Réservé à
+     * l'équipe du projet — export et cadre de résultats, tous deux globaux.
+     */
+    #[Route('/revue-mi-parcours.xlsx', name: 'app_export_donnees_revue_mi_parcours', methods: ['GET'])]
+    public function revueMiParcours(Request $request): Response
+    {
+        $this->exigerGlobale('exports.generer');
+        $this->exigerGlobale('indicateurs.consulter');
+        [$projet, $exercice] = $this->projetEtExercice($request);
+
+        return $this->revueMiParcours->exporter($projet, $exercice);
     }
 
     #[Route('/tableau-de-bord.xlsx', name: 'app_export_donnees_tableau_de_bord', methods: ['GET'])]

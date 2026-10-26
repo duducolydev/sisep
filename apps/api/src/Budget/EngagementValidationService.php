@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Budget;
 
+use App\Entity\Dotation;
 use App\Entity\Engagement;
 use App\Entity\Utilisateur;
 use App\Enum\StatutEcriture;
@@ -31,6 +32,37 @@ final class EngagementValidationService
 
     public function valider(Engagement $engagement, Utilisateur $validateur): void
     {
+        $this->controlerAvantVerrou($engagement, $validateur);
+
+        $this->em->wrapInTransaction(function () use ($engagement, $validateur): void {
+            $dotation = $this->dotation($engagement);
+            $this->em->lock($dotation, LockMode::PESSIMISTIC_WRITE);
+            $this->controlerPlafond($engagement, $dotation);
+
+            $engagement->valider($validateur);
+        });
+    }
+
+    /**
+     * Les mêmes contrôles, sans verrou ni écriture : de quoi écarter d'un lot
+     * les engagements que la validation refuserait. Dans une transaction, un
+     * refus ferme le gestionnaire d'entités et interromprait tout le lot. Le
+     * contrôle qui fait foi reste celui de valider(), sous verrou.
+     */
+    public function motifDeRefus(Engagement $engagement, Utilisateur $validateur): ?string
+    {
+        try {
+            $this->controlerAvantVerrou($engagement, $validateur);
+            $this->controlerPlafond($engagement, $this->dotation($engagement));
+        } catch (ContrainteBudgetaireException $e) {
+            return $e->getMessage();
+        }
+
+        return null;
+    }
+
+    private function controlerAvantVerrou(Engagement $engagement, Utilisateur $validateur): void
+    {
         if (StatutEcriture::BROUILLON !== $engagement->getStatut()) {
             throw new ContrainteBudgetaireException('Seul un engagement en brouillon peut être validé.');
         }
@@ -45,23 +77,21 @@ final class EngagementValidationService
         if (!$engagement->getExercice()->estOuvert()) {
             throw new ContrainteBudgetaireException("Cet exercice est clôturé : aucune écriture budgétaire n'est plus acceptée.");
         }
+    }
 
-        $this->em->wrapInTransaction(function () use ($engagement, $validateur): void {
-            $dotation = $this->dotations->trouverPourCibleExercice($engagement->getCible(), $engagement->getExercice());
-            if (null === $dotation) {
-                throw new ContrainteBudgetaireException("Aucune dotation n'a été notifiée pour cette cible sur cet exercice.");
-            }
+    private function dotation(Engagement $engagement): Dotation
+    {
+        return $this->dotations->trouverPourCibleExercice($engagement->getCible(), $engagement->getExercice())
+            ?? throw new ContrainteBudgetaireException("Aucune dotation n'a été notifiée pour cette cible sur cet exercice.");
+    }
 
-            $this->em->lock($dotation, LockMode::PESSIMISTIC_WRITE);
+    private function controlerPlafond(Engagement $engagement, Dotation $dotation): void
+    {
+        $sommeValidee = $this->engagements->sommeValidee($engagement->getCible(), $engagement->getExercice());
+        $nouveauTotal = $sommeValidee->ajouter($engagement->getMontant());
 
-            $sommeValidee = $this->engagements->sommeValidee($engagement->getCible(), $engagement->getExercice());
-            $nouveauTotal = $sommeValidee->ajouter($engagement->getMontant());
-
-            if ($nouveauTotal->estSuperieurA($dotation->getMontant())) {
-                throw new ContrainteBudgetaireException(\sprintf('Le montant engagé atteindrait %s, au-delà de la dotation notifiée de %s.', $nouveauTotal->formater(), $dotation->getMontant()->formater()));
-            }
-
-            $engagement->valider($validateur);
-        });
+        if ($nouveauTotal->estSuperieurA($dotation->getMontant())) {
+            throw new ContrainteBudgetaireException(\sprintf('Le montant engagé atteindrait %s, au-delà de la dotation notifiée de %s.', $nouveauTotal->formater(), $dotation->getMontant()->formater()));
+        }
     }
 }

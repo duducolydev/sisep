@@ -48,6 +48,32 @@ class EngagementRepository extends ServiceEntityRepository
     }
 
     /**
+     * Engagements en brouillon, les plus anciens d'abord — l'écran « À
+     * valider » du budget. Mêmes jointures de portée que filtrer().
+     *
+     * @return list<Engagement>
+     */
+    public function brouillons(int $limite): array
+    {
+        /** @var list<Engagement> $resultat */
+        $resultat = $this->createQueryBuilder('e')
+            ->leftJoin('e.activite', 'a_portee')
+            ->leftJoin('e.sousActivite', 'l_portee')
+            ->leftJoin('l_portee.activite', 'la_portee')
+            ->andWhere('e.supprimeLe IS NULL')
+            ->andWhere('e.statut = :statut')
+            ->andWhere('a_portee.id IS NOT NULL OR la_portee.id IS NOT NULL')
+            ->setParameter('statut', StatutEcriture::BROUILLON)
+            ->orderBy('e.dateEngagement', 'ASC')
+            ->addOrderBy('e.id', 'ASC')
+            ->setMaxResults($limite)
+            ->getQuery()
+            ->getResult();
+
+        return $resultat;
+    }
+
+    /**
      * @return array{donnees: list<Engagement>, total: int}
      */
     public function filtrer(Activite|SousActivite|null $cible, ?Exercice $exercice, ?StatutEcriture $statut, int $page, int $taille): array

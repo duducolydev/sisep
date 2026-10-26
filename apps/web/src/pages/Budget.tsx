@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useSearchParams, Link, useNavigate } from 'react-router'
 import { budgetExecutionQueryOptions, decaissementQueryOptions, executionPluriannuelleQueryOptions } from '@/lib/budget'
@@ -11,7 +11,11 @@ import { BarreExecution } from '@/components/BarreExecution'
 import { BarresDecaissement } from '@/components/BarresDecaissement'
 import { BarresMontantsExecution } from '@/components/BarresMontantsExecution'
 import { BarresTauxExecution } from '@/components/BarresTauxExecution'
-import { IconeRecherche } from '@/components/Icones'
+import { IconeImporter, IconeRecherche } from '@/components/Icones'
+import { Bouton } from '@/components/Bouton'
+import { ImportExcelModale } from '@/components/ImportExcelModale'
+import { EcrituresAValider } from '@/components/EcrituresAValider'
+import { queryClient } from '@/lib/query-client'
 import { BoutonExporter } from '@/components/BoutonExporter'
 import { Pagination } from '@/components/Pagination'
 import { Squelette } from '@/components/Squelette'
@@ -33,6 +37,9 @@ export function Budget() {
   const { data: executionPluriannuelle } = useQuery(executionPluriannuelleQueryOptions(projet?.uuid))
   const peutExporter = usePeut('exports.generer')
   const peutConsulterJournal = usePeut('journal.consulter')
+  const peutImporterEngagements = usePeut('budget.engagement.saisir')
+  const peutImporterDepenses = usePeut('budget.depense.saisir')
+  const [importOuvert, setImportOuvert] = useState<'engagements' | 'depenses' | null>(null)
 
   const activitesFiltrees = useMemo(() => {
     const rechercheLC = recherche.trim().toLowerCase()
@@ -91,8 +98,39 @@ export function Budget() {
             Exercice {activites?.exercice ?? '—'} · notifié, engagé, dépensé, disponible, taux d'exécution — § 2.3.
           </p>
         </div>
-        {peutExporter && <BoutonExporter href={urlExportBudget(activites?.exercice, composanteUuid)} libelle="Exporter" />}
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {peutImporterEngagements && (
+            <Bouton variante="secondaire" taille="normale" icone={<IconeImporter />} onClick={() => setImportOuvert('engagements')}>
+              Importer des engagements
+            </Bouton>
+          )}
+          {peutImporterDepenses && (
+            <Bouton variante="secondaire" taille="normale" icone={<IconeImporter />} onClick={() => setImportOuvert('depenses')}>
+              Importer des dépenses
+            </Bouton>
+          )}
+          {peutExporter && <BoutonExporter href={urlExportBudget(activites?.exercice, composanteUuid)} libelle="Exporter" />}
+        </div>
       </div>
+
+      <EcrituresAValider />
+
+      {importOuvert && (
+        <ImportExcelModale
+          type={importOuvert}
+          titre={importOuvert === 'engagements' ? 'Importer des engagements' : 'Importer des dépenses'}
+          avecMiseAJour={false}
+          aide={
+            importOuvert === 'engagements'
+              ? "Les engagements arrivent en brouillon, à valider par une autre personne. Chacun a une référence unique dans l'exercice : c'est elle qui rattache ensuite les dépenses."
+              : "Importez d'abord les engagements : chaque dépense s'y rattache par la référence de l'engagement. Les dépenses arrivent en brouillon, à valider par une autre personne."
+          }
+          onFermer={() => setImportOuvert(null)}
+          onImporte={async () => {
+            await queryClient.invalidateQueries({ queryKey: ['budget'] })
+          }}
+        />
+      )}
 
       {executionPluriannuelle && (
         <section>

@@ -13,6 +13,7 @@ use App\Repository\SousActiviteRepository;
 use App\Security\PermissionsResolver;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
@@ -50,6 +51,23 @@ trait ApiControllerHelpersTrait
      * entités où le référentiel de rôles § 7.2 autorise une portée non
      * globale (ex. points_focaux.gerer pour point_focal_structure).
      */
+    /**
+     * Identifiants d'une validation en lot : `{"<cle>": ["uuid", …]}`, 500 au
+     * plus par appel.
+     *
+     * @return list<string>|JsonResponse
+     */
+    private function uuidsDuLot(Request $request, string $cle): array|JsonResponse
+    {
+        $corps = json_decode($request->getContent(), true);
+        $uuids = \is_array($corps) ? ($corps[$cle] ?? null) : null;
+        if (!\is_array($uuids) || [] === $uuids || \count($uuids) > 500) {
+            return ProblemResponseFactory::creer(422, 'Données invalides', \sprintf('« %s » doit lister de 1 à 500 identifiants.', $cle));
+        }
+
+        return array_values(array_unique(array_filter($uuids, 'is_string')));
+    }
+
     private function exigerPermission(Security $security, string $code, ?object $sujet = null): void
     {
         if (!$security->isGranted($code, $sujet)) {

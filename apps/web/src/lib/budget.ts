@@ -37,6 +37,51 @@ export interface PointDecaissement {
   prevu: number
 }
 
+/** Engagement en brouillon, en attente de validation — GET /budget/a-valider. */
+export interface EngagementAValider {
+  uuid: string
+  reference: string | null
+  nature: string
+  montant: number
+  date: string
+  exercice: number
+  activite: { uuid: string; code: string }
+  /** Libellé de la ligne budgétaire (ou de l'activité si elle n'en a pas). */
+  ligne: string
+  saisiPar: { uuid: string; nomComplet: string }
+}
+
+export interface DepenseAValider {
+  uuid: string
+  referencePaiement: string | null
+  montant: number
+  date: string
+  engagement: { reference: string | null; statut: string; montant: number }
+  activite: { uuid: string; code: string }
+  ligne: string
+  saisiPar: { uuid: string; nomComplet: string }
+}
+
+export const ecrituresAValiderQueryOptions = (actif: boolean) =>
+  queryOptions({
+    queryKey: ['budget', 'a-valider'],
+    queryFn: () => apiClient.get<{ limite: number; engagements: EngagementAValider[]; depenses: DepenseAValider[] }>('/budget/a-valider'),
+    enabled: actif,
+  })
+
+export interface ResultatLot {
+  validees: number
+  refus: { uuid: string; reference: string | null; motif: string }[]
+}
+
+export function validerEngagementsEnLot(uuids: string[]) {
+  return apiClient.post<ResultatLot>('/engagements/valider-lot', { engagements: uuids })
+}
+
+export function validerDepensesEnLot(uuids: string[]) {
+  return apiClient.post<ResultatLot>('/depenses/valider-lot', { depenses: uuids })
+}
+
 export const decaissementQueryOptions = (projetUuid: string | undefined, exercice?: number) =>
   queryOptions({
     queryKey: ['decaissement', projetUuid, exercice ?? null],

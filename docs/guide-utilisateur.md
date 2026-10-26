@@ -13,6 +13,8 @@ Ce guide s'adresse à toutes les personnes qui utilisent le SISEP : l'équipe de
 - **Natures d'engagement** : « Fournitures de biens » devient « Fournitures », et « Travaux » devient « Travaux (construction, réaménagement…) ».
 - **Documents et justificatifs** : leur intitulé et leur type se corrigent après le dépôt, sans retirer le fichier.
 - **Indicateurs de performance** : l'évolution s'affiche en **diagramme en barres**, avec la cible en ligne de repère.
+- **Budget** : les engagements et les dépenses s'importent depuis Excel, et les écritures en attente se valident en lot.
+- **Revue à mi-parcours** : un classeur Excel réunit, depuis le tableau de bord, tout ce que SISEP sait du projet pour préparer le rapport.
 - **Tableau de bord** enrichi pour le reporting : indicateurs de pilotage, exécution physique et financière par composante, engagements par nature, activités par statut, exécution par structure ; le décaissement cumulé s'affiche en barres (aussi sur la page Budget).
 - **Projets** : le module est réservé à l'UGP.
 - **Points focaux** : ils n'ont plus accès au module Parties prenantes ; ils transmettent les rapports de leur structure depuis le nouvel écran **Mes rapports**.
@@ -86,6 +88,23 @@ C'est l'écran d'accueil et la base du reporting. Il donne la situation du proje
 - **Activité récente** : les dernières opérations enregistrées.
 
 Chacun ne voit que ce que son profil permet : le cadre de résultats et l'atteinte des indicateurs pour l'équipe du projet, le reporting des structures pour ceux qui consultent les parties prenantes. Le bouton **Exporter** produit la synthèse au format Excel.
+
+### 2.1 Le classeur « Revue à mi-parcours »
+
+Le bouton **Revue à mi-parcours** du tableau de bord (équipe du projet) produit un classeur Excel qui réunit tout ce que SISEP sait du projet, pour préparer le rapport à mi-parcours et la mission du bailleur :
+
+| Feuille | Contenu |
+|---|---|
+| Synthèse | Période du projet et durée écoulée, exécution financière de l'exercice et cumulée, avancement physique, cadre de résultats, reporting des structures. |
+| Cadre de résultats | Pour chaque indicateur : référence, **objectif intermédiaire**, cible, valeur validée, progression vers l'objectif intermédiaire (« Atteint », « Non atteint », « Non renseigné ») et vers la cible, valeur en attente de validation. |
+| Exécution composantes | Notifié, engagé, dépensé, disponible, taux, progression des étapes, par composante et sous-composante. |
+| Activités | Statut, progression, budget, taux d'exécution et vigilance de chaque activité. |
+| Exécution pluriannuelle | Notifié et dépensé par exercice enregistré dans SISEP, et le total. |
+| Engagements par nature | Montant et part de chaque nature. |
+| Reporting structures | Rapports trimestriels attendus, reçus et en retard, par structure. |
+| Points d'attention | Activités en retard ou à risque élevé. |
+
+Pour que la feuille « Cadre de résultats » serve la revue, renseignez l'**objectif intermédiaire** (valeur et échéance) de chaque indicateur, dans Administration > Indicateurs. Le classeur ne couvre que ce que SISEP suit : la passation de marchés, les sauvegardes environnementales et sociales, les décaissements et les catégories de dépenses du bailleur restent à compléter depuis les outils de l'UGP.
 
 ## 3. Composantes : l'arbre du PTBA
 
@@ -191,6 +210,20 @@ L'écran **Budget** consolide l'exécution financière du projet :
 - la **synthèse par composante** ;
 - les **activités les moins exécutées**, pour cibler les relances ;
 - **toutes les activités**, avec leurs montants notifiés, engagés et dépensés.
+
+### 5.1 Importer des engagements et des dépenses
+
+Les boutons **Importer des engagements** et **Importer des dépenses** (gestionnaire budgétaire, responsable suivi-évaluation) chargent des écritures depuis Excel — un extrait de la comptabilité, par exemple. La démarche est celle de la partie 12.2 ; ce qui est propre au budget :
+
+- **Engagements** : pour chacun, la **ligne budgétaire** (choisie dans la liste du modèle : code de l'activité, puis libellé de la ligne), une **référence** unique dans l'exercice (n° d'engagement, de bon de commande ou de marché), la nature, le montant en FCFA, la date d'engagement et, si besoin, l'exercice et des observations.
+- **Dépenses** : pour chacune, la **référence de l'engagement** payé, le montant, la date de paiement et, de préférence, la référence du paiement (n° d'ordre de paiement ou de virement), qui évite les doublons. Importez donc les engagements **avant** les dépenses.
+- Les écritures arrivent **en brouillon**, au nom de la personne qui importe. Elles doivent ensuite être validées, **par une autre personne**.
+- L'aperçu signale déjà ce que la validation refusera : une ligne sans dotation sur l'exercice (ligne refusée), un total engagé au-delà de la dotation ou un total payé au-delà de l'engagé (ligne acceptée, avec un avertissement).
+- Une écriture déjà présente (même référence) n'est pas réimportée : elle se corrige ou s'annule dans SISEP.
+
+### 5.2 Écritures à valider
+
+La rubrique **Écritures à valider**, en haut de la page Budget, liste les engagements et les dépenses en brouillon, saisis ou importés. Cochez celles à valider (ou **Tout sélectionner**), puis **Valider la sélection**. Chacune passe les contrôles habituels : plafond de la dotation ou de l'engagement, exercice ouvert, engagement validé avant ses dépenses. Celles qui sont refusées le sont avec leur motif, les autres sont validées. Vos propres saisies apparaissent grisées : une autre personne les valide.
 
 Pour les profils qui consultent le journal, le **fil des écritures budgétaires** indique qui a saisi, modifié ou validé chaque dotation, engagement et dépense, avec les montants avant et après.
 
@@ -315,12 +348,12 @@ Le bouton **Exporter** de chaque écran produit un fichier Excel du contenu affi
 
 ### 12.2 Importer depuis Excel
 
-Trois listes se chargent depuis un fichier : le **personnel technique**, les **effectifs d'enquêteurs** et les **points focaux**.
+Cinq listes se chargent depuis un fichier : le **personnel technique**, les **effectifs d'enquêteurs**, les **points focaux**, les **engagements** et les **dépenses** (partie 5.1).
 
-1. Cliquez sur **Importer (Excel)** (Ressources humaines) ou **Importer des points focaux** (Parties prenantes), puis sur **Télécharger le modèle Excel** : les colonnes attendues, les listes de valeurs et les instructions.
+1. Cliquez sur **Importer (Excel)** (Ressources humaines), **Importer des points focaux** (Parties prenantes) ou **Importer des engagements / des dépenses** (Budget), puis sur **Télécharger le modèle Excel** : les colonnes attendues, les listes de valeurs et les instructions.
 2. Remplissez-le sans changer les en-têtes de colonnes.
 3. Déposez le fichier et cliquez sur **Analyser le fichier** : l'application affiche un **aperçu** ligne par ligne, avec le sort de chaque ligne (« À créer », « À mettre à jour », « Déjà présente », « Doublon » quand elle figure deux fois dans le fichier) et les erreurs (champ manquant, date illisible, structure inconnue…).
-4. Cochez **Mettre à jour les enregistrements déjà présents** si les fiches existantes doivent prendre les valeurs du fichier ; sinon elles sont laissées telles quelles. Puis **confirmez**.
+4. Cochez **Mettre à jour les enregistrements déjà présents** si les fiches existantes doivent prendre les valeurs du fichier ; sinon elles sont laissées telles quelles (cette option n'existe pas pour les engagements et les dépenses). Puis **confirmez**.
 
 Seules les lignes valides sont enregistrées, toutes ensemble : si l'enregistrement échoue, rien n'est écrit. Le fichier doit être au format .xlsx, .xls ou .csv, faire **5 Mo au plus** et compter **2 000 lignes au plus**. Les accents sont reconnus quel que soit l'encodage du CSV.
 

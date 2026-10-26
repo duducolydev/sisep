@@ -6,8 +6,11 @@ namespace App\Import;
 
 use App\Classeur\Normalisation;
 use App\Entity\Activite;
+use App\Entity\SousActivite;
 use App\Entity\Structure;
+use App\Enum\NatureEngagement;
 use App\Enum\Sexe;
+use App\Export\LibellesExport;
 use App\Repository\ActiviteRepository;
 use App\Repository\StructureRepository;
 use Symfony\Contracts\Service\ResetInterface;
@@ -29,6 +32,12 @@ final class ReferentielsImport implements ResetInterface
     /** @var array<string, Activite>|null */
     private ?array $activites = null;
 
+    /** Séparateur entre le code de l'activité et le libellé de la ligne, dans la liste du modèle. */
+    public const SEPARATEUR_LIGNE = ' — ';
+
+    /** Excel refuse une valeur de liste de plus de 255 caractères. */
+    private const LONGUEUR_LISTE = 240;
+
     public function __construct(
         private readonly StructureRepository $structureRepository,
         private readonly ActiviteRepository $activiteRepository,
@@ -39,6 +48,139 @@ final class ReferentielsImport implements ResetInterface
     {
         $this->structures = null;
         $this->activites = null;
+    }
+
+    /**
+     * Lignes budgétaires du PTBA, pour la liste déroulante des imports
+     * d'engagements : chaque ligne d'activité (« 3.1.2 — Ressources
+     * numériques… »), et l'activité elle-même quand elle n'en a aucune — là
+     * où se portent dotations et engagements.
+     *
+     * @return list<string>
+     */
+    public function lignesBudgetaires(): array
+    {
+        $codes = array_keys($this->indexActivites());
+        natsort($codes);
+        $valeurs = [];
+        foreach ($codes as $code) {
+            $activite = $this->indexActivites()[$code];
+            $lignes = $activite->getSousActivitesActives();
+            if (0 === $lignes->count()) {
+                $valeurs[] = mb_substr($activite->getCode().self::SEPARATEUR_LIGNE.$activite->getLibelle(), 0, self::LONGUEUR_LISTE);
+                continue;
+            }
+            foreach ($lignes as $ligne) {
+                $valeurs[] = mb_substr($activite->getCode().self::SEPARATEUR_LIGNE.$ligne->getLibelle(), 0, self::LONGUEUR_LISTE);
+            }
+        }
+
+        return $valeurs;
+    }
+
+    /**
+     * La cible budgétaire d'une valeur de la liste : « code — libellé de la
+     * ligne », ou le code seul d'une activité sans ligne. Le libellé peut
+     * être tronqué (liste Excel limitée à 255 caractères) : il suffit qu'il
+     * désigne une seule ligne de l'activité.
+     *
+     * @param list<string> $erreurs
+     */
+    public function cibleBudgetaire(?string $valeur, array &$erreurs): Activite|SousActivite|null
+    {
+        if (null === $valeur) {
+            return null;
+        }
+        $morceaux = preg_split('/\s+[—–-]\s+/u', $valeur, 2) ?: [$valeur];
+        $code = rtrim(trim($morceaux[0]), '.');
+        $libelle = isset($morceaux[1]) ? Normalisation::cle($morceaux[1]) : '';
+
+        $activite = $this->indexActivites()[$code] ?? null;
+        if (null === $activite) {
+            $erreurs[] = \sprintf('Ligne budgétaire « %s » inconnue : choisissez une valeur de la liste (code de l\'activité, puis libellé de la ligne).', $valeur);
+
+            return null;
+        }
+        $lignes = $activite->getSousActivitesActives();
+        if (0 === $lignes->count()) {
+            return $activite;
+        }
+        if ('' === $libelle) {
+            $erreurs[] = \sprintf('L\'activité %s a des lignes budgétaires : précisez laquelle (choisissez-la dans la liste).', $code);
+
+            return null;
+        }
+
+        $trouvees = $lignes->filter(static fn (SousActivite $l) => str_starts_with(Normalisation::cle($l->getLibelle()), $libelle))->getValues();
+        if (1 !== \count($trouvees)) {
+            $erreurs[] = 0 === \count($trouvees)
+                ? \sprintf('Aucune ligne de l\'activité %s ne correspond à « %s ».', $code, $morceaux[1] ?? '')
+                : \sprintf('Plusieurs lignes de l\'activité %s correspondent à « %s » : précisez le libellé.', $code, $morceaux[1] ?? '');
+
+            return null;
+        }
+
+        return $trouvees[0];
+    }
+
+    /** @return list<string> libellés des natures d'engagement, pour la liste du modèle */
+    public static function naturesEngagement(): array
+    {
+        return array_map(static fn (NatureEngagement $n) => LibellesExport::nature($n->value), NatureEngagement::cases());
+    }
+
+    /**
+     * Nature d'engagement depuis son libellé (« Fournitures ») ou son code
+     * (« fournitures »).
+     *
+     * @param list<string> $erreurs
+     */
+    public static function natureEngagement(?string $valeur, array &$erreurs): ?NatureEngagement
+    {
+        if (null === $valeur) {
+            return null;
+        }
+        $cle = Normalisation::cle($valeur);
+        foreach (NatureEngagement::cases() as $nature) {
+            if ($cle === Normalisation::cle($nature->value) || $cle === Normalisation::cle(LibellesExport::nature($nature->value))) {
+                return $nature;
+            }
+        }
+        $erreurs[] = \sprintf('Nature « %s » inconnue : choisissez une valeur de la liste.', $valeur);
+
+        return null;
+    }
+
+    /**
+     * Montant en FCFA entiers (règle du projet : jamais de décimales) —
+     * nombre Excel, ou texte avec espaces ou points comme séparateurs de
+     * milliers (« 1 250 000 », « 1.250.000 »).
+     *
+     * @param list<string> $erreurs
+     */
+    public static function montant(string|float|int|null $valeur, string $champ, array &$erreurs): ?int
+    {
+        if (null === $valeur || '' === $valeur) {
+            return null;
+        }
+        if (\is_int($valeur) || \is_float($valeur)) {
+            if (floor((float) $valeur) !== (float) $valeur || $valeur <= 0 || $valeur > 1e15) {
+                $erreurs[] = \sprintf('%s « %s » invalide : montant entier en FCFA, positif.', $champ, (string) $valeur);
+
+                return null;
+            }
+
+            return (int) $valeur;
+        }
+        $texte = preg_replace('/[\s\x{00A0}\x{202F}.]|FCFA|F CFA/iu', '', $valeur) ?? '';
+        $texte = (string) preg_replace('/,0+$/', '', $texte);
+        if (!preg_match('/^\d{1,15}$/', $texte) || 0 === (int) $texte) {
+            $erreurs[] = \sprintf('%s « %s » invalide : montant entier en FCFA, positif.', $champ, $valeur);
+
+            return null;
+        }
+
+        return (int) $texte;
     }
 
     /** @return list<string> sigles des structures, pour la liste déroulante du modèle */

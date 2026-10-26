@@ -83,6 +83,12 @@ export function TableauDeBord() {
           {peutExporter && (
             <BoutonExporter href={urlExportDonnees('tableau-de-bord', { exercice: searchParams.get('exercice') })} libelle="Exporter" />
           )}
+          {peutExporter && voitIndicateurs && (
+            <BoutonExporter
+              href={urlExportDonnees('revue-mi-parcours', { exercice: searchParams.get('exercice') })}
+              libelle="Revue à mi-parcours"
+            />
+          )}
           <SelecteurPeriode />
         </div>
       </div>

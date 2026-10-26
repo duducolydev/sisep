@@ -87,6 +87,69 @@ final class DepenseController
         return new JsonResponse($this->normalizer->normaliser($depense), 201);
     }
 
+    /**
+     * Validation en lot des dépenses — même conduite que pour les
+     * engagements (EngagementController::validerLot()). Chaque dépense passe par les mêmes contrôles que la
+     * validation unitaire (droit sur sa ligne, séparation saisie/validation,
+     * plafond sous verrou) ; ceux qui seraient refusés sont écartés avec leur
+     * motif, les autres validés un à un.
+     */
+    #[Route('/valider-lot', name: 'app_depense_valider_lot', methods: ['POST'])]
+    public function validerLot(Request $request): JsonResponse
+    {
+        $utilisateur = $this->security->getUser();
+        if (!$utilisateur instanceof Utilisateur) {
+            throw new AccessDeniedException();
+        }
+        $this->exigerPermission($this->security, 'budget.depense.valider');
+
+        $uuids = $this->uuidsDuLot($request, 'depenses');
+        if ($uuids instanceof JsonResponse) {
+            return $uuids;
+        }
+
+        $validees = 0;
+        $refus = [];
+        foreach ($uuids as $position => $uuid) {
+            $uuidObjet = $this->uuidOuNull($uuid);
+            $depense = null !== $uuidObjet ? $this->depenses->findOneBy(['uuid' => $uuidObjet]) : null;
+            if (null === $depense || $depense->estSupprime()) {
+                $refus[] = ['uuid' => $uuid, 'reference' => null, 'motif' => 'Dépense introuvable.'];
+
+                continue;
+            }
+            $reference = $depense->getReferencePaiement() ?? ($depense->getEngagement()->getReferenceMarche() ?? $depense->getEngagement()->getActiviteParente()->getCode());
+            if (!$this->security->isGranted('budget.depense.valider', $depense->getEngagement()->getCible())) {
+                $refus[] = ['uuid' => $uuid, 'reference' => $reference, 'motif' => 'Hors de votre périmètre de validation.'];
+
+                continue;
+            }
+            $motif = $this->validationService->motifDeRefus($depense, $utilisateur);
+            if (null !== $motif) {
+                $refus[] = ['uuid' => $uuid, 'reference' => $reference, 'motif' => $motif];
+
+                continue;
+            }
+
+            try {
+                $this->validationService->valider($depense, $utilisateur);
+                ++$validees;
+            } catch (ContrainteBudgetaireException $e) {
+                // Une saisie concurrente entre le contrôle et le verrou : la
+                // transaction annulée ferme le gestionnaire d'entités. Le
+                // reste du lot attend un nouvel essai, rien n'est perdu.
+                $refus[] = ['uuid' => $uuid, 'reference' => $reference, 'motif' => $e->getMessage()];
+                foreach (\array_slice($uuids, $position + 1) as $restant) {
+                    $refus[] = ['uuid' => $restant, 'reference' => null, 'motif' => 'Non traité : relancez la validation.'];
+                }
+
+                break;
+            }
+        }
+
+        return new JsonResponse(['validees' => $validees, 'refus' => $refus]);
+    }
+
     #[Route('/{uuid}/valider', name: 'app_depense_valider', methods: ['POST'])]
     public function valider(string $uuid): JsonResponse
     {

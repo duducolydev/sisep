@@ -1,6 +1,6 @@
 const BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? '/api/v1'
 
-export type TypeImport = 'personnel' | 'effectifs-enqueteurs' | 'points-focaux'
+export type TypeImport = 'personnel' | 'effectifs-enqueteurs' | 'points-focaux' | 'engagements' | 'depenses'
 
 /** Miroir de LecteurFichierImport::TAILLE_MAX_OCTETS — vérifié avant l'envoi. */
 export const TAILLE_MAX_IMPORT_OCTETS = 5 * 1024 * 1024

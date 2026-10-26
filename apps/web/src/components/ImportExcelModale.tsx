@@ -27,6 +27,13 @@ interface ImportExcelModaleProps {
   onFermer: () => void
   /** Après un import effectif : rafraîchir les listes concernées. */
   onImporte: (rapport: RapportImport) => Promise<void> | void
+  /**
+   * Faux pour les écritures budgétaires : un engagement ou une dépense déjà
+   * présent ne se réécrit pas par import, il se corrige dans SISEP.
+   */
+  avecMiseAJour?: boolean
+  /** Précision sous le titre, propre au type d'import. */
+  aide?: string
 }
 
 /**
@@ -34,7 +41,7 @@ interface ImportExcelModaleProps {
  * (créations, mises à jour, doublons, erreurs) sans rien écrire, puis
  * l'import des seules lignes valides.
  */
-export function ImportExcelModale({ type, titre, onFermer, onImporte }: ImportExcelModaleProps) {
+export function ImportExcelModale({ type, titre, onFermer, onImporte, avecMiseAJour = true, aide }: ImportExcelModaleProps) {
   const [fichier, setFichier] = useState<File | null>(null)
   const [miseAJour, setMiseAJour] = useState(false)
   const [apercu, setApercu] = useState<RapportImport | null>(null)
@@ -109,6 +116,9 @@ export function ImportExcelModale({ type, titre, onFermer, onImporte }: ImportEx
           <p className="text-xs text-muted">.xlsx, .xls ou .csv — 5 Mo et 2 000 lignes au plus.</p>
         </div>
 
+        {aide && <p className="rounded-[var(--radius-controle)] bg-accent-bg px-3 py-2 text-sm text-accent-d">{aide}</p>}
+
+        {avecMiseAJour && (
         <label className="flex items-start gap-2 text-sm">
           <input
             type="checkbox"
@@ -124,12 +134,13 @@ export function ImportExcelModale({ type, titre, onFermer, onImporte }: ImportEx
             <span className="block text-xs text-muted">Sinon ils sont ignorés. Une cellule vide ne remplace jamais une valeur connue.</span>
           </span>
         </label>
+        )}
 
         {apercu && (
           <section className="flex flex-col gap-3">
             <ul className="flex flex-wrap gap-2 text-xs" aria-label="Résumé de l'aperçu">
               <Compteur libelle="à créer" valeur={apercu.resume.creations} classe={STATUTS.creation.classe} />
-              <Compteur libelle="à mettre à jour" valeur={apercu.resume.misesAJour} classe={STATUTS.mise_a_jour.classe} />
+              {avecMiseAJour && <Compteur libelle="à mettre à jour" valeur={apercu.resume.misesAJour} classe={STATUTS.mise_a_jour.classe} />}
               <Compteur libelle={apercu.resume.existantes > 1 ? 'déjà présentes' : 'déjà présente'} valeur={apercu.resume.existantes} classe={STATUTS.existante.classe} />
               <Compteur libelle={apercu.resume.doublons > 1 ? 'doublons' : 'doublon'} valeur={apercu.resume.doublons} classe={STATUTS.doublon.classe} />
               <Compteur libelle={apercu.resume.erreurs > 1 ? 'erreurs' : 'erreur'} valeur={apercu.resume.erreurs} classe={STATUTS.erreur.classe} />

@@ -26,6 +26,36 @@ final class DepenseValidationService
 
     public function valider(Depense $depense, Utilisateur $validateur): void
     {
+        $this->controlerAvantVerrou($depense, $validateur);
+        $engagement = $depense->getEngagement();
+
+        $this->em->wrapInTransaction(function () use ($depense, $engagement, $validateur): void {
+            $this->em->lock($engagement, LockMode::PESSIMISTIC_WRITE);
+            $this->controlerPlafond($depense);
+
+            $depense->valider($validateur);
+        });
+    }
+
+    /**
+     * Les mêmes contrôles, sans verrou ni écriture — pour écarter d'un lot
+     * les dépenses que la validation refuserait (cf.
+     * EngagementValidationService::motifDeRefus()).
+     */
+    public function motifDeRefus(Depense $depense, Utilisateur $validateur): ?string
+    {
+        try {
+            $this->controlerAvantVerrou($depense, $validateur);
+            $this->controlerPlafond($depense);
+        } catch (ContrainteBudgetaireException $e) {
+            return $e->getMessage();
+        }
+
+        return null;
+    }
+
+    private function controlerAvantVerrou(Depense $depense, Utilisateur $validateur): void
+    {
         if (StatutEcriture::BROUILLON !== $depense->getStatut()) {
             throw new ContrainteBudgetaireException('Seule une dépense en brouillon peut être validée.');
         }
@@ -35,26 +65,22 @@ final class DepenseValidationService
         }
 
         $engagement = $depense->getEngagement();
-
         if (StatutEcriture::VALIDE !== $engagement->getStatut()) {
             throw new ContrainteBudgetaireException("L'engagement rattaché doit être validé avant de pouvoir valider une dépense.");
         }
-
         if (!$engagement->getExercice()->estOuvert()) {
             throw new ContrainteBudgetaireException("Cet exercice est clôturé : aucune écriture budgétaire n'est plus acceptée.");
         }
+    }
 
-        $this->em->wrapInTransaction(function () use ($depense, $engagement, $validateur): void {
-            $this->em->lock($engagement, LockMode::PESSIMISTIC_WRITE);
+    private function controlerPlafond(Depense $depense): void
+    {
+        $engagement = $depense->getEngagement();
+        $sommeValidee = $this->depenses->sommeValidee($engagement);
+        $nouveauTotal = $sommeValidee->ajouter($depense->getMontant());
 
-            $sommeValidee = $this->depenses->sommeValidee($engagement);
-            $nouveauTotal = $sommeValidee->ajouter($depense->getMontant());
-
-            if ($nouveauTotal->estSuperieurA($engagement->getMontant())) {
-                throw new ContrainteBudgetaireException(\sprintf('Le montant décaissé atteindrait %s, au-delà du montant engagé de %s.', $nouveauTotal->formater(), $engagement->getMontant()->formater()));
-            }
-
-            $depense->valider($validateur);
-        });
+        if ($nouveauTotal->estSuperieurA($engagement->getMontant())) {
+            throw new ContrainteBudgetaireException(\sprintf('Le montant décaissé atteindrait %s, au-delà du montant engagé de %s.', $nouveauTotal->formater(), $engagement->getMontant()->formater()));
+        }
     }
 }
