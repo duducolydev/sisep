@@ -2,7 +2,7 @@
 
 **Système de suivi-évaluation du projet PHASAOC — ANSD**
 
-Version d'octobre 2026, à jour de la présentation au PHASAOC du 22 octobre 2026.
+Version d'octobre 2026, à jour au 28 octobre 2026.
 
 Ce guide s'adresse à toutes les personnes qui utilisent le SISEP : l'équipe de coordination de l'UGP, les responsables du suivi-évaluation, les gestionnaires budgétaires, les points focaux des structures bénéficiaires et les administrateurs de la plateforme. Il est organisé par écran, dans l'ordre du menu. Chacun n'y trouve que les boutons que son profil autorise : si une action décrite ici n'apparaît pas à l'écran, c'est que votre profil ne la permet pas (voir la partie 1.4).
 
@@ -19,6 +19,9 @@ Ce guide s'adresse à toutes les personnes qui utilisent le SISEP : l'équipe de
 - **Projets** : le module est réservé à l'UGP.
 - **Points focaux** : ils n'ont plus accès au module Parties prenantes ; ils transmettent les rapports de leur structure depuis le nouvel écran **Mes rapports**.
 - **Indicateurs** : le Responsable suivi-évaluation valide les valeurs saisies par les sectoriels (jamais sa propre saisie).
+- **Budget** : les engagements et les dépenses saisis par le Responsable suivi-évaluation sont **validés dès l'enregistrement**, sans passer par le Coordonnateur ; le plafond reste contrôlé.
+- **Graphiques** : chaque graphique s'exporte en image (bouton **Image**) pour les rapports — profils Administrateur, Coordonnateur et Responsable suivi-évaluation.
+- **Mes rapports** : le rapport choisi s'affiche en **aperçu** avant d'être transmis, et un rapport transmis se rouvre par **Voir**.
 - **Comptes** : les rôles d'un compte se modifient directement dans « Modifier un compte », et l'administrateur y attribue un nouveau mot de passe temporaire en cas d'oubli.
 - **Parties prenantes** : une structure se modifie depuis sa fiche, et ses points focaux s'y ajoutent, s'y modifient et s'y désactivent.
 
@@ -50,14 +53,18 @@ Chaque compte reçoit un ou plusieurs rôles. Un rôle peut valoir pour tout le 
 
 | Profil | Ce qu'il permet |
 |---|---|
-| Administrateur | Tout. Rôle d'administration de la plateforme, à ne pas confier à une personne qui traite elle-même les écritures budgétaires. |
-| Coordonnateur | Consulter et gérer l'arbre du PTBA (y compris archiver), valider la clôture des activités, **valider** les engagements, les dépenses et les valeurs d'indicateurs (sans les saisir), gérer les structures, les points focaux, les comptes, les rôles et les paramètres, consulter le journal, exporter, suivre les projets, les ressources humaines et les documents. |
-| Responsable suivi-évaluation | Créer et modifier les activités, valider leur clôture, **saisir et valider** les dotations, engagements et dépenses, définir les indicateurs, **saisir et valider** leurs valeurs, inviter un sectoriel, consulter le journal, exporter, suivre les projets, les ressources humaines et les documents. |
+| Administrateur | Tout, sauf la validation de ses propres écritures. Rôle d'administration de la plateforme, à ne pas confier à une personne qui traite elle-même les écritures budgétaires. |
+| Coordonnateur | Consulter et gérer l'arbre du PTBA (y compris archiver), valider la clôture des activités, **valider** les engagements, les dépenses et les valeurs d'indicateurs (sans les saisir), gérer les structures, les points focaux, les comptes, les rôles et les paramètres, consulter le journal, exporter (y compris les graphiques en image), suivre les projets, les ressources humaines et les documents. |
+| Responsable suivi-évaluation | Créer et modifier les activités, valider leur clôture, notifier les dotations, saisir les engagements et les dépenses — **validés dès l'enregistrement** — et valider ceux des autres, définir les indicateurs, **saisir et valider** leurs valeurs, inviter un sectoriel, consulter le journal, exporter (y compris les graphiques en image), suivre les projets, les ressources humaines et les documents. |
 | Gestionnaire budgétaire | Consulter les activités, les indicateurs et les projets, **saisir** les dotations, engagements et dépenses (sans les valider), exporter. |
 | Point focal de structure | Consulter les activités de sa structure, ainsi que celles dont une ligne est confiée à sa structure, et renseigner l'avancement de ce qui relève de sa structure (étapes, justificatifs) ; transmettre les rapports périodiques de sa structure (**Mes rapports**). Il n'a pas accès au module Parties prenantes. Il saisit aussi les valeurs des indicateurs auxquels il a été invité. Ce rôle s'attribue toujours pour une structure précise. |
 | Lecteur | Consulter les activités et les indicateurs. |
 
-**Séparation de la saisie et de la validation.** Une écriture budgétaire (engagement, dépense) ou une valeur d'indicateur est saisie par une personne et validée par une autre. Les profils Administrateur et Responsable suivi-évaluation peuvent faire les deux, mais **jamais sur la même écriture** : l'application refuse que la personne qui a saisi un engagement, une dépense ou une valeur la valide elle-même. Toute écriture est enregistrée dans le journal, avec son état avant et après.
+**Séparation de la saisie et de la validation.** Une écriture budgétaire (engagement, dépense) ou une valeur d'indicateur est saisie par une personne et validée par une autre : le Gestionnaire budgétaire saisit sans valider, le Coordonnateur valide sans saisir. Les profils Administrateur et Responsable suivi-évaluation peuvent faire les deux, mais **jamais sur la même écriture** : l'application refuse que la personne qui a saisi un engagement, une dépense ou une valeur la valide elle-même.
+
+**Exception, décidée le 28 octobre 2026** : les engagements et les dépenses saisis par le Responsable suivi-évaluation n'attendent aucune validation. Ils sont validés dès l'enregistrement, après les mêmes contrôles (plafond de la dotation ou de l'engagement, exercice ouvert). Un engagement ou une dépense validé ne s'annule plus : relisez le montant avant d'enregistrer. Ses valeurs d'indicateurs, elles, restent validées par une autre personne, et l'Administrateur ne bénéficie pas de l'exception.
+
+Toute écriture est enregistrée dans le journal, avec son état avant et après ; le fil des écritures budgétaires se consulte depuis la page Budget.
 
 ### 1.5 Conventions d'affichage
 
@@ -87,7 +94,7 @@ C'est l'écran d'accueil et la base du reporting. Il donne la situation du proje
 - **Exécution par structure** : l'exécution budgétaire des structures responsables d'activités, les plus dotées d'abord.
 - **Activité récente** : les dernières opérations enregistrées.
 
-Chacun ne voit que ce que son profil permet : le cadre de résultats et l'atteinte des indicateurs pour l'équipe du projet, le reporting des structures pour ceux qui consultent les parties prenantes. Le bouton **Exporter** produit la synthèse au format Excel.
+Chacun ne voit que ce que son profil permet : le cadre de résultats et l'atteinte des indicateurs pour l'équipe du projet, le reporting des structures pour ceux qui consultent les parties prenantes. Le bouton **Exporter** produit la synthèse au format Excel, et le bouton **Image** de chaque graphique le télécharge en image (partie 12.1).
 
 ### 2.1 Le classeur « Revue à mi-parcours »
 
@@ -188,14 +195,14 @@ La rubrique **Exécution budgétaire** suit, pour chaque ligne, la chaîne dotat
 2. **Saisir un engagement** : exercice, nature, montant en FCFA, date d'engagement et, le cas échéant, référence du marché. Les natures proposées :
    - **Travaux (construction, réaménagement…)**, fournitures, acquisition de biens, service de consultation, service courant ;
    - regroupées sous **Fonctionnement** : salaire, frais de mission, atelier, remboursement de transport, autres natures de fonctionnement.
-3. **Valider** ou **Annuler** l'engagement, tant qu'il est en brouillon. Un engagement validé ne s'annule plus et ne se supprime jamais.
+3. **Valider** ou **Annuler** l'engagement, tant qu'il est en brouillon. Un engagement validé ne s'annule plus et ne se supprime jamais. Un engagement saisi par le Responsable suivi-évaluation est validé dès l'enregistrement : la fenêtre de saisie le signale.
 4. Sur un engagement validé, **Saisir une dépense**, puis la faire valider de la même façon.
 
 Le serveur vérifie chaque écriture, au moment de l'enregistrer :
 
 - le total engagé ne peut pas dépasser la dotation notifiée (« Le montant engagé atteindrait …, au-delà de la dotation notifiée ») ;
 - le total décaissé ne peut pas dépasser le montant engagé ;
-- la personne qui a saisi une écriture ne peut pas la valider ;
+- la personne qui a saisi une écriture ne peut pas la valider (sauf le Responsable suivi-évaluation, dont les écritures sont validées dès la saisie, après ces mêmes contrôles) ;
 - un exercice clôturé n'accepte plus aucune écriture.
 
 ### 4.4 Clôturer une activité
@@ -217,13 +224,13 @@ Les boutons **Importer des engagements** et **Importer des dépenses** (gestionn
 
 - **Engagements** : pour chacun, la **ligne budgétaire** (choisie dans la liste du modèle : code de l'activité, puis libellé de la ligne), une **référence** unique dans l'exercice (n° d'engagement, de bon de commande ou de marché), la nature, le montant en FCFA, la date d'engagement et, si besoin, l'exercice et des observations.
 - **Dépenses** : pour chacune, la **référence de l'engagement** payé, le montant, la date de paiement et, de préférence, la référence du paiement (n° d'ordre de paiement ou de virement), qui évite les doublons. Importez donc les engagements **avant** les dépenses.
-- Les écritures arrivent **en brouillon**, au nom de la personne qui importe. Elles doivent ensuite être validées, **par une autre personne**.
+- Les écritures arrivent **en brouillon**, au nom de la personne qui importe — y compris pour le Responsable suivi-évaluation : un import se relit avant d'être validé. Elles se valident ensuite dans **Écritures à valider** (partie 5.2), **par une autre personne**, sauf pour le Responsable suivi-évaluation, qui valide lui-même ce qu'il a importé.
 - L'aperçu signale déjà ce que la validation refusera : une ligne sans dotation sur l'exercice (ligne refusée), un total engagé au-delà de la dotation ou un total payé au-delà de l'engagé (ligne acceptée, avec un avertissement).
 - Une écriture déjà présente (même référence) n'est pas réimportée : elle se corrige ou s'annule dans SISEP.
 
 ### 5.2 Écritures à valider
 
-La rubrique **Écritures à valider**, en haut de la page Budget, liste les engagements et les dépenses en brouillon, saisis ou importés. Cochez celles à valider (ou **Tout sélectionner**), puis **Valider la sélection**. Chacune passe les contrôles habituels : plafond de la dotation ou de l'engagement, exercice ouvert, engagement validé avant ses dépenses. Celles qui sont refusées le sont avec leur motif, les autres sont validées. Vos propres saisies apparaissent grisées : une autre personne les valide.
+La rubrique **Écritures à valider**, en haut de la page Budget, liste les engagements et les dépenses en brouillon, saisis ou importés. Cochez celles à valider (ou **Tout sélectionner**), puis **Valider la sélection**. Chacune passe les contrôles habituels : plafond de la dotation ou de l'engagement, exercice ouvert, engagement validé avant ses dépenses. Celles qui sont refusées le sont avec leur motif, les autres sont validées. Vos propres saisies apparaissent grisées : une autre personne les valide. Le Responsable suivi-évaluation, lui, peut cocher les siennes (ses imports, en pratique : ses saisies sont déjà validées).
 
 Pour les profils qui consultent le journal, le **fil des écritures budgétaires** indique qui a saisi, modifié ou validé chaque dotation, engagement et dépense, avec les montants avant et après.
 
@@ -322,8 +329,8 @@ Un point focal qui doit se connecter au SISEP a besoin d'un **compte**, créé p
 
 Chaque structure transmet un rapport après la fin de chaque trimestre, dans le délai fixé dans les paramètres (15 jours par défaut).
 
-- **Le point focal** transmet le rapport de sa structure depuis l'écran **Mes rapports** : il y voit les rapports attendus de sa structure, et eux seuls, clique sur **Transmettre** et choisit le fichier (10 Mo au plus).
-- **L'équipe du projet** retrouve les rapports reçus sur la fiche de chaque structure ; le Coordonnateur peut aussi y transmettre un rapport à la place de la structure.
+- **Le point focal** transmet le rapport de sa structure depuis l'écran **Mes rapports** : il y voit les rapports attendus de sa structure, et eux seuls, clique sur **Transmettre** et choisit le fichier (10 Mo au plus). Le fichier s'affiche alors en **aperçu** (un PDF ou une image ; pour un autre format, un lien l'ouvre dans son logiciel) : rien n'est envoyé tant qu'il n'a pas cliqué sur **Transmettre ce rapport**, et **Changer de fichier** permet d'en choisir un autre. Un rapport transmis se rouvre par le lien **Voir**.
+- **L'équipe du projet** retrouve les rapports reçus sur la fiche de chaque structure, et les ouvre par **Voir** ; le Coordonnateur peut aussi y transmettre un rapport à la place de la structure.
 
 Les rapports en retard sont signalés et font l'objet de relances automatiques par courriel, adressées aux points focaux de la structure, avec un lien vers **Mes rapports** (partie 13). C'est une raison de plus de tenir leurs adresses à jour.
 
@@ -345,6 +352,8 @@ Les boutons en bout de ligne modifient ou retirent un agent ou un effectif. Le p
 ### 12.1 Exporter
 
 Le bouton **Exporter** de chaque écran produit un fichier Excel du contenu affiché, avec les filtres en cours. Il est proposé aux profils Administrateur, Coordonnateur, Responsable suivi-évaluation et Gestionnaire budgétaire. Certains exports sont réservés : la liste du personnel, les comptes, les rôles et le journal ne s'exportent qu'avec les droits correspondants.
+
+**Graphiques en image.** Chaque graphique de la plateforme (tableau de bord, budget, composantes, indicateurs, projets, onglet « Tableau de bord » des ressources humaines) porte un bouton **Image**, en haut à droite, pour les profils Administrateur, Coordonnateur et Responsable suivi-évaluation. Il télécharge le graphique tel qu'il est affiché, filtres compris, au format PNG, avec son titre, la mention « Source : SISEP — Projet PHASAOC, ANSD » et la date d'extraction : prêt à insérer dans un rapport ou une présentation.
 
 ### 12.2 Importer depuis Excel
 
@@ -416,6 +425,9 @@ Votre profil ne permet pas cette action, ou pas sur cette structure. Demandez à
 
 **L'application refuse que je valide un engagement.**
 Vous l'avez saisi vous-même : une autre personne habilitée doit le valider. C'est voulu.
+
+**Mon engagement est validé sans être passé par « Écritures à valider ».**
+Vous avez le profil Responsable suivi-évaluation : vos engagements et vos dépenses sont validés dès l'enregistrement (partie 1.4). Ils ne s'annulent plus ensuite : relisez le montant avant d'enregistrer.
 
 **Mon engagement est refusé pour dépassement.**
 Le total engagé sur la ligne dépasserait la dotation notifiée. Vérifiez le disponible de la ligne, ou faites d'abord notifier la révision du budget.

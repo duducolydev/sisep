@@ -11,6 +11,7 @@ use App\Enum\StatutEcriture;
 use App\Exception\ContrainteBudgetaireException;
 use App\Repository\DotationRepository;
 use App\Repository\EngagementRepository;
+use App\Security\PermissionsResolver;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -27,7 +28,37 @@ final class EngagementValidationService
         private readonly EntityManagerInterface $em,
         private readonly DotationRepository $dotations,
         private readonly EngagementRepository $engagements,
+        private readonly PermissionsResolver $permissionsResolver,
     ) {
+    }
+
+    /**
+     * Saisie validée d'emblée (budget.validation_directe — le RSE, depuis le
+     * 28/10/2026) : création et validation dans la même transaction, sous
+     * le même verrou sur la dotation. Au-delà du plafond, rien n'est créé.
+     */
+    public function enregistrerValide(Engagement $engagement, Utilisateur $auteur): void
+    {
+        if (!$this->valideDirectement($auteur)) {
+            throw new ContrainteBudgetaireException('Votre saisie doit être validée par une autre personne.');
+        }
+        if (!$engagement->getExercice()->estOuvert()) {
+            throw new ContrainteBudgetaireException("Cet exercice est clôturé : aucune écriture budgétaire n'est plus acceptée.");
+        }
+
+        $this->em->wrapInTransaction(function () use ($engagement, $auteur): void {
+            $dotation = $this->dotation($engagement);
+            $this->em->lock($dotation, LockMode::PESSIMISTIC_WRITE);
+            $this->controlerPlafond($engagement, $dotation);
+
+            $engagement->valider($auteur);
+            $this->em->persist($engagement);
+        });
+    }
+
+    public function valideDirectement(Utilisateur $utilisateur): bool
+    {
+        return $this->permissionsResolver->pour($utilisateur)->estGlobale('budget.validation_directe');
     }
 
     public function valider(Engagement $engagement, Utilisateur $validateur): void
@@ -69,8 +100,9 @@ final class EngagementValidationService
 
         // Séparation saisie/validation (§ 7.2) : exigence de contrôle interne
         // sur un projet financé par bailleur, vérifiée même si un rôle
-        // détenait par erreur les deux permissions à la fois.
-        if ($engagement->getCreePar()->getId() === $validateur->getId()) {
+        // détenait par erreur les deux permissions à la fois — sauf pour qui
+        // détient budget.validation_directe (le RSE, décision du 28/10/2026).
+        if ($engagement->getCreePar()->getId() === $validateur->getId() && !$this->valideDirectement($validateur)) {
             throw new ContrainteBudgetaireException("La personne qui a saisi l'engagement ne peut pas le valider.");
         }
 

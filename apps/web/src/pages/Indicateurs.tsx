@@ -16,6 +16,7 @@ import { Pagination } from '@/components/Pagination'
 import { Squelette } from '@/components/Squelette'
 import { IconeStatut, IconeComposante, IconeStructure } from '@/components/Icones'
 import { trancherPage } from '@/lib/pagination'
+import { GraphiqueExportable } from '@/components/GraphiqueExportable'
 
 const TAILLE_PAGE = 15
 
@@ -201,9 +202,11 @@ export function Indicateurs() {
           <p className="mb-3 text-sm text-muted">
             Position de chaque indicateur entre sa référence (0 %) et sa cible (100 %), toutes unités confondues.
           </p>
-          <AtteinteGlobaleIndicateurs
-            indicateurs={indicateurs.donnees.map((i) => ({ ...i, tauxAtteinte: valeurAffichee(i).tauxAtteinte }))}
-          />
+          <GraphiqueExportable titre="Vue d'ensemble des indicateurs de performance" sousTitre="Position entre la référence (0 %) et la cible (100 %)">
+            <AtteinteGlobaleIndicateurs
+              indicateurs={indicateurs.donnees.map((i) => ({ ...i, tauxAtteinte: valeurAffichee(i).tauxAtteinte }))}
+            />
+          </GraphiqueExportable>
         </section>
       )}
 

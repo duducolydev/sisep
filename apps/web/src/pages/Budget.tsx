@@ -20,6 +20,7 @@ import { BoutonExporter } from '@/components/BoutonExporter'
 import { Pagination } from '@/components/Pagination'
 import { Squelette } from '@/components/Squelette'
 import { trancherPage } from '@/lib/pagination'
+import { GraphiqueExportable } from '@/components/GraphiqueExportable'
 
 const TAILLE_PAGE = 15
 
@@ -136,7 +137,7 @@ export function Budget() {
         <section>
           <h2 className="mb-3 text-lg font-semibold">Exécution financière pluriannuelle</h2>
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <div className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
+            <GraphiqueExportable titre="Taux d'exécution" titreDansLeCadre className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
               <p className="mb-3 text-sm font-semibold">Taux d'exécution</p>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_2fr]">
                 <div>
@@ -155,9 +156,9 @@ export function Budget() {
                   />
                 </div>
               </div>
-            </div>
+            </GraphiqueExportable>
 
-            <div className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
+            <GraphiqueExportable titre="Montants d'exécution" titreDansLeCadre className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
               <p className="mb-3 text-sm font-semibold">Montants d'exécution</p>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_2fr]">
                 <div>
@@ -183,7 +184,7 @@ export function Budget() {
                   />
                 </div>
               </div>
-            </div>
+            </GraphiqueExportable>
           </div>
         </section>
       )}
@@ -212,9 +213,9 @@ export function Budget() {
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-semibold">Décaissement cumulé</h2>
         </div>
-        <div className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
+        <GraphiqueExportable titre="Décaissement cumulé" sousTitre={`Exercice ${activites?.exercice ?? ''} — réalisé et trajectoire prévue`} className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
           <BarresDecaissement points={decaissement?.points ?? []} />
-        </div>
+        </GraphiqueExportable>
       </section>
 
       {classementMoinsExecutees.length > 0 && (

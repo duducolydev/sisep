@@ -145,8 +145,14 @@ final class EngagementController
         $engagement->setReferenceMarche($donnees->referenceMarche);
         $engagement->setObservations($donnees->observations);
 
-        $this->em->persist($engagement);
-        $this->em->flush();
+        // Le RSE (budget.validation_directe) n'a pas besoin d'être validé :
+        // son engagement l'est dès la saisie, plafond contrôlé sous verrou.
+        if ($this->validationService->valideDirectement($utilisateur) && $this->security->isGranted('budget.engagement.valider', $cible)) {
+            $this->validationService->enregistrerValide($engagement, $utilisateur);
+        } else {
+            $this->em->persist($engagement);
+            $this->em->flush();
+        }
 
         return new JsonResponse($this->normalizer->normaliser($engagement), 201);
     }

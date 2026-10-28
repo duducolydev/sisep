@@ -21,6 +21,7 @@ import { ExecutionParStructure } from '@/components/tableau-de-bord/ExecutionPar
 import { RepartitionStatutsActivites } from '@/components/tableau-de-bord/RepartitionStatutsActivites'
 import { urlExportDonnees } from '@/lib/exports'
 import { BoutonExporter } from '@/components/BoutonExporter'
+import { GraphiqueExportable } from '@/components/GraphiqueExportable'
 
 const CLASSES_EVENEMENT: Record<string, string> = {
   creation: 'bg-warn',
@@ -188,23 +189,23 @@ export function TableauDeBord() {
 
           <section>
             <h2 className="mb-3 text-lg font-semibold">Décaissement cumulé</h2>
-            <div className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
+            <GraphiqueExportable titre="Décaissement cumulé" sousTitre={`Exercice ${synthese?.exercice ?? ''} — réalisé et trajectoire prévue`} className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
               <BarresDecaissement points={decaissement?.points ?? []} />
-            </div>
+            </GraphiqueExportable>
           </section>
 
           <section>
             <h2 className="mb-3 text-lg font-semibold">Exécution physique et financière par composante</h2>
-            <div className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
+            <GraphiqueExportable titre="Exécution physique et financière par composante" sousTitre={`Exercice ${synthese?.exercice ?? ''}`} className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
               {arbre ? <PhysiqueFinancierParComposante composantes={arbre.composantes} /> : <p className="text-sm text-muted">Chargement…</p>}
-            </div>
+            </GraphiqueExportable>
           </section>
 
           <section>
             <h2 className="mb-3 text-lg font-semibold">Engagements par nature</h2>
-            <div className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
+            <GraphiqueExportable titre="Engagements validés par nature" sousTitre={`Exercice ${synthese?.exercice ?? ''}`} className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
               {synthese ? <EngagementsParNature lignes={synthese.engagementsParNature} /> : <p className="text-sm text-muted">Chargement…</p>}
-            </div>
+            </GraphiqueExportable>
           </section>
         </div>
 
@@ -244,20 +245,30 @@ export function TableauDeBord() {
                   <IconeVoir />
                 </Link>
               </div>
-              <AtteinteGlobaleIndicateurs indicateurs={indicateurs?.donnees ?? []} />
+              <GraphiqueExportable titre="Cadre de résultats — taux d'atteinte des indicateurs" sousTitre="Position entre la référence (0 %) et la cible (100 %)">
+                <AtteinteGlobaleIndicateurs indicateurs={indicateurs?.donnees ?? []} />
+              </GraphiqueExportable>
             </section>
           )}
 
           <section className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
             <h2 className="mb-3 text-lg font-semibold">Activités par statut</h2>
-            {arbre ? <RepartitionStatutsActivites composantes={arbre.composantes} /> : <p className="text-sm text-muted">Chargement…</p>}
+            {arbre ? (
+              <GraphiqueExportable titre="Activités du PTBA par statut" sousTitre={`Exercice ${synthese?.exercice ?? ''}`}>
+                <RepartitionStatutsActivites composantes={arbre.composantes} />
+              </GraphiqueExportable>
+            ) : (
+              <p className="text-sm text-muted">Chargement…</p>
+            )}
           </section>
 
           <section className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
             <h2 className="mb-1 text-lg font-semibold">Exécution par structure</h2>
             <p className="mb-3 text-xs text-muted">Structures responsables d'activités, les plus dotées d'abord.</p>
             {arbre ? (
-              <ExecutionParStructure composantes={arbre.composantes} tauxAttendu={arbre.tauxAttendu} />
+              <GraphiqueExportable titre="Exécution budgétaire par structure" sousTitre={`Exercice ${synthese?.exercice ?? ''} — structures responsables d'activités`}>
+                <ExecutionParStructure composantes={arbre.composantes} tauxAttendu={arbre.tauxAttendu} />
+              </GraphiqueExportable>
             ) : (
               <p className="text-sm text-muted">Chargement…</p>
             )}

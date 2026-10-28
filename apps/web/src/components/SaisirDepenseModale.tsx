@@ -6,6 +6,7 @@ import { Modale } from './Modale'
 import { creerDepense } from '@/lib/budget'
 import { ApiError } from '@/lib/api-client'
 import { queryClient } from '@/lib/query-client'
+import { usePeut } from '@/lib/use-permissions'
 
 const schema = z.object({
   montant: z.coerce.number().int().positive('Le montant doit être positif.'),
@@ -24,6 +25,8 @@ interface SaisirDepenseModaleProps {
 
 export function SaisirDepenseModale({ engagementUuid, activiteUuid, onFermer }: SaisirDepenseModaleProps) {
   const [erreur, setErreur] = useState<string | null>(null)
+  // Le RSE n'a pas besoin d'être validé (décision du 28/10/2026).
+  const valideSesSaisies = usePeut('budget.validation_directe')
 
   const {
     register,
@@ -45,6 +48,11 @@ export function SaisirDepenseModale({ engagementUuid, activiteUuid, onFermer }: 
 
   return (
     <Modale titre="Saisir une dépense" onFermer={onFermer}>
+      {valideSesSaisies && (
+        <p className="mb-4 rounded-[var(--radius-controle)] bg-accent-bg px-3 py-2 text-sm text-accent-d">
+          Votre dépense sera validée dès l'enregistrement, après contrôle du montant engagé — si l'engagement est lui-même validé.
+        </p>
+      )}
       {erreur && (
         <div role="alert" className="mb-4 rounded-[var(--radius-controle)] bg-bad-bg px-4 py-3 text-bad">
           {erreur}

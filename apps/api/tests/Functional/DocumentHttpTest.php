@@ -64,6 +64,23 @@ final class DocumentHttpTest extends WebTestCase
             // Téléchargeable par la route commune des pièces jointes.
             $client->request('GET', "/api/v1/pieces-jointes/{$corps['uuid']}/telecharger");
             self::assertResponseIsSuccessful();
+            self::assertStringStartsWith('attachment', (string) $client->getResponse()->headers->get('Content-Disposition'));
+
+            // ?apercu=1 : un PDF s'ouvre dans le navigateur (consulter un rapport transmis)…
+            $client->request('GET', "/api/v1/pieces-jointes/{$corps['uuid']}/telecharger?apercu=1");
+            self::assertStringStartsWith('inline', (string) $client->getResponse()->headers->get('Content-Disposition'));
+            self::assertSame('nosniff', $client->getResponse()->headers->get('X-Content-Type-Options'));
+
+            // … jamais un fichier HTML, qui s'exécuterait sous l'origine de SISEP.
+            $chemin = tempnam(sys_get_temp_dir(), 'sisep_doc_');
+            self::assertNotFalse($chemin);
+            file_put_contents($chemin, '<script>alert(1)</script>');
+            $client->request('POST', "/api/v1/documents/projets/{$projetUuid}", parameters: ['typeDocument' => 'note'], files: [
+                'fichier' => new UploadedFile($chemin, 'page.html', 'text/html', null, true),
+            ]);
+            self::assertResponseStatusCodeSame(201);
+            $client->request('GET', '/api/v1/pieces-jointes/'.$this->corps($client)['uuid'].'/telecharger?apercu=1');
+            self::assertStringStartsWith('attachment', (string) $client->getResponse()->headers->get('Content-Disposition'));
         } finally {
             $this->rollback();
         }

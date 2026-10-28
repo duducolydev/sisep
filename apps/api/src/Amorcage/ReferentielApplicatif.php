@@ -49,6 +49,7 @@ final class ReferentielApplicatif
             ['budget.engagement.valider', 'budget', 'Valider un engagement'],
             ['budget.depense.saisir', 'budget', 'Saisir une dépense'],
             ['budget.depense.valider', 'budget', 'Valider une dépense'],
+            ['budget.validation_directe', 'budget', 'Engagements et dépenses validés dès leur saisie, sans second contrôle'],
             ['indicateurs.consulter', 'indicateurs', 'Consulter le catalogue des indicateurs de performance'],
             ['indicateurs.definir', 'indicateurs', 'Définir un indicateur'],
             ['indicateurs.saisir', 'indicateurs', "Saisir une valeur d'indicateur"],
@@ -64,6 +65,7 @@ final class ReferentielApplicatif
             ['journal.consulter', 'journal', "Consulter le journal d'activité"],
             ['documents.gerer', 'documents', 'Déposer et retirer des documents de la bibliothèque'],
             ['exports.generer', 'exports', 'Générer un export'],
+            ['graphiques.exporter', 'exports', 'Exporter les graphiques en image'],
             ['initiatives.consulter', 'initiatives', 'Consulter le suivi des projets (module réservé à l\'UGP)'],
             ['initiatives.gerer', 'initiatives', 'Gérer le suivi des projets'],
             ['rh.consulter', 'rh', 'Consulter le suivi des ressources humaines'],
@@ -99,7 +101,7 @@ final class ReferentielApplicatif
             'budget.engagement.valider', 'budget.depense.valider', 'indicateurs.consulter', 'indicateurs.valider',
             'indicateurs.inviter', 'structures.gerer', 'points_focaux.gerer', 'parties_prenantes.consulter',
             'rapports.transmettre', 'admin.roles', 'admin.parametres',
-            'admin.utilisateurs', 'journal.consulter', 'exports.generer', 'initiatives.consulter', 'initiatives.gerer',
+            'admin.utilisateurs', 'journal.consulter', 'exports.generer', 'graphiques.exporter', 'initiatives.consulter', 'initiatives.gerer',
             'rh.consulter', 'rh.gerer', 'documents.gerer',
         ]);
 
@@ -113,6 +115,12 @@ final class ReferentielApplicatif
         // rôle opérationnel ne cumule les deux : le gestionnaire budgétaire
         // saisit sans valider, le coordonnateur valide sans saisir.
         //
+        // Depuis le 28/10/2026 (budget.validation_directe), ses propres
+        // engagements et dépenses sont validés dès la saisie, plafond compris,
+        // sans second contrôle par le coordonnateur : le RSE valide, mais n'a
+        // pas besoin d'être validé. Le journal garde la trace de chaque
+        // écriture ; retirer cette permission au rôle rétablit le contrôle.
+        //
         // Même chose pour les indicateurs depuis le 26/10/2026 : le RSE valide
         // les valeurs que saisissent les sectoriels (il est leur interlocuteur
         // direct), et en saisit lui-même. Même contrepartie qu'au budget : le
@@ -122,9 +130,9 @@ final class ReferentielApplicatif
         $accorder($suiviEvaluation, $permissions, [
             'activites.consulter', 'activites.creer', 'activites.modifier', 'activites.valider',
             'budget.engagement.saisir', 'budget.engagement.valider',
-            'budget.depense.saisir', 'budget.depense.valider',
+            'budget.depense.saisir', 'budget.depense.valider', 'budget.validation_directe',
             'indicateurs.consulter', 'indicateurs.definir', 'indicateurs.saisir', 'indicateurs.valider', 'indicateurs.inviter',
-            'parties_prenantes.consulter', 'journal.consulter', 'exports.generer', 'initiatives.consulter', 'initiatives.gerer', 'admin.parametres',
+            'parties_prenantes.consulter', 'journal.consulter', 'exports.generer', 'graphiques.exporter', 'initiatives.consulter', 'initiatives.gerer', 'admin.parametres',
             'rh.consulter', 'rh.gerer', 'documents.gerer',
         ]);
 
@@ -161,8 +169,12 @@ final class ReferentielApplicatif
         // être attribuée à quelqu'un qui traite réellement des écritures
         // budgétaires. Sa contrepartie est le journal d'activité, qui trace
         // qui a saisi, modifie ou valide quoi.
+        //
+        // Une seule exception : budget.validation_directe. L'administrateur
+        // peut saisir et valider, jamais faire passer seul sa propre écriture
+        // — ce raccourci est réservé au RSE (décision du 28/10/2026).
         $administrateur = new Role('administrateur', 'Administrateur', true);
-        $accorder($administrateur, $permissions, array_keys($permissions));
+        $accorder($administrateur, $permissions, array_values(array_diff(array_keys($permissions), ['budget.validation_directe'])));
         $this->em->persist($administrateur);
 
         $lecteur = new Role('lecteur', 'Lecteur', true);

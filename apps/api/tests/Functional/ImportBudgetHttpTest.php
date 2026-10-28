@@ -148,7 +148,7 @@ final class ImportBudgetHttpTest extends WebTestCase
                 ['BC-2', '100000', "30/05/{$annee}", 'OP-4', ''],
             ]);
 
-            $this->connecter($client, 'rse@example.test');
+            $this->connecter($client, 'gestion@example.test');
             $client->request('POST', '/api/v1/imports/depenses', files: ['fichier' => $fichier]);
             self::assertResponseIsSuccessful();
             $apercu = $this->corps($client);
@@ -159,16 +159,16 @@ final class ImportBudgetHttpTest extends WebTestCase
 
             $client->request('POST', '/api/v1/imports/depenses', parameters: ['confirmer' => '1'], files: ['fichier' => $this->copie($fichier)]);
             self::assertResponseStatusCodeSame(201);
+
+            // Le gestionnaire saisit sans valider : la validation en lot lui est fermée.
+            $this->connecter($client, 'coord@example.test');
             $client->request('GET', '/api/v1/budget/a-valider');
             $depenses = $this->corps($client)['depenses'];
             self::assertCount(3, $depenses);
             $uuids = array_column($depenses, 'uuid');
-
-            // Le RSE détient le droit de valider, mais pas sur ses propres saisies.
+            $this->connecter($client, 'gestion@example.test');
             $client->request('POST', '/api/v1/depenses/valider-lot', server: ['CONTENT_TYPE' => 'application/json'], content: json_encode(['depenses' => $uuids], \JSON_THROW_ON_ERROR));
-            $lot = $this->corps($client);
-            self::assertSame(0, $lot['validees']);
-            self::assertCount(3, array_filter($lot['refus'], static fn (array $r) => str_contains($r['motif'], 'a saisi la dépense')));
+            self::assertResponseStatusCodeSame(403);
 
             // Le coordonnateur valide OP-1 ; OP-2 dépasserait l'engagé, OP-4 attend son engagement.
             $this->connecter($client, 'coord@example.test');
@@ -182,6 +182,75 @@ final class ImportBudgetHttpTest extends WebTestCase
             self::assertNotNull($op1);
             self::assertSame(StatutEcriture::VALIDE, $op1->getStatut());
             self::assertSame($engagements['BC-1']->getId(), $op1->getEngagement()->getId());
+        } finally {
+            $this->rollback();
+        }
+    }
+
+    /**
+     * Décision du 28/10/2026 : le RSE valide, mais n'a pas besoin d'être
+     * validé. Ses engagements et dépenses sont validés dès la saisie, plafond
+     * compris ; ce qu'il importe, il le valide lui-même. Les autres profils
+     * ne changent pas : le gestionnaire saisit en brouillon, l'administrateur
+     * ne valide toujours pas ce qu'il a saisi.
+     */
+    public function testLeRseNAPasBesoinDEtreValide(): void
+    {
+        [$client, $f] = $this->demarrer();
+
+        try {
+            $activite = $f['activite']->getUuid()->toRfc4122();
+            $annee = $f['annee'];
+            $engagement = fn (int $montant, string $reference): string => json_encode([
+                'activite' => $activite, 'exercice' => $annee, 'nature' => 'fournitures', 'montant' => $montant,
+                'dateEngagement' => "{$annee}-03-15", 'referenceMarche' => $reference,
+            ], \JSON_THROW_ON_ERROR);
+            $json = ['CONTENT_TYPE' => 'application/json'];
+
+            $this->connecter($client, 'rse@example.test');
+            $client->request('POST', '/api/v1/engagements', server: $json, content: $engagement(4_000_000, 'RSE-1'));
+            self::assertResponseStatusCodeSame(201);
+            $saisi = $this->corps($client);
+            self::assertSame('valide', $saisi['statut'], 'Validé dès la saisie.');
+
+            // Au-delà de la dotation (10 M, dont 4 M déjà engagés), rien n'est créé.
+            $client->request('POST', '/api/v1/engagements', server: $json, content: $engagement(7_000_000, 'RSE-2'));
+            self::assertResponseStatusCodeSame(422);
+            self::assertNull($this->em->getRepository(Engagement::class)->findOneBy(['referenceMarche' => 'RSE-2']), 'Refusé en entier, pas laissé en brouillon.');
+
+            // Dépense sur son engagement validé : validée elle aussi.
+            $client->request('POST', '/api/v1/depenses', server: $json, content: json_encode([
+                'engagement' => $saisi['uuid'], 'montant' => 1_000_000, 'dateDepense' => "{$annee}-04-30", 'referencePaiement' => 'OP-RSE',
+            ], \JSON_THROW_ON_ERROR));
+            self::assertResponseStatusCodeSame(201);
+            self::assertSame('valide', $this->corps($client)['statut']);
+
+            // Ce qu'il importe arrive en brouillon ; il le valide lui-même.
+            $client->request('POST', '/api/v1/imports/engagements', parameters: ['confirmer' => '1'], files: ['fichier' => $this->classeur([
+                self::ENTETES_ENGAGEMENTS,
+                ['9.1.1', 'RSE-3', 'Fournitures', '1000000', "15/03/{$annee}", '', ''],
+            ])]);
+            self::assertResponseStatusCodeSame(201);
+            $importe = $this->em->getRepository(Engagement::class)->findOneBy(['referenceMarche' => 'RSE-3']);
+            self::assertNotNull($importe);
+            self::assertSame(StatutEcriture::BROUILLON, $importe->getStatut());
+            $client->request('POST', '/api/v1/engagements/valider-lot', server: $json, content: json_encode(['engagements' => [$importe->getUuid()->toRfc4122()]], \JSON_THROW_ON_ERROR));
+            self::assertSame(1, $this->corps($client)['validees']);
+
+            // Le gestionnaire budgétaire : toujours en brouillon.
+            $this->connecter($client, 'gestion@example.test');
+            $client->request('POST', '/api/v1/engagements', server: $json, content: $engagement(100_000, 'GEST-1'));
+            self::assertResponseStatusCodeSame(201);
+            self::assertSame('brouillon', $this->corps($client)['statut']);
+
+            // L'administrateur saisit et valide, mais jamais sa propre saisie.
+            $this->connecter($client, 'admin@example.test');
+            $client->request('POST', '/api/v1/engagements', server: $json, content: $engagement(100_000, 'ADM-1'));
+            self::assertResponseStatusCodeSame(201);
+            $admin = $this->corps($client);
+            self::assertSame('brouillon', $admin['statut']);
+            $client->request('POST', '/api/v1/engagements/'.$admin['uuid'].'/valider');
+            self::assertResponseStatusCodeSame(422);
         } finally {
             $this->rollback();
         }
@@ -278,6 +347,7 @@ final class ImportBudgetHttpTest extends WebTestCase
             'gestion' => ['gestionnaire_budgetaire', null],
             'rse' => ['responsable_suivi_evaluation', null],
             'coord' => ['coordonnateur', null],
+            'admin' => ['administrateur', null],
             'focal' => ['point_focal_structure', $structure],
         ] as $nom => [$codeRole, $portee]) {
             $u = new Utilisateur($nom.'@example.test', 'temp', 'Test', $nom);

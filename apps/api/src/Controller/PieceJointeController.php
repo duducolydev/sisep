@@ -43,8 +43,15 @@ final class PieceJointeController
     ) {
     }
 
+    /**
+     * Formats ouverts dans le navigateur avec `?apercu=1` (consulter un
+     * rapport transmis sans le télécharger). Jamais de HTML ni de SVG : un
+     * fichier déposé s'y exécuterait sous l'origine de SISEP.
+     */
+    private const APERCU_POSSIBLE = ['application/pdf', 'image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+
     #[Route('/pieces-jointes/{uuid}/telecharger', name: 'app_piece_jointe_telecharger', methods: ['GET'], requirements: ['uuid' => '[0-9a-fA-F-]{36}'])]
-    public function telecharger(string $uuid): Response
+    public function telecharger(string $uuid, Request $request): Response
     {
         $uuidObjet = $this->uuidOuNull($uuid);
         $piece = null !== $uuidObjet ? $this->piecesJointes->findOneBy(['uuid' => $uuidObjet]) : null;
@@ -68,7 +75,10 @@ final class PieceJointeController
 
         $reponse = new BinaryFileResponse($chemin);
         $reponse->headers->set('Content-Type', $piece->getMime());
-        $reponse->setContentDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT, $piece->getNomFichier());
+        // Le type déclaré au dépôt fait foi : le navigateur ne le devine pas.
+        $reponse->headers->set('X-Content-Type-Options', 'nosniff');
+        $apercu = $request->query->getBoolean('apercu') && \in_array($piece->getMime(), self::APERCU_POSSIBLE, true);
+        $reponse->setContentDisposition($apercu ? ResponseHeaderBag::DISPOSITION_INLINE : ResponseHeaderBag::DISPOSITION_ATTACHMENT, $piece->getNomFichier());
 
         return $reponse;
     }

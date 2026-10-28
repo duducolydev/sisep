@@ -24,8 +24,9 @@ export function MesRapports() {
         <p className="font-titre text-eyebrow uppercase tracking-wide">Reporting trimestriel</p>
         <h1 className="text-2xl">Mes rapports</h1>
         <p className="text-muted">
-          Rapports périodiques attendus de votre structure. Cliquez sur « Transmettre » et choisissez le fichier du rapport
-          (10 Mo au plus) : l'UGP le retrouve aussitôt dans le suivi des parties prenantes.
+          Rapports périodiques attendus de votre structure. Cliquez sur « Transmettre », choisissez le fichier du rapport
+          (10 Mo au plus) et vérifiez-le dans l'aperçu avant de confirmer : l'UGP le retrouve aussitôt dans le suivi des
+          parties prenantes. Un rapport transmis se rouvre par « Voir ».
         </p>
       </div>
 

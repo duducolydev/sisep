@@ -41,6 +41,8 @@ interface LigneAValider {
 export function EcrituresAValider() {
   const peutValiderEngagements = usePeut('budget.engagement.valider')
   const peutValiderDepenses = usePeut('budget.depense.valider')
+  // Le RSE valide aussi ce qu'il a lui-même saisi ou importé (décision du 28/10/2026).
+  const valideSesSaisies = usePeut('budget.validation_directe')
   const { data: moi } = useUtilisateurCourant()
   const { data } = useQuery(ecrituresAValiderQueryOptions(peutValiderEngagements || peutValiderDepenses))
   const afficherToast = useToast()
@@ -76,7 +78,7 @@ export function EcrituresAValider() {
           date: d.date,
           saisiPar: d.saisiPar,
         }))
-  const eligibles = lignes.filter((l) => l.saisiPar.uuid !== moi?.uuid)
+  const eligibles = lignes.filter((l) => valideSesSaisies || l.saisiPar.uuid !== moi?.uuid)
   const toutesCochees = eligibles.length > 0 && eligibles.every((l) => selection.has(l.uuid))
 
   function changerOnglet(nouveau: Onglet) {
@@ -130,7 +132,8 @@ export function EcrituresAValider() {
         <div>
           <h2 className="text-lg font-semibold">Écritures à valider</h2>
           <p className="text-sm text-muted">
-            En brouillon, saisies ou importées. Le plafond est contrôlé à la validation ; vos propres saisies sont validées par une autre personne.
+            En brouillon, saisies ou importées. Le plafond est contrôlé à la validation ;{' '}
+            {valideSesSaisies ? 'vous pouvez valider vos propres saisies.' : 'vos propres saisies sont validées par une autre personne.'}
           </p>
         </div>
         <div className="flex gap-0.5 rounded-[var(--radius-controle)] bg-nested p-0.5 text-sm" role="group" aria-label="Type d'écriture">
@@ -197,16 +200,17 @@ export function EcrituresAValider() {
             <tbody>
               {lignes.map((l) => {
                 const sienne = l.saisiPar.uuid === moi?.uuid
+                const bloquee = sienne && !valideSesSaisies
 
                 return (
-                  <tr key={l.uuid} className={`border-b border-border last:border-0 ${sienne ? 'text-muted' : 'hover:bg-hover'}`}>
+                  <tr key={l.uuid} className={`border-b border-border last:border-0 ${bloquee ? 'text-muted' : 'hover:bg-hover'}`}>
                     <td className="px-4 py-2.5">
                       <input
                         type="checkbox"
                         aria-label={`Sélectionner ${l.reference}`}
                         checked={selection.has(l.uuid)}
-                        disabled={sienne}
-                        title={sienne ? 'Saisie par vous : une autre personne la valide.' : undefined}
+                        disabled={bloquee}
+                        title={bloquee ? 'Saisie par vous : une autre personne la valide.' : undefined}
                         onChange={() => basculer(l.uuid)}
                       />
                     </td>

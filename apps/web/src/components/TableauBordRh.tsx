@@ -1,5 +1,6 @@
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { COULEURS_SEXE, LIBELLES_SEXE, compterPar, type EffectifEnqueteurs, type Personnel } from '@/lib/rh'
+import { GraphiqueExportable } from './GraphiqueExportable'
 
 interface TableauBordRhProps {
   personnels: Personnel[]
@@ -46,22 +47,22 @@ export function TableauBordRh({ personnels, effectifs }: TableauBordRhProps) {
       <section>
         <h2 className="mb-1 text-lg font-semibold">Personnel technique par profil</h2>
         <p className="mb-3 text-sm text-muted">Diplôme ou corps déclaré pour chaque agent.</p>
-        <div className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
+        <GraphiqueExportable titre="Personnel technique par profil" className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
           <GraphiqueComptage donnees={parProfil} vide="Aucun profil renseigné pour le moment." />
-        </div>
+        </GraphiqueExportable>
       </section>
 
       <section>
         <h2 className="mb-1 text-lg font-semibold">Personnel technique par spécialité</h2>
-        <div className="mt-3 rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
+        <GraphiqueExportable titre="Personnel technique par spécialité" className="mt-3 rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
           <GraphiqueComptage donnees={parSpecialite} vide="Aucune spécialité renseignée pour le moment." />
-        </div>
+        </GraphiqueExportable>
       </section>
 
       <section>
         <h2 className="mb-1 text-lg font-semibold">Enquêteurs par opération</h2>
         <p className="mb-3 text-sm text-muted">Effectifs agrégés, désagrégés par sexe.</p>
-        <div className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
+        <GraphiqueExportable titre="Enquêteurs par opération" className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
           {parOperation.length === 0 ? (
             <p className="text-muted">Aucun effectif d'enquêteurs renseigné pour le moment.</p>
           ) : (
@@ -95,12 +96,12 @@ export function TableauBordRh({ personnels, effectifs }: TableauBordRhProps) {
               </ResponsiveContainer>
             </div>
           )}
-        </div>
+        </GraphiqueExportable>
       </section>
 
       <section>
         <h2 className="mb-3 text-lg font-semibold">Répartition par sexe</h2>
-        <div className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
+        <GraphiqueExportable titre="Répartition par sexe" className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
           <ul className="flex flex-col gap-3">
             {(['F', 'M'] as const).map((sexe) => {
               const effectif = sexe === 'F' ? femmes + enqueteursFemmes : hommes + enqueteursHommes
@@ -123,7 +124,7 @@ export function TableauBordRh({ personnels, effectifs }: TableauBordRhProps) {
               )
             })}
           </ul>
-        </div>
+        </GraphiqueExportable>
       </section>
     </div>
   )

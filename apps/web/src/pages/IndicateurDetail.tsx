@@ -31,6 +31,7 @@ import { Bouton } from '@/components/Bouton'
 import { IconeBouton, IconeTrombone, IconeAnnuler, IconeModifier, IconePlus, IconeInviter, IconeValider } from '@/components/Icones'
 import { ModifierPieceJointeModale } from '@/components/ModifierPieceJointeModale'
 import { BoutonExporter } from '@/components/BoutonExporter'
+import { GraphiqueExportable } from '@/components/GraphiqueExportable'
 
 function formaterTaille(octets: number): string {
   if (octets < 1024) return `${octets} o`
@@ -187,7 +188,7 @@ export function IndicateurDetail() {
           </div>
         </dl>
 
-        <div className="mt-4 rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
+        <GraphiqueExportable titre={`${indicateur.code} — référence, valeur actuelle et objectifs`} sousTitre={indicateur.libelle} className="mt-4 rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
           <BarresObjectifsIndicateur
             valeurReference={indicateur.valeurReference}
             actuel={affiche.valeur}
@@ -196,12 +197,12 @@ export function IndicateurDetail() {
             valeurCible={indicateur.valeurCible}
             unite={indicateur.unite}
           />
-        </div>
+        </GraphiqueExportable>
       </section>
 
       <section>
         <h2 className="mb-2 text-lg font-semibold">Évolution</h2>
-        <div className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
+        <GraphiqueExportable titre={`${indicateur.code} — évolution`} sousTitre={indicateur.libelle} className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
           {valeurs === undefined ? (
             <Squelette lignes={3} />
           ) : (
@@ -213,7 +214,7 @@ export function IndicateurDetail() {
               dateCible={indicateur.dateCible}
             />
           )}
-        </div>
+        </GraphiqueExportable>
       </section>
 
       {peutInviter && (

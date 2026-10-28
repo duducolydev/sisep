@@ -24,7 +24,11 @@ Vite + TypeScript (`apps/web`), monorepo pnpm (`packages/shared`).
   `administrateur` et `responsable_suivi_evaluation` cumulent les deux.
   Trois contreparties, toutes en place : le serveur refuse qu'une même
   personne valide l'écriture qu'elle a saisie, quelles que soient ses
-  permissions (`DepenseValidationService`, `EngagementValidationService`) ;
+  permissions (`DepenseValidationService`, `EngagementValidationService`)
+  — **sauf** `budget.validation_directe`, accordée au seul RSE par décision
+  du 28/10/2026 (jamais à l'administrateur) : ses engagements et dépenses
+  sont validés dès la saisie, plafond contrôlé sous le même verrou
+  (`enregistrerValide()`), et il valide lui-même ce qu'il importe ;
   `journal_activite` intercepte toute écriture sur dotations, engagements et
   dépenses avec l'état avant et après ; et ce fil est consultable depuis
   l'écran du budget (`GET /journal/budget`), pas seulement dans

@@ -25,7 +25,9 @@ use Symfony\Component\Security\Core\Exception\AccessDeniedException;
  * Les engagements arrivent **en brouillon**, au nom de la personne qui
  * importe : ils passent ensuite par la validation, qui contrôle le plafond
  * de la dotation sous verrou (§ 5.1) et refuse que l'importateur valide ses
- * propres lignes (§ 7.2). L'import n'est jamais un raccourci autour de ces
+ * propres lignes (§ 7.2) — sauf le RSE (budget.validation_directe), qui les
+ * valide lui-même, mais en un second temps : un fichier entier se relit
+ * avant d'être validé. L'import n'est jamais un raccourci autour de ces
  * contrôles ; il les annonce seulement à l'aperçu.
  *
  * Un engagement est identifié par sa référence (n° d'engagement ou de
@@ -176,7 +178,7 @@ final class ImportEngagements implements DefinitionImport
                 $engagement->setObservations($observations);
                 $this->em->persist($engagement);
             };
-            $verdicts[] = new LigneImport($numero, $libelle, LigneImport::CREATION, ['Créé en brouillon : à valider par une autre personne.', ...$messages], $application);
+            $verdicts[] = new LigneImport($numero, $libelle, LigneImport::CREATION, ['Créé en brouillon : à valider dans « Écritures à valider » (page Budget).', ...$messages], $application);
         }
 
         return $verdicts;

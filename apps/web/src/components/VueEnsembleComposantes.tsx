@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { progressionComposante, type NoeudComposante } from '@/lib/composantes'
 import { formaterFcfa, formaterMds, formaterTaux } from '@/lib/format'
+import { GraphiqueExportable } from './GraphiqueExportable'
 
 interface VueEnsembleComposantesProps {
   composantes: NoeudComposante[]
@@ -299,11 +300,11 @@ function Valeur({ libelle, valeur }: { libelle: string; valeur: string }) {
 
 function Carte({ titre, sousTitre, children }: { titre: string; sousTitre: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
-      <h2 className="text-base font-semibold">{titre}</h2>
+    <GraphiqueExportable titre={titre} titreDansLeCadre className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
+      <h2 className="pr-20 text-base font-semibold">{titre}</h2>
       <p className="mb-3 text-xs text-muted">{sousTitre}</p>
       {children}
-    </div>
+    </GraphiqueExportable>
   )
 }
 

@@ -148,7 +148,7 @@ final class ImportDepenses implements DefinitionImport
                 continue;
             }
 
-            $messages = ['Créée en brouillon : à valider par une autre personne.'];
+            $messages = ['Créée en brouillon : à valider dans « Écritures à valider » (page Budget).'];
             if (StatutEcriture::BROUILLON === $engagement->getStatut()) {
                 $messages[] = 'L\'engagement n\'est pas encore validé : cette dépense ne pourra être validée qu\'après lui.';
             }

@@ -26,6 +26,7 @@ import { IconePlus, IconeRecherche, IconeComposante, IconeVueCartes, IconeVueTab
 import { BoutonExporter } from '@/components/BoutonExporter'
 import { Squelette } from '@/components/Squelette'
 import { formaterTaux } from '@/lib/format'
+import { GraphiqueExportable } from '@/components/GraphiqueExportable'
 
 type Vue = 'cartes' | 'tableau' | 'kanban'
 
@@ -206,30 +207,30 @@ export function Initiatives() {
           </section>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <div className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
-              <p className="mb-3 text-sm font-semibold">Répartition des activités par statut</p>
+            <GraphiqueExportable titre="Répartition des activités par statut" titreDansLeCadre className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
+              <p className="mb-3 pr-20 text-sm font-semibold">Répartition des activités par statut</p>
               <RepartitionStatutsInitiatives statuts={activitesFiltrees.map((a) => a.statut)} />
-            </div>
-            <div className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
-              <p className="mb-3 text-sm font-semibold">Tâches par progression</p>
+            </GraphiqueExportable>
+            <GraphiqueExportable titre="Tâches par progression" titreDansLeCadre className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
+              <p className="mb-3 pr-20 text-sm font-semibold">Tâches par progression</p>
               <ProgressionParTache taches={tachesFiltrees} />
-            </div>
-            <div className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
-              <p className="mb-3 text-sm font-semibold">Progression par activité</p>
+            </GraphiqueExportable>
+            <GraphiqueExportable titre="Progression par activité" titreDansLeCadre className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
+              <p className="mb-3 pr-20 text-sm font-semibold">Progression par activité</p>
               <ProgressionParActivite activites={activitesFiltrees} />
-            </div>
-            <div className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
-              <p className="mb-3 text-sm font-semibold">Progression par projet</p>
+            </GraphiqueExportable>
+            <GraphiqueExportable titre="Progression par projet" titreDansLeCadre className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
+              <p className="mb-3 pr-20 text-sm font-semibold">Progression par projet</p>
               <ProgressionParProjet projets={projetsFiltres} />
-            </div>
-            <div className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
-              <p className="mb-3 text-sm font-semibold">Répartition des tâches par statut</p>
+            </GraphiqueExportable>
+            <GraphiqueExportable titre="Répartition des tâches par statut" titreDansLeCadre className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
+              <p className="mb-3 pr-20 text-sm font-semibold">Répartition des tâches par statut</p>
               <RepartitionStatutsInitiatives statuts={statutsTaches} />
-            </div>
-            <div className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
-              <p className="mb-3 text-sm font-semibold">Charge par responsable</p>
+            </GraphiqueExportable>
+            <GraphiqueExportable titre="Charge par responsable" titreDansLeCadre className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
+              <p className="mb-3 pr-20 text-sm font-semibold">Charge par responsable</p>
               <ChargeParResponsable activites={activitesFiltrees} />
-            </div>
+            </GraphiqueExportable>
           </div>
 
           <div

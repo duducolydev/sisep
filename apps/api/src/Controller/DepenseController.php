@@ -81,8 +81,19 @@ final class DepenseController
         );
         $depense->setReferencePaiement($donnees->referencePaiement);
 
-        $this->em->persist($depense);
-        $this->em->flush();
+        // Le RSE (budget.validation_directe) : dépense validée dès la saisie
+        // si son engagement l'est déjà ; sinon elle attend en brouillon que
+        // l'engagement soit validé.
+        if (
+            $this->validationService->valideDirectement($utilisateur)
+            && $this->security->isGranted('budget.depense.valider', $engagement->getCible())
+            && StatutEcriture::VALIDE === $engagement->getStatut()
+        ) {
+            $this->validationService->enregistrerValide($depense, $utilisateur);
+        } else {
+            $this->em->persist($depense);
+            $this->em->flush();
+        }
 
         return new JsonResponse($this->normalizer->normaliser($depense), 201);
     }

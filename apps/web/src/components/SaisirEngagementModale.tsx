@@ -6,6 +6,7 @@ import { Modale } from './Modale'
 import { creerEngagement, NATURES_ENGAGEMENT as NATURES } from '@/lib/budget'
 import { ApiError } from '@/lib/api-client'
 import { queryClient } from '@/lib/query-client'
+import { usePeut } from '@/lib/use-permissions'
 
 const schema = z.object({
   exercice: z.coerce.number().int().min(2000).max(2100),
@@ -28,6 +29,8 @@ interface SaisirEngagementModaleProps {
 
 export function SaisirEngagementModale({ cible, activiteUuid, exerciceParDefaut, onFermer }: SaisirEngagementModaleProps) {
   const [erreur, setErreur] = useState<string | null>(null)
+  // Le RSE n'a pas besoin d'être validé (décision du 28/10/2026).
+  const valideSesSaisies = usePeut('budget.validation_directe')
 
   const {
     register,
@@ -52,6 +55,11 @@ export function SaisirEngagementModale({ cible, activiteUuid, exerciceParDefaut,
 
   return (
     <Modale titre="Saisir un engagement" onFermer={onFermer}>
+      {valideSesSaisies && (
+        <p className="mb-4 rounded-[var(--radius-controle)] bg-accent-bg px-3 py-2 text-sm text-accent-d">
+          Votre engagement sera validé dès l'enregistrement, après contrôle du plafond de la dotation.
+        </p>
+      )}
       {erreur && (
         <div role="alert" className="mb-4 rounded-[var(--radius-controle)] bg-bad-bg px-4 py-3 text-bad">
           {erreur}

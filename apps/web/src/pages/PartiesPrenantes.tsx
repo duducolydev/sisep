@@ -101,7 +101,7 @@ export function PartiesPrenantes() {
           <p className="font-titre text-eyebrow uppercase tracking-wide">Réseau du projet</p>
           <h1 className="text-2xl">Parties prenantes et points focaux</h1>
           <p className="text-muted">
-            Directions et cellules de l'ANSD, partenaires nationaux et techniques, école de formation et bailleur — § 2.5.
+            Directions et cellules de l'ANSD, partenaires nationaux et techniques, école de formation et bailleur.
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-3">
