@@ -6,7 +6,10 @@ framework:
     # Cookie httpOnly + Secure + SameSite=Lax, durée 8 h glissante (§ 7.1 du
     # brief). cookie_secure: auto n'active Secure que sur une requête HTTPS —
     # nécessaire en dev/Docker où l'API tourne en clair, sans affaiblir la
-    # prod dès qu'elle est servie derrière TLS.
+    # prod dès qu'elle est servie derrière TLS. En production, TLS s'arrête
+    # au frontal : la requête n'est reconnue HTTPS que parce que
+    # SYMFONY_TRUSTED_PROXIES (docker-compose.prod.yml) fait lire
+    # X-Forwarded-Proto.
     session:
         cookie_httponly: true
         cookie_secure: auto

@@ -1,7 +1,8 @@
 # SISEP — Mise en production
 
-Mode opératoire pour installer SISEP sur le serveur `10.7.200.41`, exposé en
-HTTP sur le réseau interne de l'ANSD.
+Mode opératoire pour installer SISEP sur le serveur `10.7.200.41`, servi en
+HTTPS à l'adresse `https://sisephasaoc.ansd.sn` sur le réseau interne de
+l'ANSD.
 
 Cette procédure a été répétée en local sur la même composition et les mêmes
 images : migrations, amorçage, import des trois classeurs, connexion et
@@ -11,13 +12,22 @@ lecture de l'arbre. Ce qui suit n'est donc pas théorique.
 
 ## 0. Ce que vous installez
 
-Trois conteneurs, **un seul port publié** :
+Trois conteneurs, **aucun port ouvert sur le réseau** :
 
 | Service | Rôle | Exposition |
 |---|---|---|
-| `web` | nginx — sert le front compilé et relaie `/api/` vers PHP-FPM | port de l'hôte (8080 par défaut) |
+| `web` | nginx — sert le front compilé et relaie `/api/` vers PHP-FPM | réseau du frontal (nom `sisep-web`) ; `127.0.0.1:8080` pour les vérifications |
 | `api` | PHP-FPM 8.3, `APP_ENV=prod`, code figé dans l'image | réseau interne uniquement |
 | `db` | MySQL 8, volume nommé | réseau interne uniquement |
+
+Les utilisateurs n'atteignent pas `web` directement. Sur ce serveur, les
+ports 80 et 443 appartiennent au **nginx du forum** (conteneur
+`forum-ansd-nginx-1`), qui détient le certificat `*.ansd.sn`. Il termine
+TLS et relaie `sisephasaoc.ansd.sn` vers `web` par le réseau Docker de la
+composition du forum, auquel `web` se raccorde. Ce nginx appartient au
+forum : le bloc qui relaie SISEP vit donc dans le dépôt du forum
+(`docker/nginx-sisephasaoc.conf`, monté par son `docker-compose.prod.yml`),
+avec le reste de sa configuration (§ 4).
 
 Le front et l'API partagent la même origine. Il n'y a donc **aucun CORS à
 configurer**, et le cookie de session reste first-party. La base n'est
@@ -28,12 +38,16 @@ joignable d'aucune machine du réseau : pour l'inspecter, passer par
 
 ```bash
 docker --version && docker compose version   # Docker Engine + plugin compose
-sudo ss -ltnp | grep -E ':(8080|80|443)\s'   # quel port est libre ?
+sudo ss -ltnp | grep -E ':8080\s'            # le port de vérification est-il libre ?
+docker ps --format '{{.Names}}\t{{.Ports}}' | grep -E ':(80|443)->'   # le frontal
+docker inspect forum-ansd-nginx-1 --format '{{range $k, $v := .NetworkSettings.Networks}}{{println $k}}{{end}}'
 ```
 
-Le serveur héberge déjà `forum-ansd`. Si le port 8080 est pris, en choisir un
-autre à l'étape suivante : rien dans cette installation ne touche aux
-services existants.
+Le serveur héberge déjà le forum (composition `forum-ansd`). Son conteneur
+nginx tient 80 et 443 ; le nginx du système est arrêté et doit le rester,
+il se disputerait les mêmes ports. La dernière commande donne le nom du
+réseau du frontal, à reporter dans `SISEP_RESEAU_FRONTAL` à l'étape
+suivante. Si le port 8080 est pris, en choisir un autre.
 
 ## 2. Déposer le code
 
@@ -62,10 +76,11 @@ Cinq valeurs sont obligatoires, le déploiement refuse de démarrer sans elles.
 | `MYSQL_PASSWORD` | `openssl rand -base64 24` |
 | `MYSQL_ROOT_PASSWORD` | `openssl rand -base64 24`, différent du précédent |
 | `APP_SECRET` | `openssl rand -hex 32` |
-| `APP_URL_WEB` | `http://10.7.200.41:8080` — repris tel quel dans les liens des courriels |
+| `APP_URL_WEB` | `https://sisephasaoc.ansd.sn` — repris tel quel dans les liens des courriels |
 | `ADMIN_EMAIL` | l'adresse du premier administrateur |
 
-`SISEP_PORT` si 8080 n'est pas libre. `MAILER_DSN` reste à `null://null` tant
+`SISEP_RESEAU_FRONTAL` si le réseau du frontal ne s'appelle pas
+`forum-ansd_default` (§ 1). `SISEP_PORT` si 8080 n'est pas libre. `MAILER_DSN` reste à `null://null` tant
 que le SMTP n'est pas arrêté : l'application fonctionne, les courriels
 partent simplement nulle part.
 
@@ -84,7 +99,37 @@ il reconstruit et migre sans retoucher aux données.
 écrit nulle part et ne sera pas réaffiché. L'application en exigera un
 nouveau à la première connexion.
 
-Ouvrir ensuite `http://10.7.200.41:8080`.
+### Raccorder SISEP au frontal (une seule fois)
+
+Tant que ce n'est pas fait, `sisephasaoc.ansd.sn` affiche le forum : le
+nginx du forum ne connaît pas ce nom et le sert par son bloc par défaut.
+
+Le bloc de SISEP est dans le dépôt du forum (`docker/nginx-sisephasaoc.conf`,
+§ 5.10 de son `docs/DEPLOIEMENT.md`). Le forum monte ses fichiers nginx un par
+un, et non par dossier : prendre en compte un fichier de plus demande de
+**recréer** son conteneur nginx, ce qui coupe le portail une à deux secondes.
+Un simple rechargement ne suffit pas. Le faire à une heure creuse, et jamais
+pendant le Forum (23-25 novembre 2026).
+
+```bash
+cd /opt/forum-ansd
+git pull --ff-only
+# 1. Valider la configuration complète dans un conteneur jetable : le nginx
+#    en service n'est pas touché, et un échec ici ne coûte rien au portail.
+docker compose -f docker-compose.prod.yml run --rm --no-deps nginx nginx -t
+# 2. Recréer nginx : Compose voit le nouveau montage et remplace le conteneur.
+docker compose -f docker-compose.prod.yml up -d nginx
+curl -s -o /dev/null -w '%{http_code}\n' https://forum2026.ansd.sn/   # 200 : le portail répond
+```
+
+Ouvrir ensuite `https://sisephasaoc.ansd.sn`.
+
+Sur une installation déjà servie par `http://10.7.200.41:8080`, faire ce
+raccordement **avant** de relancer `deploy/deployer.sh` : l'ancienne adresse
+reste ouverte jusqu'au redéploiement, et `sisephasaoc.ansd.sn` répond 502 en
+attendant, sans que le portail en souffre. Après le redéploiement, l'ancienne
+adresse ne répond plus depuis le réseau : le port n'est publié que sur la
+boucle locale du serveur.
 
 ## 5. Vérifier
 
@@ -92,8 +137,15 @@ Ouvrir ensuite `http://10.7.200.41:8080`.
 docker compose -f docker-compose.prod.yml ps          # trois services « Up », db « healthy »
 curl -s -o /dev/null -w '%{http_code}\n' http://localhost:8080/           # 200
 curl -s -o /dev/null -w '%{http_code}\n' http://localhost:8080/api/v1/projets/courant  # 401 sans session : normal
+curl -s -o /dev/null -w '%{http_code}\n' https://sisephasaoc.ansd.sn/api/v1/projets/courant  # 401 : le frontal relaie
+curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' http://sisephasaoc.ansd.sn/       # 301 vers https://sisephasaoc…
 docker compose -f docker-compose.prod.yml logs -f api
 ```
+
+Après une première connexion, le cookie de session doit porter l'attribut
+`Secure` (outils de développement du navigateur › Application › Cookies).
+S'il ne le porte pas, l'API ne lit pas les en-têtes du frontal : vérifier
+`SYMFONY_TRUSTED_PROXIES` dans `docker-compose.prod.yml`.
 
 À l'issue d'une installation neuve, la base contient : 4 composantes, 11
 sous-composantes, 26 activités, 71 sous-activités, 49 dotations pour
@@ -216,5 +268,13 @@ chaque déploiement.
 - **Créer les comptes** des agents de l'UGP et leur attribuer leurs rôles.
 - **Compléter le classeur des contacts** : trois agents sans sexe et six
   opérations non rattachées au PTBA sont signalés par les imports.
-- **HTTPS**, le jour où le service sortira du réseau interne. Le cookie de
-  session passera en `Secure` automatiquement, sans changement de code.
+- **Renouveler le certificat `*.ansd.sn` avant le 20/11/2026.** Il est
+  commun au forum et à SISEP, et c'est la DSI qui le gère. Une fois les
+  fichiers remplacés, un `nginx -s reload` du frontal suffit aux deux sites.
+  Le frontal annonce HSTS : un certificat expiré bloque l'accès, sans
+  possibilité de passer outre.
+- **Accès hors du réseau de l'ANSD.** `sisephasaoc.ansd.sn` n'existe que
+  dans le DNS interne : un point focal hors du réseau ne l'atteint pas.
+  L'ouvrir demande un enregistrement DNS public et un renvoi du port 443 vers
+  `10.7.200.41` (DSI). Avant cela, il faudra ajouter une limitation des
+  tentatives de connexion, absente aujourd'hui.

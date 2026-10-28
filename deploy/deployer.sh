@@ -53,6 +53,14 @@ for variable in APP_SECRET MYSQL_PASSWORD MYSQL_ROOT_PASSWORD APP_URL_WEB; do
     [ -n "$(valeur_env "$variable")" ] || echec "$variable n'est pas renseignée dans .env."
 done
 
+# Le service web se raccorde au réseau du nginx frontal (celui du forum).
+# Ce réseau appartient à une autre composition : s'il manque, compose
+# échouerait au démarrage, une fois les images déjà reconstruites.
+RESEAU_FRONTAL=$(valeur_env SISEP_RESEAU_FRONTAL)
+RESEAU_FRONTAL=${RESEAU_FRONTAL:-forum-ansd_default}
+docker network inspect "$RESEAU_FRONTAL" >/dev/null 2>&1 \
+    || echec "Réseau Docker « $RESEAU_FRONTAL » introuvable. C'est celui du nginx frontal du forum : vérifier qu'il tourne, ou corriger SISEP_RESEAU_FRONTAL dans .env (docker network ls)."
+
 MYSQL_ROOT_PASSWORD=$(valeur_env MYSQL_ROOT_PASSWORD)
 APP_URL_WEB=$(valeur_env APP_URL_WEB)
 PORT=$(valeur_env SISEP_PORT)

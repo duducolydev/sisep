@@ -1,8 +1,12 @@
 # Composition de production de SISEP.
 #
-# Trois services, un seul port publié : nginx sert le front et relaie l'API,
-# PHP-FPM et MySQL ne sont joignables que depuis le réseau interne de la
-# composition. Un seul port exposé, c'est aussi une seule chose à surveiller.
+# Trois services : nginx sert le front et relaie l'API, PHP-FPM et MySQL ne
+# sont joignables que depuis le réseau interne de la composition. Les
+# utilisateurs n'atteignent pas nginx directement : sur ce serveur, les ports
+# 80 et 443 appartiennent au nginx frontal du forum (composition forum-ansd),
+# qui termine TLS pour *.ansd.sn et relaie sisephasaoc.ansd.sn jusqu'ici par
+# un réseau Docker commun. Le bloc qui le fait vit dans le dépôt du forum,
+# avec le reste de la configuration de ce nginx : docker/nginx-sisephasaoc.conf.
 #
 # Tous les secrets viennent de .env, jamais de ce fichier : il est versionné,
 # .env ne l'est pas. Voir .env.prod.example et docs/deploiement-production.md.
@@ -41,6 +45,14 @@ services:
       # Front et API partagent l'origine : le navigateur n'émet aucune
       # requête inter-origine, et cette liste n'a donc rien à autoriser.
       CORS_ALLOW_ORIGIN: ${CORS_ALLOW_ORIGIN:-^$$}
+      # TLS s'arrête au frontal : PHP ne reçoit que du HTTP et ne sait qu'il
+      # sert du HTTPS, et pour qui, que par les en-têtes X-Forwarded-* du
+      # frontal. Sans cette confiance, le cookie de session part sans Secure
+      # et le journal inscrit l'adresse du frontal pour tout le monde.
+      # Faire confiance à l'appelant direct est sûr ici parce que web n'est
+      # joignable que par le frontal et par la boucle locale du serveur : un
+      # poste du réseau ne peut pas forger ces en-têtes.
+      SYMFONY_TRUSTED_PROXIES: REMOTE_ADDR
       # Adresse publique du service, utilisée dans les courriels.
       APP_URL_WEB: ${APP_URL_WEB:?adresse publique requise dans .env}
       MAILER_DSN: ${MAILER_DSN:-null://null}
@@ -65,11 +77,27 @@ services:
       dockerfile: apps/web/Dockerfile.prod
     restart: unless-stopped
     ports:
-      # Port de l'hôte paramétrable : 80 est probablement déjà pris par un
-      # autre service de ce serveur. Vérifier avant de démarrer.
-      - "${SISEP_PORT:-8080}:80"
+      # Boucle locale seulement : on entre par le frontal, en HTTPS. Ce port
+      # ne sert qu'aux vérifications depuis le serveur lui-même (curl), et
+      # c'est ce qui rend sûre la confiance accordée par l'API aux en-têtes
+      # X-Forwarded-*.
+      - "127.0.0.1:${SISEP_PORT:-8080}:80"
+    networks:
+      default:
+      frontal:
+        # Nom sous lequel le nginx du forum joint SISEP. Préfixé pour ne pas
+        # entrer en collision avec un service « web » de l'autre composition.
+        aliases: [sisep-web]
     depends_on:
       - api
+
+networks:
+  # Réseau de la composition du forum, qui porte le nginx frontal. Il ne nous
+  # appartient pas : SISEP s'y raccorde sans le créer, et refuse de démarrer
+  # s'il n'existe pas (deploy/deployer.sh le vérifie avant de construire).
+  frontal:
+    external: true
+    name: ${SISEP_RESEAU_FRONTAL:-forum-ansd_default}
 
 volumes:
   sisep_prod_db:
