@@ -38,6 +38,7 @@ export function ModifierUtilisateurModale({ utilisateur, onFermer }: ModifierUti
   const [attributions, setAttributions] = useState(utilisateur.roles.map((r) => ({ role: r.role, structure: r.structure ?? '' })))
   const rolesModifies =
     JSON.stringify(attributions) !== JSON.stringify(utilisateur.roles.map((r) => ({ role: r.role, structure: r.structure ?? '' })))
+  const exigeGlobale = (code: string) => rolesDisponibles?.donnees.find((r) => r.code === code)?.porteeGlobaleExigee ?? false
 
   const {
     register,
@@ -130,7 +131,16 @@ export function ModifierUtilisateurModale({ utilisateur, onFermer }: ModifierUti
               <select
                 aria-label={`Rôle ${index + 1}`}
                 value={a.role}
-                onChange={(e) => setAttributions(attributions.map((x, i) => (i === index ? { ...x, role: e.target.value } : x)))}
+                // Choisir un rôle de tout le projet ramène la portée à « Toutes
+                // les structures ». Seulement sur ce geste : corriger d'office
+                // une attribution existante promouvrait le compte sans que
+                // personne l'ait décidé, au premier enregistrement venu.
+                onChange={(e) => {
+                  const role = e.target.value
+                  setAttributions(
+                    attributions.map((x, i) => (i === index ? { role, structure: exigeGlobale(role) ? '' : x.structure } : x)),
+                  )
+                }}
                 className="min-w-0 flex-1 rounded-[var(--radius-controle)] border border-border px-3 py-2"
               >
                 <option value="">Choisir un rôle…</option>
@@ -144,7 +154,11 @@ export function ModifierUtilisateurModale({ utilisateur, onFermer }: ModifierUti
                 aria-label={`Portée du rôle ${index + 1}`}
                 value={a.structure}
                 onChange={(e) => setAttributions(attributions.map((x, i) => (i === index ? { ...x, structure: e.target.value } : x)))}
-                className="w-40 rounded-[var(--radius-controle)] border border-border px-3 py-2"
+                // Reste ouvert sur une attribution déjà limitée : c'est le
+                // moyen de la corriger.
+                disabled={exigeGlobale(a.role) && a.structure === ''}
+                title={exigeGlobale(a.role) ? "Ce rôle s'attribue sur tout le projet." : undefined}
+                className="w-40 rounded-[var(--radius-controle)] border border-border px-3 py-2 disabled:opacity-50"
               >
                 <option value="">Toutes les structures</option>
                 {structures?.donnees.map((s) => (
@@ -160,6 +174,11 @@ export function ModifierUtilisateurModale({ utilisateur, onFermer }: ModifierUti
               >
                 <IconeAnnuler />
               </IconeBouton>
+              {exigeGlobale(a.role) && a.structure !== '' && (
+                <p className="basis-full text-sm text-bad">
+                  Ce rôle ne peut pas être limité à une structure : choisissez « Toutes les structures » ou un autre rôle.
+                </p>
+              )}
             </div>
           ))}
           <button
@@ -172,6 +191,8 @@ export function ModifierUtilisateurModale({ utilisateur, onFermer }: ModifierUti
           </button>
           <p className="text-xs text-muted">
             Portée : une structure limite le rôle à ses activités ; « Toutes les structures » l'ouvre sur tout le projet.
+            Les rôles d'administration, et ceux qui saisissent et valident le budget, s'attribuent toujours sur tout le
+            projet.
           </p>
         </fieldset>
 

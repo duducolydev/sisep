@@ -6,6 +6,7 @@ namespace App\Controller;
 
 use App\Courriel\ServiceCourriel;
 use App\Dto\CreerUtilisateurRequest;
+use App\Entity\Role;
 use App\Entity\Utilisateur;
 use App\Entity\UtilisateurRole;
 use App\Http\ProblemResponseFactory;
@@ -122,6 +123,9 @@ final class UtilisateurController
             }
             if (null === $roleStructure && self::ROLE_POINT_FOCAL === $role->getCode()) {
                 return self::pointFocalSansStructure();
+            }
+            if (null !== $roleStructure && $role->exigePorteeGlobale()) {
+                return self::porteeGlobaleExigee($role);
             }
 
             $roles[] = [$role, $roleStructure];
@@ -277,6 +281,9 @@ final class UtilisateurController
             if (null === $structure && self::ROLE_POINT_FOCAL === $role->getCode()) {
                 return self::pointFocalSansStructure();
             }
+            if (null !== $structure && $role->exigePorteeGlobale()) {
+                return self::porteeGlobaleExigee($role);
+            }
             $voulus[$role->getCode().'|'.($structure?->getId() ?? '')] = [$role, $structure];
         }
 
@@ -346,5 +353,14 @@ final class UtilisateurController
     private static function pointFocalSansStructure(): JsonResponse
     {
         return ProblemResponseFactory::creer(422, 'Structure requise', 'Un point focal agit pour une structure : choisissez-la comme portée du rôle « Point focal de structure ».');
+    }
+
+    /** Voir Role::exigePorteeGlobale(). */
+    private static function porteeGlobaleExigee(Role $role): JsonResponse
+    {
+        return ProblemResponseFactory::creer(422, 'Portée impossible', \sprintf(
+            'Le rôle « %s » porte des droits d\'administration ou de validation budgétaire, qui ne se limitent pas à une structure : choisissez « Toutes les structures ».',
+            $role->getLibelle(),
+        ));
     }
 }

@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Entity\Permission;
+use App\Entity\Role;
 use App\Entity\Utilisateur;
+use App\Entity\UtilisateurRole;
 use App\Http\ParametreNormalizer;
 use App\Http\PermissionNormalizer;
 use App\Http\ProblemResponseFactory;
@@ -101,6 +104,19 @@ final class AdminController
             $permissionsVoulues[] = $permission;
         }
 
+        // Role::exigePorteeGlobale() vu depuis la matrice : un rôle qui
+        // deviendrait un rôle de tout le projet ferait tomber d'un coup ses
+        // attributions limitées à une structure dans le cas interdit.
+        $codesVoulus = array_map(static fn (Permission $p) => $p->getCode(), $permissionsVoulues);
+        if (Role::permissionsExigentPorteeGlobale($codesVoulus) && ($limitees = $this->attributionsLimitees($role)) > 0) {
+            return ProblemResponseFactory::creer(422, 'Portée impossible', \sprintf(
+                'Le rôle « %s » est attribué limité à une structure (%d attribution%s) : il ne peut pas porter de droit d\'administration ni cumuler saisie et validation du budget. Étendez d\'abord ces attributions à toutes les structures, ou retirez-les.',
+                $role->getLibelle(),
+                $limitees,
+                $limitees > 1 ? 's' : '',
+            ));
+        }
+
         foreach ($role->getPermissions()->toArray() as $actuelle) {
             if (!\in_array($actuelle, $permissionsVoulues, true)) {
                 $role->revoquer($actuelle);
@@ -113,6 +129,21 @@ final class AdminController
         $this->em->flush();
 
         return new JsonResponse($this->roleNormalizer->normaliser($role));
+    }
+
+    /** Attributions de ce rôle limitées à une structure, sur des comptes non supprimés. */
+    private function attributionsLimitees(Role $role): int
+    {
+        return (int) $this->em->createQueryBuilder()
+            ->select('COUNT(a.id)')
+            ->from(UtilisateurRole::class, 'a')
+            ->join('a.utilisateur', 'u')
+            ->where('a.role = :role')
+            ->andWhere('a.structure IS NOT NULL')
+            ->andWhere('u.supprimeLe IS NULL')
+            ->setParameter('role', $role)
+            ->getQuery()
+            ->getSingleScalarResult();
     }
 
     #[Route('/parametres', name: 'app_admin_parametres_liste', methods: ['GET'])]

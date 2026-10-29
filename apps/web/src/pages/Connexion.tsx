@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useNavigate } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { connecter, profilQueryOptions } from '@/lib/auth'
 import { ApiError } from '@/lib/api-client'
 import { queryClient } from '@/lib/query-client'
@@ -29,7 +29,6 @@ export function Connexion() {
   const navigate = useNavigate()
   const [erreur, setErreur] = useState<string | null>(null)
   const [motDePasseVisible, setMotDePasseVisible] = useState(false)
-  const [aideOuverte, setAideOuverte] = useState(false)
   const annee = new Date().getFullYear()
 
   const {
@@ -120,30 +119,14 @@ export function Connexion() {
                 </Champ>
 
                 <div className="mt-3 flex justify-end">
-                  {/*
-                    Pas de lien de réinitialisation : SISEP n'a pas de
-                    parcours de récupération en libre-service, et un lien
-                    vers nulle part vaut moins qu'une consigne juste. Le
-                    recours réel est l'administrateur, qui attribue un mot
-                    de passe temporaire à changer à la connexion suivante.
-                  */}
-                  <button
-                    type="button"
-                    onClick={() => setAideOuverte((v) => !v)}
-                    aria-expanded={aideOuverte}
-                    aria-controls="aide-mot-de-passe"
+                  <Link
+                    to="/mot-de-passe-oublie"
                     className="flex items-center gap-1.5 text-sm font-semibold text-accent transition-colors hover:text-accent-d"
                   >
                     <IconeCle />
                     Mot de passe oublié&nbsp;?
-                  </button>
+                  </Link>
                 </div>
-                {aideOuverte && (
-                  <p id="aide-mot-de-passe" className="mt-2 rounded-xl bg-accent-bg px-4 py-3 text-sm text-accent-d">
-                    Contactez l'administrateur SISEP de l'UGP : il vous attribuera un mot de passe temporaire, que
-                    l'application vous demandera de changer dès votre connexion.
-                  </p>
-                )}
               </div>
 
               <button
@@ -229,6 +212,27 @@ export function PanneauMarque() {
   )
 }
 
+/**
+ * Coquille des écrans d'accès hors connexion (récupération du mot de passe) :
+ * même bandeau, même panneau de marque, contenu centré.
+ */
+export function CadreAcces({ children }: { children: ReactNode }) {
+  return (
+    <div className="page-connexion flex min-h-screen flex-col bg-surface">
+      <BandeauAnsd hauteur="haute">
+        <p className="font-titre text-lg leading-tight font-bold sm:text-2xl">SISEP</p>
+        <p className="hidden text-xs tracking-[.08em] text-white/85 uppercase sm:block">Système de suivi-évaluation · Projet PHASAOC</p>
+      </BandeauAnsd>
+      <div className="grid flex-1 lg:grid-cols-[44%_1fr]">
+        <PanneauMarque />
+        <main className="flex flex-1 items-center justify-center px-6 py-10 sm:px-12">
+          <div className="w-full max-w-md">{children}</div>
+        </main>
+      </div>
+    </div>
+  )
+}
+
 function Cercle({ className }: { className: string }) {
   return (
     <div
@@ -302,7 +306,7 @@ const iconeProps = {
   'aria-hidden': true,
 }
 
-function IconePersonne() {
+export function IconePersonne() {
   return (
     <svg {...iconeProps}>
       <circle cx="12" cy="8" r="3.4" />

@@ -18,6 +18,8 @@ final class RoleNormalizer
             'description' => $role->getDescription(),
             'systeme' => $role->estSysteme(),
             'permissions' => array_map(static fn ($p) => $p->getCode(), $role->getPermissions()->toArray()),
+            // Role::exigePorteeGlobale() : l'écran d'attribution grise la portée.
+            'porteeGlobaleExigee' => $role->exigePorteeGlobale(),
         ];
     }
 }

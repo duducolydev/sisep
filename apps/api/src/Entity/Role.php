@@ -87,4 +87,41 @@ class Role
     {
         $this->permissions->removeElement($permission);
     }
+
+    /**
+     * Un rôle d'administration (admin.*), ou qui cumule saisie et validation
+     * du budget, ne s'attribue que sur tout le projet.
+     *
+     * Limité à une structure, il n'ouvrirait aucun écran d'administration —
+     * le serveur ne les sert qu'en portée globale — mais garderait tous ses
+     * droits d'écriture sur cette structure, cumul saisie-validation compris :
+     * trompeur et dangereux à la fois. Constaté le 29/10/2026 sur un compte
+     * administrateur limité à la DSID.
+     *
+     * La règle se lit sur les permissions, pas sur le code du rôle : elle
+     * couvre l'administrateur, le coordonnateur et le responsable
+     * suivi-évaluation, et tout rôle que la matrice ferait entrer dans le
+     * même cas.
+     */
+    public function exigePorteeGlobale(): bool
+    {
+        return self::permissionsExigentPorteeGlobale(
+            array_map(static fn (Permission $p) => $p->getCode(), $this->permissions->toArray()),
+        );
+    }
+
+    /** @param array<string> $codes */
+    public static function permissionsExigentPorteeGlobale(array $codes): bool
+    {
+        foreach ($codes as $code) {
+            if (str_starts_with($code, 'admin.')) {
+                return true;
+            }
+        }
+
+        $saisit = [] !== array_intersect($codes, ['budget.engagement.saisir', 'budget.depense.saisir']);
+        $valide = [] !== array_intersect($codes, ['budget.engagement.valider', 'budget.depense.valider']);
+
+        return $saisit && $valide;
+    }
 }

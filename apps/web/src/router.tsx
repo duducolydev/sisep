@@ -13,6 +13,15 @@ import { gardePermission, gardePermissionGlobale, gardeAccesIndicateurs } from '
 // scinde par route au lieu d'un unique gros paquet.
 export const router = createBrowserRouter([
   { path: '/connexion', element: <Connexion /> },
+  // Récupération du mot de passe : avant toute connexion, sans garde.
+  {
+    path: '/mot-de-passe-oublie',
+    lazy: () => import('./pages/MotDePasseOublie').then((m) => ({ Component: m.MotDePasseOublie })),
+  },
+  {
+    path: '/reinitialiser-mot-de-passe',
+    lazy: () => import('./pages/ReinitialiserMotDePasse').then((m) => ({ Component: m.ReinitialiserMotDePasse })),
+  },
   {
     // Hors de la coquille : tant que le mot de passe temporaire n'est pas
     // changé, le serveur refuse toute donnée métier, la coquille n'aurait

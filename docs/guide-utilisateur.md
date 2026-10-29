@@ -23,6 +23,8 @@ Ce guide s'adresse à toutes les personnes qui utilisent le SISEP : l'équipe de
 - **Graphiques** : chaque graphique s'exporte en image (bouton **Image**) pour les rapports — profils Administrateur, Coordonnateur et Responsable suivi-évaluation.
 - **Mes rapports** : le rapport choisi s'affiche en **aperçu** avant d'être transmis, et un rapport transmis se rouvre par **Voir**.
 - **Comptes** : les rôles d'un compte se modifient directement dans « Modifier un compte », et l'administrateur y attribue un nouveau mot de passe temporaire en cas d'oubli.
+- **Mot de passe oublié** : le lien de l'écran de connexion envoie par courriel un lien pour en choisir un nouveau, sans passer par l'administrateur.
+- **Administration** : seuls les onglets réellement accessibles s'affichent. Les rôles Administrateur, Coordonnateur et Responsable suivi-évaluation s'attribuent toujours sur toutes les structures.
 - **Parties prenantes** : une structure se modifie depuis sa fiche, et ses points focaux s'y ajoutent, s'y modifient et s'y désactivent.
 
 ## 1. Premiers pas
@@ -33,7 +35,7 @@ Ce guide s'adresse à toutes les personnes qui utilisent le SISEP : l'équipe de
 2. Saisissez votre adresse e-mail et votre mot de passe, puis cliquez sur **Se connecter**.
 3. **Première connexion** : votre compte a été créé avec un mot de passe temporaire. L'application vous demande aussitôt d'en choisir un nouveau : saisissez le mot de passe temporaire, puis deux fois le nouveau.
 
-**Mot de passe oublié** : il n'y a pas de réinitialisation automatique. Contactez l'administrateur SISEP de l'UGP ; il vous attribuera un nouveau mot de passe temporaire, envoyé par courriel, que vous changerez à la connexion suivante (voir la partie 14.1).
+**Mot de passe oublié** : sur l'écran de connexion, cliquez sur **Mot de passe oublié ?** et saisissez l'adresse e-mail de votre compte. Vous recevez un courriel avec un lien pour choisir un nouveau mot de passe ; ce lien est valable une heure et ne sert qu'une fois. Une nouvelle demande annule le lien précédent. Rien reçu ? Vérifiez vos courriers indésirables, puis contactez l'administrateur SISEP de l'UGP, qui peut aussi vous attribuer un mot de passe temporaire (voir la partie 14.1).
 
 > Ne communiquez jamais votre mot de passe, y compris à l'équipe technique. Personne n'en a besoin pour vous aider.
 
@@ -380,8 +382,8 @@ Le menu **Administration** regroupe les écrans de paramétrage, chacun réserv�
 ### 14.1 Comptes
 
 - **Ajouter un compte** : nom, prénom, adresse e-mail et rôles. Un mot de passe temporaire est créé : il est envoyé par courriel ou, à défaut, affiché **une seule fois** pour être transmis à la personne par un autre moyen (téléphone, en main propre). Elle devra le changer à sa première connexion.
-- **Modifier un compte** : informations personnelles et **rôles**. Pour chaque rôle, choisissez sa portée : **Toutes les structures**, ou une structure précise (cas d'un point focal). **Ajouter un rôle** en ajoute un, la croix le retire.
-- **Mot de passe oublié** : dans « Modifier un compte », rubrique **Mot de passe**, cliquez sur **Nouveau mot de passe temporaire**. L'ancien cesse aussitôt de fonctionner ; le nouveau part par courriel et s'affiche une seule fois, pour le cas où le message n'arriverait pas. La personne le changera à sa connexion. Votre propre mot de passe se change depuis « Mon profil ».
+- **Modifier un compte** : informations personnelles et **rôles**. Pour chaque rôle, choisissez sa portée : **Toutes les structures**, ou une structure précise (cas d'un point focal). **Ajouter un rôle** en ajoute un, la croix le retire. Les rôles qui portent des droits d'administration ou qui saisissent et valident le budget (Administrateur, Coordonnateur, Responsable suivi-évaluation) s'attribuent toujours sur **Toutes les structures** : la portée est alors grisée.
+- **Mot de passe oublié** : la personne peut se dépanner seule depuis l'écran de connexion (voir la partie 1.1). Sinon, dans « Modifier un compte », rubrique **Mot de passe**, cliquez sur **Nouveau mot de passe temporaire**. L'ancien cesse aussitôt de fonctionner ; le nouveau part par courriel et s'affiche une seule fois, pour le cas où le message n'arriverait pas. La personne le changera à sa connexion. Votre propre mot de passe se change depuis « Mon profil ».
 - **Désactiver** un compte (icône en bout de ligne, ou case « Compte actif ») empêche toute connexion sans rien effacer de ce que la personne a saisi.
 
 Garde-fous : un compte ne peut pas cumuler la saisie et la validation budgétaires, sauf avec le rôle Administrateur ou Responsable suivi-évaluation ; un administrateur ne peut pas se retirer à lui-même le rôle Administrateur. Toute modification des rôles est inscrite au journal.

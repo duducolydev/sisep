@@ -86,6 +86,99 @@ final class RolesUtilisateurHttpTest extends WebTestCase
         }
     }
 
+    /**
+     * Constaté le 29/10/2026 : un administrateur limité à la DSID voyait les
+     * onglets d'administration, tous refusés en 403, mais gardait tous les
+     * droits d'écriture sur la DSID, cumul saisie-validation du budget
+     * compris. Un tel rôle ne s'attribue que sur tout le projet.
+     */
+    public function testUnRoleDeToutLeProjetNeSeLimitePasAUneStructure(): void
+    {
+        [$client, $f] = $this->demarrer();
+
+        try {
+            $this->connecter($client, 'admin.roles@example.test');
+            $url = '/api/v1/admin/utilisateurs/'.$f['agent']->getUuid()->toRfc4122().'/roles';
+            $dsid = $f['dsid']->getUuid()->toRfc4122();
+
+            $this->envoyer($client, $url, [['role' => 'administrateur', 'structure' => $dsid]]);
+            self::assertResponseStatusCodeSame(422, 'Droit d\'administration : jamais limité à une structure.');
+            self::assertSame('Portée impossible', $this->corps($client)['title']);
+
+            // Le RSE de ce jeu n'a aucun droit admin.* : le cumul saisie-validation suffit.
+            $this->envoyer($client, $url, [['role' => 'responsable_suivi_evaluation', 'structure' => $dsid]]);
+            self::assertResponseStatusCodeSame(422, 'Cumul saisie-validation : jamais limité à une structure.');
+
+            $this->envoyer($client, $url, [['role' => 'gestionnaire_budgetaire', 'structure' => $dsid]]);
+            self::assertResponseIsSuccessful('Saisir sans valider se limite à une structure.');
+
+            $this->envoyer($client, $url, [['role' => 'responsable_suivi_evaluation']]);
+            self::assertResponseIsSuccessful('Sur tout le projet, le RSE reste attribuable.');
+
+            // L'écran d'attribution lit la règle au lieu de la recopier.
+            $client->request('GET', '/api/v1/admin/roles');
+            $exigences = array_column($this->corps($client)['donnees'], 'porteeGlobaleExigee', 'code');
+            self::assertTrue($exigences['responsable_suivi_evaluation']);
+            self::assertFalse($exigences['gestionnaire_budgetaire']);
+        } finally {
+            $this->rollback();
+        }
+    }
+
+    public function testLaCreationDUnCompteAppliqueLaMemeRegle(): void
+    {
+        [$client, $f] = $this->demarrer();
+
+        try {
+            $this->connecter($client, 'admin.roles@example.test');
+            $client->request('POST', '/api/v1/admin/utilisateurs', server: ['CONTENT_TYPE' => 'application/json'], content: json_encode([
+                'email' => 'administrateur.dsid@example.test',
+                'nom' => 'Limité',
+                'prenom' => 'Administrateur',
+                'roles' => [['role' => 'administrateur', 'structure' => $f['dsid']->getUuid()->toRfc4122()]],
+            ], \JSON_THROW_ON_ERROR));
+            self::assertResponseStatusCodeSame(422);
+            self::assertNull(
+                $this->em->getRepository(Utilisateur::class)->findOneBy(['email' => 'administrateur.dsid@example.test']),
+                'Refusé avant toute écriture.',
+            );
+        } finally {
+            $this->rollback();
+        }
+    }
+
+    /**
+     * Même règle vue depuis la matrice : un rôle attribué limité à une
+     * structure ne peut pas devenir un rôle de tout le projet, sans quoi ses
+     * attributions basculeraient d'un coup dans le cas interdit.
+     */
+    public function testLaMatriceNeFaitPasDUnRoleLimiteUnRoleDeToutLeProjet(): void
+    {
+        [$client, $f] = $this->demarrer();
+
+        try {
+            $this->em->persist(new UtilisateurRole($f['agent'], $f['roles']['point_focal_structure'], $f['dsid']));
+            $this->em->flush();
+            $this->connecter($client, 'admin.roles@example.test');
+            $url = '/api/v1/admin/roles/'.$f['roles']['point_focal_structure']->getUuid()->toRfc4122().'/permissions';
+
+            $this->envoyerPermissions($client, $url, ['activites.consulter', 'admin.utilisateurs']);
+            self::assertResponseStatusCodeSame(422);
+            self::assertStringContainsString('1 attribution', $this->corps($client)['detail']);
+
+            $this->envoyerPermissions($client, $url, ['activites.consulter', 'budget.engagement.saisir']);
+            self::assertResponseIsSuccessful('Saisir sans valider reste compatible avec une portée limitée.');
+        } finally {
+            $this->rollback();
+        }
+    }
+
+    /** @param list<string> $codes */
+    private function envoyerPermissions(KernelBrowser $client, string $url, array $codes): void
+    {
+        $client->request('PUT', $url, server: ['CONTENT_TYPE' => 'application/json'], content: json_encode(['permissions' => $codes], \JSON_THROW_ON_ERROR));
+    }
+
     /** @param list<array<string, string>> $roles */
     private function envoyer(KernelBrowser $client, string $url, array $roles): void
     {
@@ -93,10 +186,10 @@ final class RolesUtilisateurHttpTest extends WebTestCase
     }
 
     /**
-     * Mot de passe oublié : l'écran de connexion renvoie vers
-     * l'administrateur, qui attribue un mot de passe temporaire. L'ancien
-     * cesse de fonctionner, et le journal retient le changement sans jamais
-     * l'empreinte.
+     * Recours de l'administrateur, à côté du lien de récupération par
+     * courriel (MotDePasseOublieHttpTest) : il attribue un mot de passe
+     * temporaire. L'ancien cesse de fonctionner, et le journal retient le
+     * changement sans jamais l'empreinte.
      */
     public function testLAdministrateurAttribueUnMotDePasseTemporaire(): void
     {
@@ -158,13 +251,13 @@ final class RolesUtilisateurHttpTest extends WebTestCase
         $hasher = $container->get(UserPasswordHasherInterface::class);
 
         $permissions = [];
-        foreach (['admin.utilisateurs', 'budget.engagement.saisir', 'budget.engagement.valider', 'activites.consulter'] as $code) {
+        foreach (['admin.utilisateurs', 'admin.roles', 'budget.engagement.saisir', 'budget.engagement.valider', 'activites.consulter'] as $code) {
             $permissions[$code] = new Permission($code, explode('.', $code)[0], $code);
             $this->em->persist($permissions[$code]);
         }
         $roles = [];
         foreach ([
-            'administrateur' => ['admin.utilisateurs', 'budget.engagement.saisir', 'budget.engagement.valider'],
+            'administrateur' => ['admin.utilisateurs', 'admin.roles', 'budget.engagement.saisir', 'budget.engagement.valider'],
             'responsable_suivi_evaluation' => ['budget.engagement.saisir', 'budget.engagement.valider'],
             'gestionnaire_budgetaire' => ['budget.engagement.saisir'],
             'coordonnateur' => ['budget.engagement.valider'],
@@ -193,7 +286,7 @@ final class RolesUtilisateurHttpTest extends WebTestCase
 
         $this->em->flush();
 
-        return [$client, ['admin' => $admin, 'agent' => $agent, 'dsid' => $dsid]];
+        return [$client, ['admin' => $admin, 'agent' => $agent, 'dsid' => $dsid, 'roles' => $roles]];
     }
 
     private function connecter(KernelBrowser $client, string $email): void

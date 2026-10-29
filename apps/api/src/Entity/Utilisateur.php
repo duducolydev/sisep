@@ -205,6 +205,17 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
         return $maintenant < $finFenetre;
     }
 
+    /**
+     * Après une récupération par courriel, qui prouve la détention de la
+     * boîte : sans cela, des échecs provoqués par un tiers tiendraient le
+     * titulaire hors de son compte malgré son nouveau mot de passe.
+     */
+    public function leverVerrouillage(): void
+    {
+        $this->echecsConnexion = 0;
+        $this->dernierEchecLe = null;
+    }
+
     public function enregistrerEchecConnexion(\DateTimeImmutable $maintenant): void
     {
         $horsFenetre = null === $this->dernierEchecLe

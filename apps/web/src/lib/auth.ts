@@ -73,3 +73,12 @@ export async function deconnecter(): Promise<void> {
 export async function changerMotDePasse(motDePasseActuel: string, nouveauMotDePasse: string): Promise<void> {
   await apiClient.post('/auth/mot-de-passe', { motDePasseActuel, nouveauMotDePasse })
 }
+
+/** Toujours accepté (202), qu'un compte corresponde ou non : la réponse ne le dit pas. */
+export async function demanderRecuperation(email: string): Promise<void> {
+  await apiClient.post('/auth/mot-de-passe-oublie', { email })
+}
+
+export async function reinitialiserMotDePasse(jeton: string, nouveauMotDePasse: string): Promise<void> {
+  await apiClient.post('/auth/reinitialisation', { jeton, nouveauMotDePasse })
+}

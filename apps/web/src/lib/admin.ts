@@ -55,6 +55,8 @@ export interface Role {
   description: string | null
   systeme: boolean
   permissions: string[]
+  /** Rôle d'administration ou cumulant saisie et validation du budget : jamais limité à une structure (Role::exigePorteeGlobale). */
+  porteeGlobaleExigee: boolean
 }
 
 export const rolesQueryOptions = () =>

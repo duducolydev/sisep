@@ -39,6 +39,10 @@ final class ChangementMotDePasseRequisListener
         'app_auth_moi',
         'app_auth_mot_de_passe',
         'app_auth_deconnexion',
+        // Un lien de récupération ouvert dans un navigateur où traîne une
+        // session à mot de passe temporaire doit fonctionner quand même.
+        'app_auth_mot_de_passe_oublie',
+        'app_auth_reinitialisation',
     ];
 
     public function __construct(private readonly Security $security)

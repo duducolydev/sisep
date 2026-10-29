@@ -82,7 +82,9 @@ Cinq valeurs sont obligatoires, le déploiement refuse de démarrer sans elles.
 `SISEP_RESEAU_FRONTAL` si le réseau du frontal ne s'appelle pas
 `forum-ansd_default` (§ 1). `SISEP_PORT` si 8080 n'est pas libre. `MAILER_DSN` reste à `null://null` tant
 que le SMTP n'est pas arrêté : l'application fonctionne, les courriels
-partent simplement nulle part.
+partent simplement nulle part. **Le lien « Mot de passe oublié » en dépend** :
+sans SMTP, la demande est acceptée mais aucun lien n'arrive, et le seul
+recours reste le mot de passe temporaire attribué par l'administrateur.
 
 ## 4. Déployer
 

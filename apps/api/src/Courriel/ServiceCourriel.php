@@ -170,6 +170,32 @@ final class ServiceCourriel
         return $this->envoyer($destinataire, $sujet, 'Échéances de contrat', $corps);
     }
 
+    /**
+     * Le jeton voyage dans le fragment de l'adresse (après `#`), que le
+     * navigateur n'envoie jamais au serveur : il ne finit ni dans les
+     * journaux d'accès de nginx ni dans un en-tête Referer.
+     */
+    public function lienRecuperation(Utilisateur $utilisateur, string $jeton, int $validiteMinutes): bool
+    {
+        $nom = $this->proteger($utilisateur->getNomComplet());
+        $url = $this->urlWeb.'/reinitialiser-mot-de-passe#'.$jeton;
+        $urlProtegee = $this->proteger($url);
+        $bouton = $this->bouton($url, 'Choisir un nouveau mot de passe');
+
+        // L'adresse figure aussi en clair : la version texte du courriel perd
+        // les liens des boutons, et c'est elle que lisent certains clients.
+        $corps = <<<HTML
+            <p>Bonjour {$nom},</p>
+            <p>Une demande de nouveau mot de passe a été faite pour votre compte SISEP. Le lien ci-dessous vous permet d'en choisir un. Il est valable {$validiteMinutes} minutes et ne sert qu'une fois.</p>
+            {$bouton}
+            <p style="color:#5b6472;font-size:13px">Si le bouton ne fonctionne pas, copiez cette adresse dans votre navigateur :<br>
+            <span style="font-family:monospace;word-break:break-all">{$urlProtegee}</span></p>
+            <p style="color:#5b6472;font-size:13px">Si vous n'êtes pas à l'origine de cette demande, ignorez ce message : votre mot de passe actuel reste valable.</p>
+            HTML;
+
+        return $this->envoyer($utilisateur->getEmail(), 'Choisir un nouveau mot de passe SISEP', 'Mot de passe oublié', $corps);
+    }
+
     public function motDePasseChange(Utilisateur $utilisateur, \DateTimeImmutable $maintenant): bool
     {
         $nom = $this->proteger($utilisateur->getNomComplet());

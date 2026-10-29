@@ -6,9 +6,12 @@ namespace App\Controller;
 
 use App\Courriel\ServiceCourriel;
 use App\Dto\ChangerMotDePasseRequest;
+use App\Dto\DemanderRecuperationRequest;
+use App\Dto\ReinitialiserMotDePasseRequest;
 use App\Entity\Utilisateur;
 use App\Http\ProblemResponseFactory;
 use App\Security\ProfilUtilisateurBuilder;
+use App\Security\RecuperationMotDePasse;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -30,6 +33,7 @@ final class AuthController
         private readonly ValidatorInterface $validator,
         private readonly ProfilUtilisateurBuilder $profilBuilder,
         private readonly ServiceCourriel $courriels,
+        private readonly RecuperationMotDePasse $recuperation,
     ) {
     }
 
@@ -65,15 +69,8 @@ final class AuthController
     {
         /** @var ChangerMotDePasseRequest $donnees */
         $donnees = $this->serializer->deserialize($request->getContent(), ChangerMotDePasseRequest::class, 'json');
-
-        $violations = $this->validator->validate($donnees);
-        if (\count($violations) > 0) {
-            $details = [];
-            foreach ($violations as $violation) {
-                $details[] = ['champ' => $violation->getPropertyPath(), 'message' => $violation->getMessage()];
-            }
-
-            return ProblemResponseFactory::creer(422, 'Données invalides', null, ['violations' => $details]);
+        if (null !== ($erreur = $this->invalide($donnees))) {
+            return $erreur;
         }
 
         if (!$this->passwordHasher->isPasswordValid($utilisateur, $donnees->motDePasseActuel)) {
@@ -89,5 +86,64 @@ final class AuthController
         $this->courriels->motDePasseChange($utilisateur, new \DateTimeImmutable('now', new \DateTimeZone('UTC')));
 
         return new JsonResponse(['modifie' => true]);
+    }
+
+    /**
+     * Demande d'un lien de récupération. 202 dans tous les cas, que l'adresse
+     * corresponde à un compte ou non : cette route ne doit pas servir à
+     * vérifier qui a un compte SISEP.
+     */
+    #[Route('/mot-de-passe-oublie', name: 'app_auth_mot_de_passe_oublie', methods: ['POST'])]
+    public function motDePasseOublie(Request $request): Response
+    {
+        /** @var DemanderRecuperationRequest $donnees */
+        $donnees = $this->serializer->deserialize($request->getContent(), DemanderRecuperationRequest::class, 'json');
+        if (null !== ($erreur = $this->invalide($donnees))) {
+            return $erreur;
+        }
+
+        $this->recuperation->demander(trim($donnees->email), new \DateTimeImmutable('now', new \DateTimeZone('UTC')));
+
+        return new JsonResponse(['demandeEnregistree' => true], 202);
+    }
+
+    #[Route('/reinitialisation', name: 'app_auth_reinitialisation', methods: ['POST'])]
+    public function reinitialiser(Request $request): Response
+    {
+        /** @var ReinitialiserMotDePasseRequest $donnees */
+        $donnees = $this->serializer->deserialize($request->getContent(), ReinitialiserMotDePasseRequest::class, 'json');
+        if (null !== ($erreur = $this->invalide($donnees))) {
+            return $erreur;
+        }
+
+        $utilisateur = $this->recuperation->reinitialiser(
+            $donnees->jeton,
+            $donnees->nouveauMotDePasse,
+            new \DateTimeImmutable('now', new \DateTimeZone('UTC')),
+        );
+        if (null === $utilisateur) {
+            return ProblemResponseFactory::creer(
+                422,
+                'Lien invalide ou expiré',
+                'Ce lien de récupération n\'est plus valable : il a déjà servi, une demande plus récente l\'a remplacé, ou son heure de validité est passée. Demandez-en un nouveau.',
+            );
+        }
+
+        return new JsonResponse(['modifie' => true]);
+    }
+
+    private function invalide(object $donnees): ?Response
+    {
+        $violations = $this->validator->validate($donnees);
+        if (0 === \count($violations)) {
+            return null;
+        }
+
+        $details = [];
+        foreach ($violations as $violation) {
+            $details[] = ['champ' => $violation->getPropertyPath(), 'message' => $violation->getMessage()];
+        }
+
+        return ProblemResponseFactory::creer(422, 'Données invalides', null, ['violations' => $details]);
     }
 }

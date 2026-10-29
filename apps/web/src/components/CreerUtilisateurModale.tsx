@@ -41,10 +41,12 @@ export function CreerUtilisateurModale({ onFermer }: CreerUtilisateurModaleProps
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({ resolver: zodResolver(schema) })
 
   const roleChoisi = watch('role')
+  const exigeGlobale = (code: string | undefined) => roles?.donnees.find((r) => r.code === code)?.porteeGlobaleExigee ?? false
 
   async function onSubmit(valeurs: FormValues) {
     setErreur(null)
@@ -55,7 +57,9 @@ export function CreerUtilisateurModale({ onFermer }: CreerUtilisateurModaleProps
         prenom: valeurs.prenom,
         fonction: valeurs.fonction || undefined,
         structure: valeurs.structure || undefined,
-        roles: valeurs.role ? [{ role: valeurs.role, structure: valeurs.roleStructure || undefined }] : [],
+        roles: valeurs.role
+          ? [{ role: valeurs.role, structure: exigeGlobale(valeurs.role) ? undefined : valeurs.roleStructure || undefined }]
+          : [],
       })
       await queryClient.invalidateQueries({ queryKey: ['admin', 'utilisateurs'] })
       setCreation({
@@ -167,7 +171,15 @@ export function CreerUtilisateurModale({ onFermer }: CreerUtilisateurModaleProps
         <div className="grid grid-cols-2 gap-4">
           <div className="flex flex-col gap-1">
             <label htmlFor="role">Rôle (optionnel)</label>
-            <select id="role" className="rounded-[var(--radius-controle)] border border-border px-3 py-2" {...register('role')}>
+            <select
+              id="role"
+              className="rounded-[var(--radius-controle)] border border-border px-3 py-2"
+              {...register('role', {
+                onChange: (e: { target: { value: string } }) => {
+                  if (exigeGlobale(e.target.value)) setValue('roleStructure', '')
+                },
+              })}
+            >
               <option value="">Aucun rôle</option>
               {roles?.donnees.map((r) => (
                 <option key={r.uuid} value={r.code}>
@@ -180,7 +192,7 @@ export function CreerUtilisateurModale({ onFermer }: CreerUtilisateurModaleProps
             <label htmlFor="roleStructure">Portée du rôle</label>
             <select
               id="roleStructure"
-              disabled={!roleChoisi}
+              disabled={!roleChoisi || exigeGlobale(roleChoisi)}
               className="rounded-[var(--radius-controle)] border border-border px-3 py-2 disabled:opacity-50"
               {...register('roleStructure')}
             >
@@ -191,6 +203,7 @@ export function CreerUtilisateurModale({ onFermer }: CreerUtilisateurModaleProps
                 </option>
               ))}
             </select>
+            {exigeGlobale(roleChoisi) && <p className="text-xs text-muted">Ce rôle s'attribue sur tout le projet.</p>}
           </div>
         </div>
 
