@@ -1,5 +1,52 @@
 import { queryOptions } from '@tanstack/react-query'
 import { apiClient } from './api-client'
+import { detientGlobalement, type ProfilUtilisateur } from './auth'
+
+export interface OngletAdministration {
+  to: string
+  label: string
+  /** `null` = onglet ouvert à tout utilisateur authentifié. */
+  permission: string | null
+}
+
+/**
+ * Chaque onglet porte la permission qui ouvre réellement sa page. Sans cela,
+ * un responsable suivi-évaluation voyait « Comptes utilisateurs » et « Rôles
+ * et permissions », cliquait, et tombait sur un 403 : le serveur refusait à
+ * juste titre, mais l'interface n'aurait jamais dû proposer le chemin.
+ *
+ * `null` : la liste des structures est lisible par tous ; seule sa
+ * modification est gardée, dans la page elle-même.
+ */
+const ONGLETS_ADMINISTRATION: OngletAdministration[] = [
+  { to: '/administration/indicateurs', label: 'Référentiel des indicateurs de performance', permission: 'indicateurs.definir' },
+  { to: '/administration/modeles-etapes', label: "Modèles d'étapes", permission: 'admin.parametres' },
+  { to: '/administration/parties-prenantes', label: 'Parties prenantes', permission: null },
+  { to: '/administration/comptes', label: 'Comptes utilisateurs', permission: 'admin.utilisateurs' },
+  { to: '/administration/roles', label: 'Rôles et permissions', permission: 'admin.roles' },
+  { to: '/administration/journal', label: "Journal d'activité", permission: 'journal.consulter' },
+  { to: '/administration/parametres', label: 'Paramètres', permission: 'admin.parametres' },
+]
+
+/**
+ * Onglets que ce profil peut réellement ouvrir. Le serveur ne sert ces pages
+ * qu'à une attribution globale (exigerPermissionGlobale) : un rôle limité à
+ * une structure ne compte pas, même s'il porte le code.
+ */
+export function ongletsAdministration(profil: ProfilUtilisateur | null | undefined): OngletAdministration[] {
+  return ONGLETS_ADMINISTRATION.filter((o) => o.permission === null || detientGlobalement(profil, o.permission))
+}
+
+/**
+ * Le lien « Administration » du menu : affiché dès qu'un onglet gardé est
+ * ouvert à ce profil, et pointé sur le premier d'entre eux. Les onglets
+ * ouverts à tous ne suffisent pas à le faire apparaître.
+ */
+export function entreeAdministration(profil: ProfilUtilisateur | null | undefined): string | null {
+  const onglets = ongletsAdministration(profil)
+
+  return onglets.some((o) => o.permission !== null) ? onglets[0].to : null
+}
 
 export interface Role {
   uuid: string

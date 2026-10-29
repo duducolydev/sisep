@@ -6,6 +6,7 @@ import { usePeut } from '@/lib/use-permissions'
 import { queryClient } from '@/lib/query-client'
 import { ApiError } from '@/lib/api-client'
 import { AdminOnglets } from '@/components/AdminOnglets'
+import { ErreurChargement } from '@/components/ErreurChargement'
 import { CreerUtilisateurModale } from '@/components/CreerUtilisateurModale'
 import { ModifierUtilisateurModale } from '@/components/ModifierUtilisateurModale'
 import { IconeBouton, IconeModifier, IconeRecherche, IconePlus, IconeValider, IconeAnnuler, IconeSupprimer } from '@/components/Icones'
@@ -24,7 +25,7 @@ const TAILLE_PAGE = 10
 
 export function AdminUtilisateurs() {
   const confirmer = useConfirmer()
-  const { data: utilisateurs, isLoading, isError } = useQuery(utilisateursQueryOptions())
+  const { data: utilisateurs, isLoading, isError, error } = useQuery(utilisateursQueryOptions())
   const { data: rolesDisponibles } = useQuery(rolesQueryOptions())
   const { data: structuresConnues } = useQuery(structuresDetailQueryOptions())
   const libellesRoles = new Map((rolesDisponibles?.donnees ?? []).map((r) => [r.code, r.libelle]))
@@ -149,7 +150,7 @@ export function AdminUtilisateurs() {
       </div>
 
       {isLoading && <Squelette lignes={4} />}
-      {isError && <p className="text-bad">Impossible de charger les comptes. Réessayez.</p>}
+      {isError && <ErreurChargement erreur={error} quoi="les comptes" />}
 
       {utilisateurs && (
         <div className="overflow-x-auto rounded-[var(--radius-carte)] bg-surface shadow-[var(--shadow-carte)]">

@@ -25,6 +25,18 @@ export interface ProfilUtilisateur {
 }
 
 /**
+ * Code détenu sur tout le projet, et non sur quelques structures : même
+ * règle que PermissionsEffectives::estGlobale, par laquelle le serveur garde
+ * l'administration, les ressources humaines, les projets et les parties
+ * prenantes. Un rôle d'administrateur limité à une structure n'ouvre aucun de
+ * ces écrans : `permissions` le liste pourtant, d'où des onglets proposés puis
+ * refusés en 403 tant que l'interface s'en tenait à `permissions.includes`.
+ */
+export function detientGlobalement(profil: ProfilUtilisateur | null | undefined, code: string): boolean {
+  return profil?.permissionsPortee[code] === null
+}
+
+/**
  * `null` = non authentifié (401), distingué d'une erreur réseau qui doit
  * remonter normalement.
  */

@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router'
 import { journalQueryOptions } from '@/lib/admin'
 import { formaterDate } from '@/lib/format'
 import { AdminOnglets } from '@/components/AdminOnglets'
+import { ErreurChargement } from '@/components/ErreurChargement'
 import { Squelette } from '@/components/Squelette'
 import { urlExportDonnees } from '@/lib/exports'
 import { BoutonExporter } from '@/components/BoutonExporter'
@@ -40,7 +41,7 @@ export function AdminJournal() {
   const au = searchParams.get('au') ?? undefined
   const page = Number(searchParams.get('page') ?? '1')
 
-  const { data: journal, isLoading, isError } = useQuery(journalQueryOptions({ entite, du, au, page }))
+  const { data: journal, isLoading, isError, error } = useQuery(journalQueryOptions({ entite, du, au, page }))
 
   function definirFiltre(cle: string, valeur: string) {
     const suivant = new URLSearchParams(searchParams)
@@ -106,7 +107,7 @@ export function AdminJournal() {
       </div>
 
       {isLoading && <Squelette lignes={4} />}
-      {isError && <p className="text-bad">Impossible de charger le journal. Réessayez.</p>}
+      {isError && <ErreurChargement erreur={error} quoi="le journal" />}
 
       {journal && (
         <>

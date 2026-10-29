@@ -4,6 +4,7 @@ import { rolesQueryOptions, permissionsQueryOptions, modifierRolePermissions, ty
 import { queryClient } from '@/lib/query-client'
 import { ApiError } from '@/lib/api-client'
 import { AdminOnglets } from '@/components/AdminOnglets'
+import { ErreurChargement } from '@/components/ErreurChargement'
 import { Squelette } from '@/components/Squelette'
 import { urlExportDonnees } from '@/lib/exports'
 import { BoutonExporter } from '@/components/BoutonExporter'
@@ -11,7 +12,7 @@ import { usePeut } from '@/lib/use-permissions'
 
 export function AdminRoles() {
   const peutExporterRoles = usePeut('admin.roles')
-  const { data: roles, isLoading, isError } = useQuery(rolesQueryOptions())
+  const { data: roles, isLoading, isError, error } = useQuery(rolesQueryOptions())
   const { data: permissions } = useQuery(permissionsQueryOptions())
   const [enCours, setEnCours] = useState<string | null>(null)
   const [erreur, setErreur] = useState<string | null>(null)
@@ -66,7 +67,7 @@ export function AdminRoles() {
       )}
 
       {isLoading && <Squelette lignes={4} />}
-      {isError && <p className="text-bad">Impossible de charger les rôles. Réessayez.</p>}
+      {isError && <ErreurChargement erreur={error} quoi="les rôles" />}
 
       {roles && permissions && (
         <div className="overflow-x-auto rounded-[var(--radius-carte)] bg-surface shadow-[var(--shadow-carte)]">

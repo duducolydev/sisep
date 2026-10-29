@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { AdminOnglets } from '@/components/AdminOnglets'
+import { ErreurChargement } from '@/components/ErreurChargement'
 import { Bouton } from '@/components/Bouton'
 import { GabaritEtapesModale } from '@/components/GabaritEtapesModale'
 import { IconeBouton, IconeModifier, IconePlus, IconeSupprimer } from '@/components/Icones'
@@ -15,7 +16,7 @@ import { useConfirmer } from '@/lib/confirmation'
 /** Référentiel des gabarits d'étapes (§ 6 du CR du 22/09/2026) — la méthode de suivi du projet se normalise ici, pas activité par activité. */
 export function AdminGabaritsEtapes() {
   const confirmer = useConfirmer()
-  const { data: gabarits, isLoading, isError } = useQuery(gabaritsEtapesQueryOptions(true))
+  const { data: gabarits, isLoading, isError, error } = useQuery(gabaritsEtapesQueryOptions(true))
   const peutGerer = usePeut('admin.parametres')
   const afficherToast = useToast()
 
@@ -67,7 +68,7 @@ export function AdminGabaritsEtapes() {
       )}
 
       {isLoading && <Squelette lignes={3} />}
-      {isError && <p className="text-bad">Impossible de charger les modèles d'étapes. Réessayez.</p>}
+      {isError && <ErreurChargement erreur={error} quoi="les modèles d'étapes" />}
 
       {gabarits && gabarits.donnees.length === 0 && (
         <p className="text-muted">Aucun modèle d'étapes pour le moment.</p>

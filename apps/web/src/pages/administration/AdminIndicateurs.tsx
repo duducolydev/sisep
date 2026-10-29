@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router'
 import { indicateursQueryOptions, type Indicateur, type TypeIndicateur } from '@/lib/indicateurs'
 import { usePeut } from '@/lib/use-permissions'
 import { AdminOnglets } from '@/components/AdminOnglets'
+import { ErreurChargement } from '@/components/ErreurChargement'
 import { DefinirIndicateurModale } from '@/components/DefinirIndicateurModale'
 import { ModifierIndicateurModale } from '@/components/ModifierIndicateurModale'
 import { budgetExecutionQueryOptions } from '@/lib/budget'
@@ -15,7 +16,7 @@ import { trancherPage } from '@/lib/pagination'
 const TAILLE_PAGE = 10
 
 export function AdminIndicateurs() {
-  const { data: indicateurs, isLoading, isError } = useQuery(indicateursQueryOptions())
+  const { data: indicateurs, isLoading, isError, error } = useQuery(indicateursQueryOptions())
   const { data: composantes } = useQuery(budgetExecutionQueryOptions('composante'))
   const peutDefinir = usePeut('indicateurs.definir')
 
@@ -107,7 +108,7 @@ export function AdminIndicateurs() {
       </div>
 
       {isLoading && <Squelette lignes={4} />}
-      {isError && <p className="text-bad">Impossible de charger les indicateurs de performance. Réessayez.</p>}
+      {isError && <ErreurChargement erreur={error} quoi="les indicateurs de performance" />}
 
       {indicateurs && (
         <div className="overflow-x-auto rounded-[var(--radius-carte)] bg-surface shadow-[var(--shadow-carte)]">

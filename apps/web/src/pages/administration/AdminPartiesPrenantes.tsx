@@ -6,6 +6,7 @@ import { usePeut } from '@/lib/use-permissions'
 import { queryClient } from '@/lib/query-client'
 import { ApiError } from '@/lib/api-client'
 import { AdminOnglets } from '@/components/AdminOnglets'
+import { ErreurChargement } from '@/components/ErreurChargement'
 import { StructureModale } from '@/components/StructureModale'
 import { LIBELLES_TYPE_STRUCTURE } from '@/lib/types-structure'
 import { IconeBouton, IconeModifier, IconeSupprimer, IconeRecherche, IconePlus } from '@/components/Icones'
@@ -18,7 +19,7 @@ const TAILLE_PAGE = 10
 
 export function AdminPartiesPrenantes() {
   const confirmer = useConfirmer()
-  const { data: structures, isLoading, isError } = useQuery(structuresDetailQueryOptions(true))
+  const { data: structures, isLoading, isError, error } = useQuery(structuresDetailQueryOptions(true))
   const { data: pointsFocaux } = useQuery(pointsFocauxQueryOptions())
   const peutGerer = usePeut('structures.gerer')
 
@@ -139,7 +140,7 @@ export function AdminPartiesPrenantes() {
       </div>
 
       {isLoading && <Squelette lignes={4} />}
-      {isError && <p className="text-bad">Impossible de charger les structures. Réessayez.</p>}
+      {isError && <ErreurChargement erreur={error} quoi="les structures" />}
 
       {structures && (
         <div className="overflow-x-auto rounded-[var(--radius-carte)] bg-surface shadow-[var(--shadow-carte)]">

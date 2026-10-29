@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
-import { deconnecter, profilQueryOptions } from '@/lib/auth'
+import { deconnecter, detientGlobalement, profilQueryOptions } from '@/lib/auth'
+import { entreeAdministration } from '@/lib/admin'
 import { useUtilisateurCourant } from '@/lib/use-permissions'
 import { queryClient } from '@/lib/query-client'
 import { budgetExecutionQueryOptions } from '@/lib/budget'
@@ -116,15 +117,13 @@ export function Layout() {
   const voitProjets = utilisateur?.permissionsPortee['initiatives.consulter'] === null
   const { data: initiatives } = useQuery({ ...initiativesQueryOptions(), enabled: voitProjets })
 
-  // Masquage uniquement cosmétique (§ 8) : l'accès réel est tranché par le
-  // PermissionVoter côté serveur, pas par cette condition.
-  const voitAdministration = utilisateur?.permissions.some((p: string) => p.startsWith('admin.')) ?? false
-  // /administration/indicateurs est le seul sous-onglet gardé par une permission
-  // précise (indicateurs.definir, cf. AdminOnglets.tsx) — un coordonnateur qui
-  // détient d'autres droits admin.* (comptes, rôles, paramètres) mais pas
-  // celui-ci se faisait rediriger silencieusement vers le tableau de bord en
-  // cliquant sur « Administration », qui pointait toujours vers cette page.
-  const voitAdminIndicateurs = utilisateur?.permissions.includes('indicateurs.definir') ?? false
+  // Masquage uniquement cosmétique (§ 8) : l'accès réel est tranché côté
+  // serveur. Le lien suit les onglets de la page (lib/admin.ts) et pointe sur
+  // le premier ouvert : un coordonnateur sans indicateurs.definir était
+  // auparavant renvoyé vers le tableau de bord par un lien figé sur cet
+  // onglet, et un administrateur limité à une structure voyait un lien dont
+  // chaque onglet répondait 403.
+  const entreeAdmin = entreeAdministration(utilisateur)
   // Module réservé par défaut à l'équipe PHASAOC (§ décision), sauf
   // invitation ponctuelle d'un sectoriel sur un indicateur précis — un
   // utilisateur invité a un accès serveur réel mais ne détient jamais
@@ -133,7 +132,7 @@ export function Layout() {
   // de navigation « Administration » déjà rencontré (§ 8).
   const voitIndicateurs = utilisateur?.aAccesIndicateurs ?? false
   // Le suivi RH porte des données contractuelles : réservé à l'UGP.
-  const voitRh = utilisateur?.permissions.includes('rh.consulter') ?? false
+  const voitRh = detientGlobalement(utilisateur, 'rh.consulter')
   // Parties prenantes : équipe du projet (droit global). Un point focal n'y a
   // plus accès (décision du 26/10/2026) ; il transmet les rapports de sa
   // structure depuis « Mes rapports » (droit limité à sa structure).
@@ -159,15 +158,7 @@ export function Layout() {
       : []),
     ...(voitMesRapports ? [{ to: '/mes-rapports', label: 'Mes rapports', icone: 'documents' as const }] : []),
     ...(voitRh ? [{ to: '/ressources-humaines', label: 'Ressources humaines', icone: 'ressourcesHumaines' as const }] : []),
-    ...(voitAdministration
-      ? [
-          {
-            to: voitAdminIndicateurs ? '/administration/indicateurs' : '/administration/parties-prenantes',
-            label: 'Administration',
-            icone: 'administration' as const,
-          },
-        ]
-      : []),
+    ...(entreeAdmin !== null ? [{ to: entreeAdmin, label: 'Administration', icone: 'administration' as const }] : []),
   ]
 
   function estActif(to: string): boolean {

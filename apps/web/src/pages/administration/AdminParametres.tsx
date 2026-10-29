@@ -4,11 +4,12 @@ import { parametresQueryOptions, modifierParametres } from '@/lib/admin'
 import { queryClient } from '@/lib/query-client'
 import { ApiError } from '@/lib/api-client'
 import { AdminOnglets } from '@/components/AdminOnglets'
+import { ErreurChargement } from '@/components/ErreurChargement'
 import { Squelette } from '@/components/Squelette'
 import { formaterDate } from '@/lib/format'
 
 export function AdminParametres() {
-  const { data: parametres, isLoading, isError } = useQuery(parametresQueryOptions())
+  const { data: parametres, isLoading, isError, error } = useQuery(parametresQueryOptions())
   const [valeurs, setValeurs] = useState<Record<string, string>>({})
   const [enregistrement, setEnregistrement] = useState(false)
   const [erreur, setErreur] = useState<string | null>(null)
@@ -60,7 +61,7 @@ export function AdminParametres() {
       )}
 
       {isLoading && <Squelette lignes={3} />}
-      {isError && <p className="text-bad">Impossible de charger les paramètres. Réessayez.</p>}
+      {isError && <ErreurChargement erreur={error} quoi="les paramètres" />}
 
       {parametres && (
         <div className="flex max-w-xl flex-col gap-4 rounded-[var(--radius-carte)] bg-surface p-5 shadow-[var(--shadow-carte)]">

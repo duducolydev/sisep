@@ -4,7 +4,7 @@ import { Connexion } from './pages/Connexion'
 import { ChangerMotDePasse } from './pages/ChangerMotDePasse'
 import { profilQueryOptions } from './lib/auth'
 import { queryClient } from './lib/query-client'
-import { gardePermission, gardeAccesIndicateurs } from './lib/garde-permission'
+import { gardePermission, gardePermissionGlobale, gardeAccesIndicateurs } from './lib/garde-permission'
 
 // Routes § 8.1 du brief — l'état des filtres et des onglets vit dans l'URL,
 // jamais dans un useState : un lien vers une vue filtrée doit être partageable.
@@ -66,7 +66,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'initiatives',
-        loader: gardePermission('initiatives.consulter'),
+        loader: gardePermissionGlobale('initiatives.consulter'),
         lazy: () => import('./pages/Initiatives').then((m) => ({ Component: m.Initiatives })),
       },
       // Pas de garde : la bibliothèque se lit par tous, chaque document
@@ -74,22 +74,22 @@ export const router = createBrowserRouter([
       { path: 'documents', lazy: () => import('./pages/Documents').then((m) => ({ Component: m.Documents })) },
       {
         path: 'initiatives/:uuid',
-        loader: gardePermission('initiatives.consulter'),
+        loader: gardePermissionGlobale('initiatives.consulter'),
         lazy: () => import('./pages/InitiativeDetail').then((m) => ({ Component: m.InitiativeDetail })),
       },
       {
         path: 'ressources-humaines',
-        loader: gardePermission('rh.consulter'),
+        loader: gardePermissionGlobale('rh.consulter'),
         lazy: () => import('./pages/RessourcesHumaines').then((m) => ({ Component: m.RessourcesHumaines })),
       },
       {
         path: 'parties-prenantes',
-        loader: gardePermission('parties_prenantes.consulter'),
+        loader: gardePermissionGlobale('parties_prenantes.consulter'),
         lazy: () => import('./pages/PartiesPrenantes').then((m) => ({ Component: m.PartiesPrenantes })),
       },
       {
         path: 'parties-prenantes/:uuid',
-        loader: gardePermission('parties_prenantes.consulter'),
+        loader: gardePermissionGlobale('parties_prenantes.consulter'),
         lazy: () => import('./pages/PartiePrenanteDetail').then((m) => ({ Component: m.PartiePrenanteDetail })),
       },
       {
@@ -99,13 +99,13 @@ export const router = createBrowserRouter([
       },
       {
         path: 'administration/indicateurs',
-        loader: gardePermission('indicateurs.definir'),
+        loader: gardePermissionGlobale('indicateurs.definir'),
         lazy: () => import('./pages/administration/AdminIndicateurs').then((m) => ({ Component: m.AdminIndicateurs })),
       },
       { path: 'administration/gabarits-etapes', element: <Navigate to="/administration/modeles-etapes" replace /> },
       {
         path: 'administration/modeles-etapes',
-        loader: gardePermission('admin.parametres'),
+        loader: gardePermissionGlobale('admin.parametres'),
         lazy: () =>
           import('./pages/administration/AdminGabaritsEtapes').then((m) => ({ Component: m.AdminGabaritsEtapes })),
       },
@@ -116,22 +116,22 @@ export const router = createBrowserRouter([
       },
       {
         path: 'administration/comptes',
-        loader: gardePermission('admin.utilisateurs'),
+        loader: gardePermissionGlobale('admin.utilisateurs'),
         lazy: () => import('./pages/administration/AdminUtilisateurs').then((m) => ({ Component: m.AdminUtilisateurs })),
       },
       {
         path: 'administration/roles',
-        loader: gardePermission('admin.roles'),
+        loader: gardePermissionGlobale('admin.roles'),
         lazy: () => import('./pages/administration/AdminRoles').then((m) => ({ Component: m.AdminRoles })),
       },
       {
         path: 'administration/journal',
-        loader: gardePermission('journal.consulter'),
+        loader: gardePermissionGlobale('journal.consulter'),
         lazy: () => import('./pages/administration/AdminJournal').then((m) => ({ Component: m.AdminJournal })),
       },
       {
         path: 'administration/parametres',
-        loader: gardePermission('admin.parametres'),
+        loader: gardePermissionGlobale('admin.parametres'),
         lazy: () => import('./pages/administration/AdminParametres').then((m) => ({ Component: m.AdminParametres })),
       },
     ],
