@@ -119,7 +119,9 @@ git pull --ff-only
 docker compose -f docker-compose.prod.yml run --rm --no-deps nginx nginx -t
 # 2. Recréer nginx : Compose voit le nouveau montage et remplace le conteneur.
 docker compose -f docker-compose.prod.yml up -d nginx
-curl -s -o /dev/null -w '%{http_code}\n' https://forum2026.ansd.sn/   # 200 : le portail répond
+# Le serveur ne résout pas forcément ses propres noms : on les force sur
+# 127.0.0.1, ce qui interroge le nginx du forum sans passer par le DNS.
+curl -s -o /dev/null -w '%{http_code}\n' --resolve forum2026.ansd.sn:443:127.0.0.1 https://forum2026.ansd.sn/   # 200
 ```
 
 Ouvrir ensuite `https://sisephasaoc.ansd.sn`.
@@ -137,8 +139,8 @@ boucle locale du serveur.
 docker compose -f docker-compose.prod.yml ps          # trois services « Up », db « healthy »
 curl -s -o /dev/null -w '%{http_code}\n' http://localhost:8080/           # 200
 curl -s -o /dev/null -w '%{http_code}\n' http://localhost:8080/api/v1/projets/courant  # 401 sans session : normal
-curl -s -o /dev/null -w '%{http_code}\n' https://sisephasaoc.ansd.sn/api/v1/projets/courant  # 401 : le frontal relaie
-curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' http://sisephasaoc.ansd.sn/       # 301 vers https://sisephasaoc…
+curl -s -o /dev/null -w '%{http_code}\n' --resolve sisephasaoc.ansd.sn:443:127.0.0.1 https://sisephasaoc.ansd.sn/api/v1/projets/courant  # 401 : le frontal relaie
+curl -sI --resolve sisephasaoc.ansd.sn:80:127.0.0.1 http://sisephasaoc.ansd.sn/ | grep -i '^location'   # https://sisephasaoc.ansd.sn/
 docker compose -f docker-compose.prod.yml logs -f api
 ```
 
