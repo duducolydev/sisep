@@ -96,11 +96,13 @@ export function PartiesPrenantes() {
 
   return (
     <div className="flex flex-col gap-8">
-      {/* Titre seul sur sa ligne : à côté de cinq boutons, il se repliait mot par mot. */}
-      <div className="flex flex-col gap-4">
-        <div className="w-full text-center">
+      {/* Titre court, à gauche, aligné sur la ligne des boutons : l'ancien
+          « Parties prenantes et points focaux » se repliait mot par mot à
+          côté d'eux. */}
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
           <p className="font-titre text-eyebrow uppercase tracking-wide">Réseau du projet</p>
-          <h1 className="text-2xl">Parties prenantes et points focaux</h1>
+          <h1 className="text-2xl whitespace-nowrap">Parties prenantes</h1>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-3">
           {peutExporter && (
