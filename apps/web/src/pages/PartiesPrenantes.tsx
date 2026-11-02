@@ -99,10 +99,7 @@ export function PartiesPrenantes() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="font-titre text-eyebrow uppercase tracking-wide">Réseau du projet</p>
-          <h1 className="text-2xl">Parties prenantes et points focaux</h1>
-          <p className="text-muted">
-            Directions et cellules de l'ANSD, partenaires nationaux et techniques, école de formation et bailleur.
-          </p>
+          <h1 className="text-2xl w-full max-w-[calc(100%-12rem)]">Parties prenantes et points focaux</h1>
         </div>
         <div className="flex shrink-0 items-center gap-3">
           {peutExporter && (
