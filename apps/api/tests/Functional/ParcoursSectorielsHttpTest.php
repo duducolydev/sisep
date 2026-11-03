@@ -183,18 +183,17 @@ final class ParcoursSectorielsHttpTest extends WebTestCase
             self::assertEqualsWithDelta(3.0, (float) $corrigee['desagregations'][0]['valeur'], 0.0001);
 
             // Le RSE corrige à son tour le chiffre : il en devient l'auteur, et
-            // ne peut plus le valider lui-même — le coordonnateur, si.
+            // sa correction est validée d'emblée — le RSE n'a pas besoin d'être
+            // validé par le coordonnateur (décision du 03/11/2026).
             $this->connecter($client, 'rse@example.test');
             $client->request('POST', $indicateur.'/valeurs', server: ['CONTENT_TYPE' => 'application/json'], content: json_encode([
                 'periode' => '2026-09-30',
                 'valeur' => '5',
             ], \JSON_THROW_ON_ERROR));
             self::assertResponseIsSuccessful();
-            $client->request('POST', '/api/v1/indicateurs/valeurs/'.$corrigee['uuid'].'/valider');
-            self::assertResponseStatusCodeSame(422, 'Personne ne valide sa propre saisie.');
-            $this->connecter($client, 'coord@example.test');
-            $client->request('POST', '/api/v1/indicateurs/valeurs/'.$corrigee['uuid'].'/valider');
-            self::assertResponseIsSuccessful();
+            $corrigeeParLeRse = $this->corps($client);
+            self::assertSame($corrigee['uuid'], $corrigeeParLeRse['uuid']);
+            self::assertSame('valide', $corrigeeParLeRse['statut']);
             $client->request('GET', $indicateur);
             self::assertEqualsWithDelta(5.0, (float) $this->corps($client)['actuel'], 0.0001);
 

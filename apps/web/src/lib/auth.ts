@@ -15,6 +15,8 @@ export interface ProfilUtilisateur {
   fonction: string | null
   structure: string | null
   structureUuid: string | null
+  /** Membre de l'équipe du projet PHASAOC — repère, n'ouvre aucun droit. */
+  membrePhasaoc: boolean
   doitChangerMdp: boolean
   roles: RoleAttribue[]
   permissions: string[]

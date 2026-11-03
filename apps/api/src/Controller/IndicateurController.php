@@ -300,7 +300,8 @@ final class IndicateurController
      *
      * Une resaisie sur une période déjà renseignée n'échoue plus (409) :
      * elle met à jour la ligne existante via ajusterValeur(), qui remet le
-     * statut à BROUILLON (§ séparation saisie/validation).
+     * statut à BROUILLON (§ séparation saisie/validation) — sauf pour le RSE
+     * (indicateurs.validation_directe), dont la saisie est validée d'emblée.
      */
     #[Route('/{uuid}/valeurs', name: 'app_indicateur_valeurs_saisir', methods: ['POST'], requirements: ['uuid' => '[0-9a-fA-F-]{36}'])]
     public function saisirValeur(string $uuid, Request $request): Response
@@ -351,6 +352,13 @@ final class IndicateurController
             $this->em->persist($valeur);
         }
 
+        // Le RSE (indicateurs.validation_directe, décision du 03/11/2026)
+        // n'a pas besoin d'être validé : sa saisie, ou sa resaisie, est
+        // validée d'emblée, à son nom. Même règle qu'au budget.
+        if ($this->permissionsResolver->pour($utilisateur)->estGlobale('indicateurs.validation_directe')) {
+            $valeur->valider($utilisateur);
+        }
+
         // Resaisie : une modalité déjà ventilée est corrigée, pas ajoutée une
         // seconde fois — sinon « Femmes » apparaissait deux fois, avec
         // l'ancienne et la nouvelle valeur.
@@ -373,7 +381,7 @@ final class IndicateurController
     /**
      * indicateurs.valider : responsable suivi-évaluation, coordonnateur,
      * administrateur. Refusé sur une valeur déjà validée (409) et sur sa
-     * propre saisie (422).
+     * propre saisie (422), sauf pour le RSE (indicateurs.validation_directe).
      */
     #[Route('/valeurs/{uuid}/valider', name: 'app_indicateur_valeur_valider', methods: ['POST'])]
     public function validerValeur(string $uuid): JsonResponse
@@ -397,9 +405,12 @@ final class IndicateurController
             return ProblemResponseFactory::creer(409, 'Valeur déjà validée', 'Seule une valeur en attente de validation peut être validée.');
         }
 
-        // Séparation saisie/validation : le RSE saisit et valide (décision du
-        // 26/10/2026), jamais sa propre saisie — même règle qu'au budget.
-        if ($valeur->getSaisiPar()->getUuid()->equals($utilisateur->getUuid())) {
+        // Séparation saisie/validation : personne ne valide sa propre saisie
+        // — même règle qu'au budget. Sauf le RSE (indicateurs.validation_directe,
+        // décision du 03/11/2026) : ses saisies sont validées d'emblée, et il
+        // solde lui-même celles restées en attente d'avant cette décision.
+        if ($valeur->getSaisiPar()->getUuid()->equals($utilisateur->getUuid())
+            && !$this->permissionsResolver->pour($utilisateur)->estGlobale('indicateurs.validation_directe')) {
             return ProblemResponseFactory::creer(422, 'Validation de sa propre saisie', 'Vous avez saisi cette valeur : un autre responsable suivi-évaluation ou le coordonnateur doit la valider.');
         }
 

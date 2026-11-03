@@ -164,11 +164,31 @@ final class InitiativeController
         /** @var array<string, mixed> $donnees */
         $donnees = json_decode($request->getContent(), true) ?? [];
 
+        if (\array_key_exists('libelle', $donnees) && \is_string($donnees['libelle']) && mb_strlen($donnees['libelle']) > 160) {
+            return ProblemResponseFactory::creer(422, 'Données invalides', 'Le libellé ne doit pas dépasser 160 caractères.');
+        }
         if (\array_key_exists('libelle', $donnees) && \is_string($donnees['libelle']) && '' !== $donnees['libelle']) {
             $initiative->setLibelle($donnees['libelle']);
         }
         if (\array_key_exists('description', $donnees)) {
-            $initiative->setDescription(\is_string($donnees['description']) ? $donnees['description'] : null);
+            $initiative->setDescription(\is_string($donnees['description']) && '' !== $donnees['description'] ? $donnees['description'] : null);
+        }
+
+        // Lien PTBA : envoyé en entier (les deux clés, l'une ou l'autre à
+        // null) ; les deux à null rend le projet indépendant du PTBA.
+        if (\array_key_exists('composante', $donnees) || \array_key_exists('sousComposante', $donnees)) {
+            $composanteUuid = \is_string($donnees['composante'] ?? null) && '' !== $donnees['composante'] ? $donnees['composante'] : null;
+            $sousComposanteUuid = \is_string($donnees['sousComposante'] ?? null) && '' !== $donnees['sousComposante'] ? $donnees['sousComposante'] : null;
+            if (null !== $composanteUuid && null !== $sousComposanteUuid) {
+                return ProblemResponseFactory::creer(422, 'Lien PTBA invalide', 'Un projet ne peut être lié qu\'à une composante OU une sous-composante, pas les deux.');
+            }
+
+            $composante = null !== $composanteUuid ? $this->composantes->findOneBy(['uuid' => $this->uuidOuNull($composanteUuid)]) : null;
+            $sousComposante = null !== $sousComposanteUuid ? $this->sousComposantes->findOneBy(['uuid' => $this->uuidOuNull($sousComposanteUuid)]) : null;
+            if ((null !== $composanteUuid && null === $composante) || (null !== $sousComposanteUuid && null === $sousComposante)) {
+                return ProblemResponseFactory::creer(422, 'Lien PTBA invalide', 'Composante ou sous-composante introuvable.');
+            }
+            $initiative->definirLienPtba($composante, $sousComposante);
         }
 
         $this->em->flush();
@@ -199,7 +219,7 @@ final class InitiativeController
             return $erreur;
         }
 
-        $initiative = $this->initiatives->findOneBy(['uuid' => $this->uuidOuNull($donnees->initiative)]);
+        $initiative = $this->initiatives->findOneBy(['uuid' => $this->uuidOuNull($donnees->initiative), 'supprimeLe' => null]);
         if (null === $initiative) {
             return ProblemResponseFactory::creer(422, 'Projet introuvable');
         }
@@ -515,7 +535,9 @@ final class InitiativeController
     private function trouverInitiative(string $uuid): Initiative
     {
         $uuidObjet = $this->uuidOuNull($uuid);
-        $initiative = null !== $uuidObjet ? $this->initiatives->findOneBy(['uuid' => $uuidObjet]) : null;
+        // Un projet supprimé n'est plus consultable ni modifiable : sans le
+        // filtre, son lien direct l'affichait encore après suppression.
+        $initiative = null !== $uuidObjet ? $this->initiatives->findOneBy(['uuid' => $uuidObjet, 'supprimeLe' => null]) : null;
 
         return $initiative ?? throw new NotFoundHttpException('Projet introuvable.');
     }

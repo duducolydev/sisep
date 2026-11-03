@@ -3,36 +3,55 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Modale } from './Modale'
-import { creerInitiative } from '@/lib/initiatives'
+import { creerInitiative, modifierInitiative, type Initiative } from '@/lib/initiatives'
 import type { NoeudComposante } from '@/lib/composantes'
 import { ApiError } from '@/lib/api-client'
 import { queryClient } from '@/lib/query-client'
 
-const schema = z.object({
-  libelle: z.string().min(1, 'Le libellé est requis.'),
-  description: z.string().optional(),
-  lien: z.enum(['independant', 'composante', 'sous_composante']),
-  composante: z.string().optional(),
-  sousComposante: z.string().optional(),
-})
+const schema = z
+  .object({
+    libelle: z.string().min(1, 'Le libellé est requis.').max(160, 'Le libellé ne doit pas dépasser 160 caractères.'),
+    description: z.string().optional(),
+    lien: z.enum(['independant', 'composante', 'sous_composante']),
+    composante: z.string().optional(),
+    sousComposante: z.string().optional(),
+  })
+  // Sans cela, « Lié à une composante » sans composante choisie enregistrait un projet indépendant.
+  .refine((v) => v.lien !== 'composante' || !!v.composante, { path: ['composante'], message: 'Choisissez une composante.' })
+  .refine((v) => v.lien !== 'sous_composante' || !!v.sousComposante, {
+    path: ['sousComposante'],
+    message: 'Choisissez une sous-composante.',
+  })
 
 type FormValues = z.infer<typeof schema>
 
-interface CreerInitiativeModaleProps {
+interface InitiativeModaleProps {
   composantes: NoeudComposante[]
+  /** Projet à modifier ; absent, la modale en crée un. */
+  initiative?: Initiative
   onFermer: () => void
 }
 
 /** Un projet peut être indépendant du PTBA ou rattaché à UNE composante ou UNE sous-composante — jamais les deux (§ décision produit). */
-export function CreerInitiativeModale({ composantes, onFermer }: CreerInitiativeModaleProps) {
+export function InitiativeModale({ composantes, initiative, onFermer }: InitiativeModaleProps) {
   const [erreur, setErreur] = useState<string | null>(null)
+  const lienActuel = initiative?.lienPtba ?? null
 
   const {
     register,
     handleSubmit,
     watch,
     formState: { errors, isSubmitting },
-  } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { lien: 'independant' } })
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      libelle: initiative?.libelle ?? '',
+      description: initiative?.description ?? '',
+      lien: lienActuel?.type ?? 'independant',
+      composante: lienActuel?.type === 'composante' ? lienActuel.uuid : '',
+      sousComposante: lienActuel?.type === 'sous_composante' ? lienActuel.uuid : '',
+    },
+  })
 
   const lien = watch('lien')
 
@@ -43,12 +62,22 @@ export function CreerInitiativeModale({ composantes, onFermer }: CreerInitiative
   async function onSubmit(valeurs: FormValues) {
     setErreur(null)
     try {
-      await creerInitiative({
-        libelle: valeurs.libelle,
-        description: valeurs.description === '' ? undefined : valeurs.description,
-        composante: valeurs.lien === 'composante' ? valeurs.composante : undefined,
-        sousComposante: valeurs.lien === 'sous_composante' ? valeurs.sousComposante : undefined,
-      })
+      if (initiative) {
+        // Lien PTBA envoyé en entier : les deux à null rendent le projet indépendant.
+        await modifierInitiative(initiative.uuid, {
+          libelle: valeurs.libelle,
+          description: valeurs.description ?? '',
+          composante: valeurs.lien === 'composante' ? (valeurs.composante ?? null) : null,
+          sousComposante: valeurs.lien === 'sous_composante' ? (valeurs.sousComposante ?? null) : null,
+        })
+      } else {
+        await creerInitiative({
+          libelle: valeurs.libelle,
+          description: valeurs.description === '' ? undefined : valeurs.description,
+          composante: valeurs.lien === 'composante' ? valeurs.composante : undefined,
+          sousComposante: valeurs.lien === 'sous_composante' ? valeurs.sousComposante : undefined,
+        })
+      }
       await queryClient.invalidateQueries({ queryKey: ['initiatives'] })
       onFermer()
     } catch (e) {
@@ -57,7 +86,7 @@ export function CreerInitiativeModale({ composantes, onFermer }: CreerInitiative
   }
 
   return (
-    <Modale titre="Nouveau projet" onFermer={onFermer}>
+    <Modale titre={initiative ? 'Modifier le projet' : 'Nouveau projet'} onFermer={onFermer}>
       {erreur && (
         <div role="alert" className="mb-4 rounded-[var(--radius-controle)] bg-bad-bg px-4 py-3 text-bad">
           {erreur}
@@ -105,6 +134,7 @@ export function CreerInitiativeModale({ composantes, onFermer }: CreerInitiative
                 </option>
               ))}
             </select>
+            {errors.composante && <p className="text-bad text-sm">{errors.composante.message}</p>}
           </div>
         )}
 
@@ -123,6 +153,7 @@ export function CreerInitiativeModale({ composantes, onFermer }: CreerInitiative
                 </option>
               ))}
             </select>
+            {errors.sousComposante && <p className="text-bad text-sm">{errors.sousComposante.message}</p>}
           </div>
         )}
 
@@ -139,7 +170,7 @@ export function CreerInitiativeModale({ composantes, onFermer }: CreerInitiative
             disabled={isSubmitting}
             className="rounded-[var(--radius-controle)] bg-accent px-4 py-2 font-semibold text-white transition-colors hover:bg-accent-d disabled:opacity-60"
           >
-            {isSubmitting ? 'Création…' : 'Créer'}
+            {initiative ? (isSubmitting ? 'Enregistrement…' : 'Enregistrer') : isSubmitting ? 'Création…' : 'Créer'}
           </button>
         </div>
       </form>

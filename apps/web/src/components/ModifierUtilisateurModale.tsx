@@ -8,6 +8,7 @@ import { attribuerMotDePasseTemporaire, definirRolesUtilisateur, modifierUtilisa
 import { rolesQueryOptions } from '@/lib/admin'
 import { IconeAnnuler, IconeBouton, IconeCopier, IconePlus, IconeValider } from './Icones'
 import { Bouton } from './Bouton'
+import { ChampMembrePhasaoc } from './MembrePhasaoc'
 import { useConfirmer } from '@/lib/confirmation'
 import { useUtilisateurCourant } from '@/lib/use-permissions'
 import { structuresDetailQueryOptions } from '@/lib/parties-prenantes'
@@ -19,6 +20,7 @@ const schema = z.object({
   nom: z.string().min(1, 'Le nom est requis.'),
   fonction: z.string().optional(),
   structureUuid: z.string().optional(),
+  membrePhasaoc: z.boolean(),
   actif: z.boolean(),
 })
 
@@ -51,6 +53,7 @@ export function ModifierUtilisateurModale({ utilisateur, onFermer }: ModifierUti
       nom: utilisateur.nom,
       fonction: utilisateur.fonction ?? '',
       structureUuid: utilisateur.structure?.uuid ?? '',
+      membrePhasaoc: utilisateur.membrePhasaoc,
       actif: utilisateur.actif,
     },
   })
@@ -63,6 +66,7 @@ export function ModifierUtilisateurModale({ utilisateur, onFermer }: ModifierUti
         nom: valeurs.nom,
         fonction: valeurs.fonction || null,
         structureUuid: valeurs.structureUuid || null,
+        membrePhasaoc: valeurs.membrePhasaoc,
         actif: valeurs.actif,
       })
       if (rolesModifies) {
@@ -122,6 +126,8 @@ export function ModifierUtilisateurModale({ utilisateur, onFermer }: ModifierUti
             ))}
           </select>
         </div>
+
+        <ChampMembrePhasaoc {...register('membrePhasaoc')} />
 
         <fieldset className="flex flex-col gap-2">
           <legend className="mb-1">Rôles</legend>

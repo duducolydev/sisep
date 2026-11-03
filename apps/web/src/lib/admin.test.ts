@@ -14,6 +14,7 @@ function profil(codes: string[], portee: string[] | null = null): ProfilUtilisat
     fonction: null,
     structure: null,
     structureUuid: null,
+    membrePhasaoc: false,
     doitChangerMdp: false,
     roles: [],
     permissions: codes,

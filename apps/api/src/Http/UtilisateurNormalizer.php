@@ -21,6 +21,7 @@ final class UtilisateurNormalizer
                 'uuid' => $utilisateur->getStructure()->getUuid()->toRfc4122(),
                 'sigle' => $utilisateur->getStructure()->getSigle(),
             ] : null,
+            'membrePhasaoc' => $utilisateur->estMembrePhasaoc(),
             'actif' => $utilisateur->estActif(),
             'doitChangerMdp' => $utilisateur->doitChangerMdp(),
             'derniereConnexion' => $utilisateur->getDerniereConnexion()?->format(\DateTimeInterface::ATOM),

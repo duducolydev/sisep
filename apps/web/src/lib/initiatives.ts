@@ -127,6 +127,20 @@ export function creerInitiative(entree: CreerInitiativeEntree) {
   return apiClient.post<Initiative>('/initiatives', entree)
 }
 
+export interface ModifierInitiativeEntree {
+  libelle?: string
+  /** Chaîne vide : efface la description. */
+  description?: string
+  /** Lien PTBA, envoyé en entier : l'une des deux au plus, les deux à null pour un projet indépendant. */
+  composante?: string | null
+  sousComposante?: string | null
+}
+
+export function modifierInitiative(uuid: string, entree: ModifierInitiativeEntree) {
+  return apiClient.patch<Initiative>(`/initiatives/${uuid}`, entree)
+}
+
+/** Suppression logique : le projet disparaît de la liste, son historique reste au journal. */
 export function supprimerInitiative(uuid: string) {
   return apiClient.delete<void>(`/initiatives/${uuid}`)
 }

@@ -171,6 +171,42 @@ final class AdminUtilisateursHttpTest extends WebTestCase
         }
     }
 
+    /** Repère « membre de l'équipe PHASAOC » : posé à la création, modifiable ensuite, non coché par défaut. */
+    public function testMembrePhasaocPoseALaCreationEtModifiable(): void
+    {
+        [$client, $fixture] = $this->demarrer();
+
+        try {
+            $this->connecter($client, $fixture['coordonnateur']->getEmail());
+
+            $client->request('POST', '/api/v1/admin/utilisateurs', server: ['CONTENT_TYPE' => 'application/json'], content: json_encode([
+                'email' => 'membre.ugp@example.test',
+                'nom' => 'Sow',
+                'prenom' => 'Aminata',
+                'membrePhasaoc' => true,
+            ], \JSON_THROW_ON_ERROR));
+            self::assertResponseStatusCodeSame(201);
+            $membre = $this->corps($client);
+            self::assertTrue($membre['membrePhasaoc']);
+
+            $client->request('POST', '/api/v1/admin/utilisateurs', server: ['CONTENT_TYPE' => 'application/json'], content: json_encode([
+                'email' => 'externe@example.test',
+                'nom' => 'Faye',
+                'prenom' => 'Omar',
+            ], \JSON_THROW_ON_ERROR));
+            self::assertResponseStatusCodeSame(201);
+            self::assertFalse($this->corps($client)['membrePhasaoc'], 'Non coché par défaut.');
+
+            $client->request('PATCH', \sprintf('/api/v1/admin/utilisateurs/%s', $membre['uuid']), server: ['CONTENT_TYPE' => 'application/json'], content: json_encode([
+                'membrePhasaoc' => false,
+            ], \JSON_THROW_ON_ERROR));
+            self::assertResponseIsSuccessful();
+            self::assertFalse($this->corps($client)['membrePhasaoc']);
+        } finally {
+            $this->rollback();
+        }
+    }
+
     /** @return array{0: KernelBrowser, 1: array<string, mixed>} */
     private function demarrer(): array
     {

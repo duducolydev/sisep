@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useUtilisateurCourant } from '@/lib/use-permissions'
 import { Avatar } from '@/components/Avatar'
+import { PastilleMembrePhasaoc } from '@/components/MembrePhasaoc'
 import { ModifierMotDePasseModale } from '@/components/ModifierMotDePasseModale'
 import { Squelette } from '@/components/Squelette'
 
@@ -23,6 +24,7 @@ export function Profil() {
         <div className="min-w-0">
           <p className="truncate text-lg font-semibold">
             {utilisateur.prenom} {utilisateur.nom}
+            {utilisateur.membrePhasaoc && <PastilleMembrePhasaoc />}
           </p>
           {utilisateur.fonction && <p className="truncate text-sm text-muted">{utilisateur.fonction}</p>}
         </div>

@@ -25,6 +25,9 @@ final class CreerUtilisateurRequest
 
     public ?string $structure = null;
 
+    /** Membre de l'équipe du projet PHASAOC — repère, n'ouvre aucun droit. */
+    public bool $membrePhasaoc = false;
+
     /** @var list<mixed> validé/normalisé à la main dans le contrôleur — la forme n'est pas garantie par le désérialiseur. */
     public array $roles = [];
 }

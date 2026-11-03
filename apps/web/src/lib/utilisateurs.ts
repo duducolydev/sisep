@@ -8,6 +8,8 @@ export interface Utilisateur {
   prenom: string
   fonction: string | null
   structure: { uuid: string; sigle: string } | null
+  /** Membre de l'équipe du projet PHASAOC — repère pour reconnaître ces personnes, n'ouvre aucun droit. */
+  membrePhasaoc: boolean
   actif: boolean
   doitChangerMdp: boolean
   derniereConnexion: string | null
@@ -26,6 +28,7 @@ export interface CreerUtilisateurEntree {
   prenom: string
   fonction?: string
   structure?: string
+  membrePhasaoc?: boolean
   roles?: { role: string; structure?: string }[]
 }
 
@@ -38,6 +41,7 @@ export interface ModifierUtilisateurEntree {
   prenom?: string
   fonction?: string | null
   structureUuid?: string | null
+  membrePhasaoc?: boolean
   actif?: boolean
 }
 

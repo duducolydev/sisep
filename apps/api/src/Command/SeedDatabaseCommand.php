@@ -290,6 +290,9 @@ final class SeedDatabaseCommand extends Command
         $focalDsid = $creer('focal.dsid@ansd.sn', 'Sarr', 'Ibrahima', 'Point focal DSID', $structures['DSID']);
         $focalDpee = $creer('focal.dpee@dpee.sn', 'Ba', 'Fatou', 'Point focal DPEE', $structures['DPEE']);
         $lecteur = $creer('lecture@ansd.sn', 'Diop', 'Cheikh', 'Lecteur', null);
+        foreach ([$coordonnateur, $suiviEvaluation, $gestionnaireBudgetaire] as $membreUgp) {
+            $membreUgp->setMembrePhasaoc(true);
+        }
 
         $attribuer = function (Utilisateur $utilisateur, Role $role, ?Structure $structure = null): void {
             $this->em->persist(new UtilisateurRole($utilisateur, $role, $structure));

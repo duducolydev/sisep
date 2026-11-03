@@ -1,7 +1,9 @@
 import { useState } from 'react'
-import { useParams, Link } from 'react-router'
+import { useParams, Link, useNavigate } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
-import { initiativeQueryOptions, definirTacheTerminee } from '@/lib/initiatives'
+import { initiativeQueryOptions, definirTacheTerminee, supprimerInitiative } from '@/lib/initiatives'
+import { projetCourantQueryOptions, arbreQueryOptions } from '@/lib/composantes'
+import { useConfirmer } from '@/lib/confirmation'
 import { formaterDate, formaterTaux } from '@/lib/format'
 import { ApiError } from '@/lib/api-client'
 import { queryClient } from '@/lib/query-client'
@@ -13,7 +15,10 @@ import { AjouterActiviteInitiativeModale } from '@/components/AjouterActiviteIni
 import { AjouterTacheInitiativeModale } from '@/components/AjouterTacheInitiativeModale'
 import { ObservationsInitiative } from '@/components/ObservationsInitiative'
 import { DocumentsInitiative } from '@/components/DocumentsInitiative'
-import { IconePlus, IconeDeplierTout, IconeReplierTout } from '@/components/Icones'
+import { InitiativeModale } from '@/components/InitiativeModale'
+import { Bouton } from '@/components/Bouton'
+import { useToast } from '@/components/ToastProvider'
+import { IconePlus, IconeDeplierTout, IconeReplierTout, IconeModifier, IconeSupprimer } from '@/components/Icones'
 import { Squelette } from '@/components/Squelette'
 
 const BOUTON_AJOUT_COMPACT =
@@ -30,6 +35,15 @@ export function InitiativeDetail() {
   const [modaleActivite, setModaleActivite] = useState(false)
   const [activiteTache, setActiviteTache] = useState<string | null>(null)
   const [tacheDetailsOuverte, setTacheDetailsOuverte] = useState<string | null>(null)
+  const [modaleEdition, setModaleEdition] = useState(false)
+  const [suppressionEnCours, setSuppressionEnCours] = useState(false)
+  const navigate = useNavigate()
+  const confirmer = useConfirmer()
+  const afficherToast = useToast()
+  // L'arbre ne sert qu'au choix du lien PTBA, donc à ceux qui peuvent modifier le projet. La
+  // modale attend qu'il soit là : ouverte avant, la liste n'afficherait pas le lien actuel.
+  const { data: projet } = useQuery(projetCourantQueryOptions())
+  const { data: arbre } = useQuery(arbreQueryOptions(peutGerer ? projet?.uuid : undefined, 3))
 
   if (isLoading) return <Squelette lignes={6} />
   if (isError || !initiative) {
@@ -56,12 +70,60 @@ export function InitiativeDetail() {
     }
   }
 
+  async function supprimer() {
+    if (!initiative) return
+    if (
+      !(await confirmer({
+        titre: 'Supprimer le projet',
+        message: `Le projet « ${initiative.libelle} » disparaîtra de la liste, avec ses activités et ses tâches. Son historique reste consultable dans le journal.`,
+        action: 'Supprimer',
+      }))
+    ) {
+      return
+    }
+    setErreur(null)
+    setSuppressionEnCours(true)
+    try {
+      await supprimerInitiative(initiative.uuid)
+      await queryClient.invalidateQueries({ queryKey: ['initiatives'] })
+      afficherToast(`Projet « ${initiative.libelle} » supprimé.`)
+      void navigate('/initiatives')
+    } catch (e) {
+      setErreur(e instanceof ApiError ? e.message : 'Une erreur est survenue. Réessayez.')
+      setSuppressionEnCours(false)
+    }
+  }
+
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <Link to="/initiatives" className="text-sm text-accent">
-          ← Projets
-        </Link>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Link to="/initiatives" className="text-sm text-accent">
+            ← Projets
+          </Link>
+          {peutGerer && (
+            <div className="flex gap-2">
+              <Bouton
+                variante="secondaire"
+                taille="compacte"
+                icone={<IconeModifier />}
+                disabled={!arbre}
+                onClick={() => setModaleEdition(true)}
+              >
+                Modifier
+              </Bouton>
+              <Bouton
+                variante="danger"
+                taille="compacte"
+                icone={<IconeSupprimer />}
+                disabled={suppressionEnCours}
+                onClick={() => void supprimer()}
+              >
+                Supprimer
+              </Bouton>
+            </div>
+          )}
+        </div>
         <p className="mt-2 text-[10px] font-semibold uppercase tracking-[.14em] text-eyebrow">
           {initiative.lienPtba ? `${initiative.lienPtba.code} — ${initiative.lienPtba.libelle}` : 'Indépendant du PTBA'}
         </p>
@@ -215,6 +277,9 @@ export function InitiativeDetail() {
         )}
       </section>
 
+      {modaleEdition && arbre && (
+        <InitiativeModale composantes={arbre.composantes} initiative={initiative} onFermer={() => setModaleEdition(false)} />
+      )}
       {modaleActivite && <AjouterActiviteInitiativeModale initiativeUuid={initiative.uuid} onFermer={() => setModaleActivite(false)} />}
     </div>
   )

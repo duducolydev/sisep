@@ -12,7 +12,7 @@ import {
 } from '@/lib/initiatives'
 import { urlExportInitiativesXlsx, urlExportInitiativesPdf } from '@/lib/exports'
 import { usePeut } from '@/lib/use-permissions'
-import { CreerInitiativeModale } from '@/components/CreerInitiativeModale'
+import { InitiativeModale } from '@/components/InitiativeModale'
 import { RepartitionStatutsInitiatives } from '@/components/RepartitionStatutsInitiatives'
 import { VueCartesProjets } from '@/components/initiatives/VueCartesProjets'
 import { VueTableauActivites } from '@/components/initiatives/VueTableauActivites'
@@ -315,7 +315,7 @@ export function Initiatives() {
         </>
       )}
 
-      {modaleCreation && <CreerInitiativeModale composantes={arbre?.composantes ?? []} onFermer={() => setModaleCreation(false)} />}
+      {modaleCreation && <InitiativeModale composantes={arbre?.composantes ?? []} onFermer={() => setModaleCreation(false)} />}
     </div>
   )
 }

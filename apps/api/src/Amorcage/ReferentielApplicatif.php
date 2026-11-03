@@ -54,6 +54,7 @@ final class ReferentielApplicatif
             ['indicateurs.definir', 'indicateurs', 'Définir un indicateur'],
             ['indicateurs.saisir', 'indicateurs', "Saisir une valeur d'indicateur"],
             ['indicateurs.valider', 'indicateurs', "Valider une valeur d'indicateur"],
+            ['indicateurs.validation_directe', 'indicateurs', "Valeurs d'indicateurs validées dès leur saisie, sans second contrôle"],
             ['indicateurs.inviter', 'indicateurs', 'Inviter un sectoriel à saisir un indicateur'],
             ['structures.gerer', 'structures', 'Gérer les structures'],
             ['points_focaux.gerer', 'points_focaux', 'Gérer les points focaux'],
@@ -123,15 +124,18 @@ final class ReferentielApplicatif
         //
         // Même chose pour les indicateurs depuis le 26/10/2026 : le RSE valide
         // les valeurs que saisissent les sectoriels (il est leur interlocuteur
-        // direct), et en saisit lui-même. Même contrepartie qu'au budget : le
-        // serveur refuse qu'une personne valide sa propre saisie
+        // direct), et en saisit lui-même. Depuis le 03/11/2026
+        // (indicateurs.validation_directe), ses propres saisies sont validées
+        // d'emblée, comme au budget : le coordonnateur ne repasse plus
+        // derrière lui. Pour tous les autres, le serveur refuse toujours
+        // qu'une personne valide sa propre saisie
         // (IndicateurController::validerValeur).
         $suiviEvaluation = new Role('responsable_suivi_evaluation', 'Responsable suivi-évaluation', true);
         $accorder($suiviEvaluation, $permissions, [
             'activites.consulter', 'activites.creer', 'activites.modifier', 'activites.valider',
             'budget.engagement.saisir', 'budget.engagement.valider',
             'budget.depense.saisir', 'budget.depense.valider', 'budget.validation_directe',
-            'indicateurs.consulter', 'indicateurs.definir', 'indicateurs.saisir', 'indicateurs.valider', 'indicateurs.inviter',
+            'indicateurs.consulter', 'indicateurs.definir', 'indicateurs.saisir', 'indicateurs.valider', 'indicateurs.validation_directe', 'indicateurs.inviter',
             'parties_prenantes.consulter', 'journal.consulter', 'exports.generer', 'graphiques.exporter', 'initiatives.consulter', 'initiatives.gerer', 'admin.parametres',
             'rh.consulter', 'rh.gerer', 'documents.gerer',
         ]);
@@ -170,11 +174,12 @@ final class ReferentielApplicatif
         // budgétaires. Sa contrepartie est le journal d'activité, qui trace
         // qui a saisi, modifie ou valide quoi.
         //
-        // Une seule exception : budget.validation_directe. L'administrateur
-        // peut saisir et valider, jamais faire passer seul sa propre écriture
-        // — ce raccourci est réservé au RSE (décision du 28/10/2026).
+        // Seules exceptions : budget.validation_directe et
+        // indicateurs.validation_directe. L'administrateur peut saisir et
+        // valider, jamais faire passer seul sa propre écriture — ce raccourci
+        // est réservé au RSE (décisions du 28/10/2026 et du 03/11/2026).
         $administrateur = new Role('administrateur', 'Administrateur', true);
-        $accorder($administrateur, $permissions, array_values(array_diff(array_keys($permissions), ['budget.validation_directe'])));
+        $accorder($administrateur, $permissions, array_values(array_diff(array_keys($permissions), ['budget.validation_directe', 'indicateurs.validation_directe'])));
         $this->em->persist($administrateur);
 
         $lecteur = new Role('lecteur', 'Lecteur', true);

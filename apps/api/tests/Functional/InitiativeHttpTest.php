@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Entity\Composante;
 use App\Entity\Initiative;
 use App\Entity\InitiativeActivite;
 use App\Entity\Permission;
+use App\Entity\Projet;
 use App\Entity\Role;
+use App\Entity\SousComposante;
 use App\Entity\TacheInitiative;
 use App\Entity\Utilisateur;
 use App\Entity\UtilisateurRole;
@@ -427,6 +430,63 @@ final class InitiativeHttpTest extends WebTestCase
             self::assertResponseIsSuccessful();
             $uuids = array_column($this->corps($client)['donnees'], 'uuid');
             self::assertNotContains($fixture['initiative']->getUuid()->toRfc4122(), $uuids);
+
+            // Supprimé, il n'est plus consultable ni modifiable par son lien direct.
+            $client->request('GET', "/api/v1/initiatives/{$fixture['initiative']->getUuid()->toRfc4122()}");
+            self::assertResponseStatusCodeSame(404);
+            $client->request('PATCH', "/api/v1/initiatives/{$fixture['initiative']->getUuid()->toRfc4122()}", server: ['CONTENT_TYPE' => 'application/json'], content: json_encode(['libelle' => 'Revenant'], \JSON_THROW_ON_ERROR));
+            self::assertResponseStatusCodeSame(404);
+        } finally {
+            $this->rollback();
+        }
+    }
+
+    public function testModificationDuProjetEtDeSonLienPtba(): void
+    {
+        [$client, $fixture] = $this->demarrer();
+
+        try {
+            $projet = new Projet('TESTINI', 'Projet test', 'Bailleur test', new \DateTimeImmutable('2025-01-01'), new \DateTimeImmutable('2028-12-31'));
+            $this->em->persist($projet);
+            $composante = new Composante($projet, '7', 'Composante test');
+            $this->em->persist($composante);
+            $sousComposante = new SousComposante($composante, '7.1', 'Sous-composante test');
+            $this->em->persist($sousComposante);
+            $this->em->flush();
+
+            $url = "/api/v1/initiatives/{$fixture['initiative']->getUuid()->toRfc4122()}";
+            $patch = function (array $corps) use ($client, $url): void {
+                $client->request('PATCH', $url, server: ['CONTENT_TYPE' => 'application/json'], content: json_encode($corps, \JSON_THROW_ON_ERROR));
+            };
+
+            // Sans initiatives.gerer, même responsable d'une activité : refusé.
+            $this->connecter($client, $fixture['responsable']->getEmail());
+            $patch(['libelle' => 'Détourné']);
+            self::assertResponseStatusCodeSame(403);
+
+            $this->connecter($client, $fixture['coordonnateur']->getEmail());
+            $patch(['libelle' => 'RN/OCB — phase 2', 'description' => 'Recensement national', 'composante' => $composante->getUuid()->toRfc4122(), 'sousComposante' => null]);
+            self::assertResponseIsSuccessful();
+            $corps = $this->corps($client);
+            self::assertSame('RN/OCB — phase 2', $corps['libelle']);
+            self::assertSame('Recensement national', $corps['description']);
+            self::assertSame('composante', $corps['lienPtba']['type']);
+
+            // Jamais les deux à la fois ; rien n'est changé.
+            $patch(['composante' => $composante->getUuid()->toRfc4122(), 'sousComposante' => $sousComposante->getUuid()->toRfc4122()]);
+            self::assertResponseStatusCodeSame(422);
+
+            $patch(['composante' => null, 'sousComposante' => $sousComposante->getUuid()->toRfc4122()]);
+            self::assertResponseIsSuccessful();
+            self::assertSame('sous_composante', $this->corps($client)['lienPtba']['type']);
+
+            // Les deux à null : de nouveau indépendant du PTBA. Le libellé, absent, ne bouge pas.
+            $patch(['composante' => null, 'sousComposante' => null, 'description' => '']);
+            self::assertResponseIsSuccessful();
+            $corps = $this->corps($client);
+            self::assertNull($corps['lienPtba']);
+            self::assertNull($corps['description']);
+            self::assertSame('RN/OCB — phase 2', $corps['libelle']);
         } finally {
             $this->rollback();
         }

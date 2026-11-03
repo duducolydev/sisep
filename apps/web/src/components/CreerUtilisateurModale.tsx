@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Modale } from './Modale'
 import { Bouton } from './Bouton'
 import { IconeCopier, IconeValider } from './Icones'
+import { ChampMembrePhasaoc } from './MembrePhasaoc'
 import { creerUtilisateur } from '@/lib/utilisateurs'
 import { structuresDetailQueryOptions } from '@/lib/parties-prenantes'
 import { rolesQueryOptions } from '@/lib/admin'
@@ -18,6 +19,7 @@ const schema = z.object({
   prenom: z.string().min(1, 'Le prénom est requis.'),
   fonction: z.string().optional(),
   structure: z.string().optional(),
+  membrePhasaoc: z.boolean(),
   role: z.string().optional(),
   roleStructure: z.string().optional(),
 })
@@ -43,7 +45,7 @@ export function CreerUtilisateurModale({ onFermer }: CreerUtilisateurModaleProps
     watch,
     setValue,
     formState: { errors, isSubmitting },
-  } = useForm<FormValues>({ resolver: zodResolver(schema) })
+  } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { membrePhasaoc: false } })
 
   const roleChoisi = watch('role')
   const exigeGlobale = (code: string | undefined) => roles?.donnees.find((r) => r.code === code)?.porteeGlobaleExigee ?? false
@@ -57,6 +59,7 @@ export function CreerUtilisateurModale({ onFermer }: CreerUtilisateurModaleProps
         prenom: valeurs.prenom,
         fonction: valeurs.fonction || undefined,
         structure: valeurs.structure || undefined,
+        membrePhasaoc: valeurs.membrePhasaoc,
         roles: valeurs.role
           ? [{ role: valeurs.role, structure: exigeGlobale(valeurs.role) ? undefined : valeurs.roleStructure || undefined }]
           : [],
@@ -167,6 +170,8 @@ export function CreerUtilisateurModale({ onFermer }: CreerUtilisateurModaleProps
             ))}
           </select>
         </div>
+
+        <ChampMembrePhasaoc {...register('membrePhasaoc')} />
 
         <div className="grid grid-cols-2 gap-4">
           <div className="flex flex-col gap-1">

@@ -45,6 +45,14 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\JoinColumn(nullable: true)]
     private ?Structure $structure = null;
 
+    /**
+     * Membre de l'équipe du projet PHASAOC (UGP, personnel du projet), coché
+     * à la création du compte : sert à reconnaître ces personnes dans le
+     * système. N'ouvre aucun droit — ceux-ci viennent des rôles.
+     */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $membrePhasaoc = false;
+
     #[ORM\Column]
     private bool $actif = true;
 
@@ -151,6 +159,16 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface
     public function setStructure(?Structure $structure): void
     {
         $this->structure = $structure;
+    }
+
+    public function estMembrePhasaoc(): bool
+    {
+        return $this->membrePhasaoc;
+    }
+
+    public function setMembrePhasaoc(bool $membrePhasaoc): void
+    {
+        $this->membrePhasaoc = $membrePhasaoc;
     }
 
     public function estActif(): bool

@@ -81,6 +81,7 @@ final class ProfilUtilisateurBuilder
             'fonction' => $utilisateur->getFonction(),
             'structure' => $utilisateur->getStructure()?->getSigle(),
             'structureUuid' => $utilisateur->getStructure()?->getUuid()->toRfc4122(),
+            'membrePhasaoc' => $utilisateur->estMembrePhasaoc(),
             'doitChangerMdp' => $utilisateur->doitChangerMdp(),
             'roles' => $roles,
             'permissions' => array_keys($permissions),

@@ -20,6 +20,7 @@ import { urlExportDonnees } from '@/lib/exports'
 import { BoutonExporter } from '@/components/BoutonExporter'
 import { rolesQueryOptions } from '@/lib/admin'
 import { structuresDetailQueryOptions } from '@/lib/parties-prenantes'
+import { PastilleMembrePhasaoc } from '@/components/MembrePhasaoc'
 
 const TAILLE_PAGE = 10
 
@@ -40,6 +41,7 @@ export function AdminUtilisateurs() {
   const [enCours, setEnCours] = useState<string | null>(null)
 
   const recherche = searchParams.get('q') ?? ''
+  const filtreMembre = searchParams.get('membre') ?? ''
   const page = Math.max(1, Number(searchParams.get('page') ?? '1'))
 
   function definirRecherche(valeur: string) {
@@ -53,6 +55,17 @@ export function AdminUtilisateurs() {
     setSearchParams(suivant, { replace: true })
   }
 
+  function definirFiltreMembre(valeur: string) {
+    const suivant = new URLSearchParams(searchParams)
+    if (valeur === '') {
+      suivant.delete('membre')
+    } else {
+      suivant.set('membre', valeur)
+    }
+    suivant.delete('page')
+    setSearchParams(suivant, { replace: true })
+  }
+
   function definirPage(suivante: number) {
     const suivant = new URLSearchParams(searchParams)
     suivant.set('page', String(suivante))
@@ -61,15 +74,16 @@ export function AdminUtilisateurs() {
 
   const utilisateursFiltres = useMemo(() => {
     const rechercheLC = recherche.trim().toLowerCase()
-    if (rechercheLC === '') return utilisateurs?.donnees ?? []
 
     return (utilisateurs?.donnees ?? []).filter(
       (u) =>
-        u.email.toLowerCase().includes(rechercheLC) ||
-        u.nom.toLowerCase().includes(rechercheLC) ||
-        u.prenom.toLowerCase().includes(rechercheLC),
+        (filtreMembre === '' || u.membrePhasaoc === (filtreMembre === 'oui')) &&
+        (rechercheLC === '' ||
+          u.email.toLowerCase().includes(rechercheLC) ||
+          u.nom.toLowerCase().includes(rechercheLC) ||
+          u.prenom.toLowerCase().includes(rechercheLC)),
     )
-  }, [utilisateurs, recherche])
+  }, [utilisateurs, recherche, filtreMembre])
 
   const totalPages = Math.max(1, Math.ceil(utilisateursFiltres.length / TAILLE_PAGE))
   const utilisateursPage = trancherPage(utilisateursFiltres, page, TAILLE_PAGE)
@@ -147,6 +161,16 @@ export function AdminUtilisateurs() {
             className="w-full rounded-[var(--radius-controle)] border border-border bg-surface py-2 pr-3 pl-9"
           />
         </div>
+        <select
+          aria-label="Filtrer par appartenance à l'équipe PHASAOC"
+          value={filtreMembre}
+          onChange={(e) => definirFiltreMembre(e.target.value)}
+          className="rounded-[var(--radius-controle)] border border-border bg-surface px-3 py-2"
+        >
+          <option value="">Tous les comptes</option>
+          <option value="oui">Membres PHASAOC</option>
+          <option value="non">Autres comptes</option>
+        </select>
       </div>
 
       {isLoading && <Squelette lignes={4} />}
@@ -173,6 +197,7 @@ export function AdminUtilisateurs() {
                     <span className="font-semibold">
                       {u.prenom} {u.nom}
                     </span>
+                    {u.membrePhasaoc && <PastilleMembrePhasaoc />}
                     {u.fonction && <p className="text-xs text-muted">{u.fonction}</p>}
                   </td>
                   <td className="px-4 py-3">{u.email}</td>

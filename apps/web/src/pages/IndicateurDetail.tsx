@@ -56,6 +56,8 @@ export function IndicateurDetail() {
   const [erreurAction, setErreurAction] = useState<string | null>(null)
 
   const peutValider = usePeut('indicateurs.valider')
+  // Le RSE est validé dès sa saisie, et solde lui-même ses saisies restées en attente (décision du 03/11/2026).
+  const valideSesSaisies = usePeut('indicateurs.validation_directe')
   const afficherToast = useToast()
   const confirmer = useConfirmer()
 
@@ -288,8 +290,8 @@ export function IndicateurDetail() {
                       {v.statut === 'brouillon' ? `Saisie par ${v.saisiPar.nomComplet}` : v.validePar ? `Validée par ${v.validePar}` : null}
                     </span>
                     <Pastille statut={v.statut} />
-                    {/* Jamais sur sa propre saisie : le serveur la refuserait. */}
-                    {v.statut === 'brouillon' && peutValider && v.saisiPar.uuid !== moi?.uuid && (
+                    {/* Jamais sur sa propre saisie, sauf pour le RSE : le serveur la refuserait. */}
+                    {v.statut === 'brouillon' && peutValider && (valideSesSaisies || v.saisiPar.uuid !== moi?.uuid) && (
                       <Bouton
                         variante="discret"
                         taille="mini"

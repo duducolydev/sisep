@@ -137,6 +137,7 @@ final class UtilisateurController
         $utilisateur->setMotDePasseHash($this->passwordHasher->hashPassword($utilisateur, $motDePasseTemporaire));
         $utilisateur->setFonction($donnees->fonction);
         $utilisateur->setStructure($structure);
+        $utilisateur->setMembrePhasaoc($donnees->membrePhasaoc);
 
         $this->em->persist($utilisateur);
         foreach ($roles as [$role, $roleStructure]) {
@@ -194,6 +195,9 @@ final class UtilisateurController
         }
         if (\array_key_exists('actif', $donnees) && \is_bool($donnees['actif'])) {
             $utilisateur->setActif($donnees['actif']);
+        }
+        if (\array_key_exists('membrePhasaoc', $donnees) && \is_bool($donnees['membrePhasaoc'])) {
+            $utilisateur->setMembrePhasaoc($donnees['membrePhasaoc']);
         }
 
         $this->em->flush();

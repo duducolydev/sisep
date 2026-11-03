@@ -442,13 +442,13 @@ final class ExportDonneesController
             foreach ($u->getAttributionsRoles() as $attribution) {
                 $roles[] = $attribution->getRole()->getLibelle().(null !== $attribution->getStructure() ? ' ('.$attribution->getStructure()->getSigle().')' : '');
             }
-            $lignes[] = [$u->getPrenom(), $u->getNom(), $u->getEmail(), $u->getFonction(), $u->getStructure()?->getSigle(), implode(', ', $roles), LibellesExport::ouiNon($u->estActif()), LibellesExport::ouiNon($u->doitChangerMdp()), $u->getDerniereConnexion()];
+            $lignes[] = [$u->getPrenom(), $u->getNom(), $u->getEmail(), $u->getFonction(), $u->getStructure()?->getSigle(), LibellesExport::ouiNon($u->estMembrePhasaoc()), implode(', ', $roles), LibellesExport::ouiNon($u->estActif()), LibellesExport::ouiNon($u->doitChangerMdp()), $u->getDerniereConnexion()];
         }
 
         return (new TableurExport('comptes utilisateurs'))
             ->feuille('Comptes', 'Comptes utilisateurs', [
                 ['Prénom', TableurExport::TEXTE, 18], ['Nom', TableurExport::TEXTE, 18], ['E-mail', TableurExport::TEXTE, 30], ['Fonction', TableurExport::TEXTE, 28],
-                ['Structure', TableurExport::TEXTE, 12], ['Rôles', TableurExport::TEXTE, 40], ['Actif', TableurExport::TEXTE, 8],
+                ['Structure', TableurExport::TEXTE, 12], ['Membre PHASAOC', TableurExport::TEXTE, 10], ['Rôles', TableurExport::TEXTE, 40], ['Actif', TableurExport::TEXTE, 8],
                 ['Mot de passe temporaire', TableurExport::TEXTE, 14], ['Dernière connexion', TableurExport::DATE_HEURE, 18],
             ], $lignes)
             ->reponse('comptes-utilisateurs.xlsx');
