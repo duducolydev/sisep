@@ -21,6 +21,7 @@ use App\Http\IndicateurNormalizer;
 use App\Http\IndicateurValeurNormalizer;
 use App\Http\ProblemResponseFactory;
 use App\Http\TypeDocumentRequete;
+use App\Indicateur\NombreDecimal;
 use App\Repository\ComposanteRepository;
 use App\Repository\IndicateurRepository;
 use App\Repository\IndicateurValeurRepository;
@@ -174,10 +175,43 @@ final class IndicateurController
             return $erreur;
         }
 
+        $valeurReference = NombreDecimal::normaliser($donnees->valeurReference);
+        if (null === $valeurReference) {
+            return ProblemResponseFactory::creer(422, 'Données invalides', NombreDecimal::message('La valeur de référence'));
+        }
+        $valeurCible = NombreDecimal::normaliser($donnees->valeurCible);
+        if (null === $valeurCible) {
+            return ProblemResponseFactory::creer(422, 'Données invalides', NombreDecimal::message('La valeur cible'));
+        }
+        $valeurIntermediaire = null;
+        if (null !== $donnees->valeurIntermediaire && '' !== trim($donnees->valeurIntermediaire)) {
+            $valeurIntermediaire = NombreDecimal::normaliser($donnees->valeurIntermediaire);
+            if (null === $valeurIntermediaire) {
+                return ProblemResponseFactory::creer(422, 'Données invalides', NombreDecimal::message("L'objectif intermédiaire"));
+            }
+        }
+
         $projetUuid = $this->uuidOuNull($request->query->get('projet') ?? '');
         $projet = null !== $projetUuid ? $this->projets->findOneBy(['uuid' => $projetUuid]) : $this->projets->findOneBy([]);
         if (null === $projet) {
             return ProblemResponseFactory::creer(422, 'Projet introuvable');
+        }
+
+        // Un rattachement inconnu était ignoré en silence : l'indicateur
+        // tombait dans l'objectif général sans que personne ne le sache.
+        $composante = null;
+        if (null !== $donnees->composante && '' !== $donnees->composante) {
+            $composante = $this->composantes->findOneBy(['uuid' => $this->uuidOuNull($donnees->composante)]);
+            if (null === $composante) {
+                return ProblemResponseFactory::creer(422, 'Composante introuvable');
+            }
+        }
+        $structure = null;
+        if (null !== $donnees->structureResponsable && '' !== $donnees->structureResponsable) {
+            $structure = $this->structures->findOneBy(['uuid' => $this->uuidOuNull($donnees->structureResponsable)]);
+            if (null === $structure) {
+                return ProblemResponseFactory::creer(422, 'Structure introuvable');
+            }
         }
 
         $indicateur = new Indicateur(
@@ -187,27 +221,20 @@ final class IndicateurController
             TypeIndicateur::from($donnees->type),
             $donnees->unite,
             SensIndicateur::from($donnees->sens),
-            $donnees->valeurReference,
+            $valeurReference,
             new \DateTimeImmutable($donnees->dateReference),
-            $donnees->valeurCible,
+            $valeurCible,
             new \DateTimeImmutable($donnees->dateCible),
             FrequenceIndicateur::from($donnees->frequence),
             $donnees->source,
         );
         $indicateur->setPrecisionLibelle($donnees->precisionLibelle);
-        $indicateur->setValeurIntermediaire($donnees->valeurIntermediaire);
+        $indicateur->setValeurIntermediaire($valeurIntermediaire);
         if (null !== $donnees->dateIntermediaire) {
             $indicateur->setDateIntermediaire(new \DateTimeImmutable($donnees->dateIntermediaire));
         }
-
-        if (null !== $donnees->composante) {
-            $composante = $this->composantes->findOneBy(['uuid' => $this->uuidOuNull($donnees->composante)]);
-            $indicateur->setComposante($composante);
-        }
-        if (null !== $donnees->structureResponsable) {
-            $structure = $this->structures->findOneBy(['uuid' => $this->uuidOuNull($donnees->structureResponsable)]);
-            $indicateur->setStructureResponsable($structure);
-        }
+        $indicateur->setComposante($composante);
+        $indicateur->setStructureResponsable($structure);
 
         $this->em->persist($indicateur);
         $this->em->flush();
@@ -224,6 +251,34 @@ final class IndicateurController
         /** @var array<string, mixed> $donnees */
         $donnees = json_decode($request->getContent(), true) ?? [];
 
+        // Contrôles avant toute écriture — mêmes limites qu'à la création
+        // (colonnes de `indicateurs`), sinon MySQL refuse au flush et l'API
+        // répond « Erreur interne ».
+        foreach (['libelle' => [255, 'Le libellé'], 'precisionLibelle' => [255, 'La précision'], 'unite' => [40, "L'unité"], 'source' => [160, 'La source']] as $champ => [$max, $nom]) {
+            if (\is_string($donnees[$champ] ?? null) && mb_strlen($donnees[$champ]) > $max) {
+                return ProblemResponseFactory::creer(422, 'Données invalides', \sprintf('%s ne doit pas dépasser %d caractères.', $nom, $max));
+            }
+        }
+        foreach (['dateIntermediaire' => 'La date intermédiaire', 'dateCible' => 'La date cible'] as $champ => $nom) {
+            if (\is_string($donnees[$champ] ?? null) && false === \DateTimeImmutable::createFromFormat('!Y-m-d', $donnees[$champ])) {
+                return ProblemResponseFactory::creer(422, 'Données invalides', $nom.' est invalide.');
+            }
+        }
+        $valeurCible = null;
+        if (\is_string($donnees['valeurCible'] ?? null)) {
+            $valeurCible = NombreDecimal::normaliser($donnees['valeurCible']);
+            if (null === $valeurCible) {
+                return ProblemResponseFactory::creer(422, 'Données invalides', NombreDecimal::message('La valeur cible'));
+            }
+        }
+        $valeurIntermediaire = null;
+        if (\is_string($donnees['valeurIntermediaire'] ?? null) && '' !== trim($donnees['valeurIntermediaire'])) {
+            $valeurIntermediaire = NombreDecimal::normaliser($donnees['valeurIntermediaire']);
+            if (null === $valeurIntermediaire) {
+                return ProblemResponseFactory::creer(422, 'Données invalides', NombreDecimal::message("L'objectif intermédiaire"));
+            }
+        }
+
         if (\array_key_exists('libelle', $donnees) && \is_string($donnees['libelle'])) {
             $indicateur->setLibelle($donnees['libelle']);
         }
@@ -234,13 +289,13 @@ final class IndicateurController
             $indicateur->setUnite($donnees['unite']);
         }
         if (\array_key_exists('valeurIntermediaire', $donnees)) {
-            $indicateur->setValeurIntermediaire(\is_string($donnees['valeurIntermediaire']) ? $donnees['valeurIntermediaire'] : null);
+            $indicateur->setValeurIntermediaire($valeurIntermediaire);
         }
         if (\array_key_exists('dateIntermediaire', $donnees)) {
             $indicateur->setDateIntermediaire(\is_string($donnees['dateIntermediaire']) ? new \DateTimeImmutable($donnees['dateIntermediaire']) : null);
         }
-        if (\array_key_exists('valeurCible', $donnees) && \is_string($donnees['valeurCible'])) {
-            $indicateur->setValeurCible($donnees['valeurCible']);
+        if (null !== $valeurCible) {
+            $indicateur->setValeurCible($valeurCible);
         }
         if (\array_key_exists('dateCible', $donnees) && \is_string($donnees['dateCible'])) {
             $indicateur->setDateCible(new \DateTimeImmutable($donnees['dateCible']));
@@ -320,6 +375,15 @@ final class IndicateurController
         if ($valeurFournie === $deltaFournie) {
             return ProblemResponseFactory::creer(422, 'Données invalides', 'Fournissez exactement l\'une des deux valeurs : "valeur" ou "delta".');
         }
+        // « 0,5 » partait tel quel : bcadd() levait une ValueError (delta) ou
+        // MySQL refusait l'INSERT (valeur) — « Erreur interne » dans les deux cas.
+        $saisie = NombreDecimal::normaliser((string) ($valeurFournie ? $donnees->valeur : $donnees->delta));
+        if (null === $saisie) {
+            return ProblemResponseFactory::creer(422, 'Données invalides', NombreDecimal::message($valeurFournie ? 'La valeur' : "L'ajustement"));
+        }
+        if (false === \DateTimeImmutable::createFromFormat('!Y-m-d', $donnees->periode)) {
+            return ProblemResponseFactory::creer(422, 'Données invalides', 'La période est invalide.');
+        }
 
         $utilisateur = $this->security->getUser();
         if (!$utilisateur instanceof Utilisateur) {
@@ -337,9 +401,9 @@ final class IndicateurController
         if ($deltaFournie) {
             $base = $existante ?? $this->valeurs->derniere($indicateur, $periode);
             $valeurBase = $base?->getValeur() ?? $indicateur->getValeurReference();
-            $valeurCalculee = bcadd($valeurBase, $donnees->delta, 4);
+            $valeurCalculee = bcadd($valeurBase, $saisie, 4);
         } else {
-            $valeurCalculee = $donnees->valeur;
+            $valeurCalculee = $saisie;
         }
 
         if (null !== $existante) {
@@ -602,7 +666,14 @@ final class IndicateurController
                     'Chaque désagrégation doit fournir dimension, modalite et valeur.',
                 );
             }
-            $desagregations[] = [$entree['dimension'], $entree['modalite'], $entree['valeur']];
+            if (mb_strlen($entree['dimension']) > 40 || mb_strlen($entree['modalite']) > 80) {
+                return ProblemResponseFactory::creer(422, 'Données invalides', 'Une désagrégation dépasse la longueur permise (dimension : 40 caractères, modalité : 80).');
+            }
+            $valeurDesagregation = NombreDecimal::normaliser($entree['valeur']);
+            if (null === $valeurDesagregation) {
+                return ProblemResponseFactory::creer(422, 'Données invalides', NombreDecimal::message('La valeur de la désagrégation « '.$entree['modalite'].' »'));
+            }
+            $desagregations[] = [$entree['dimension'], $entree['modalite'], $valeurDesagregation];
         }
 
         return $desagregations;

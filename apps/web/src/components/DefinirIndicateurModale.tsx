@@ -7,23 +7,25 @@ import { creerIndicateur } from '@/lib/indicateurs'
 import { ApiError } from '@/lib/api-client'
 import { queryClient } from '@/lib/query-client'
 import type { LigneExecution } from '@/lib/budget'
+import { champNombre, champNombreFacultatif } from '@/lib/nombre-decimal'
 
+// Longueurs alignées sur les colonnes de la table `indicateurs`.
 const schema = z.object({
-  code: z.string().min(1, 'Le code est requis.').max(20),
-  libelle: z.string().min(1, 'Le libellé est requis.'),
-  precisionLibelle: z.string().optional(),
+  code: z.string().min(1, 'Le code est requis.').max(20, '20 caractères au plus.'),
+  libelle: z.string().min(1, 'Le libellé est requis.').max(255, '255 caractères au plus.'),
+  precisionLibelle: z.string().max(255, '255 caractères au plus.').optional(),
   type: z.enum(['IOD', 'IRI']),
   composante: z.string().optional(),
-  unite: z.string().min(1, "L'unité est requise."),
+  unite: z.string().min(1, "L'unité est requise.").max(40, '40 caractères au plus.'),
   sens: z.enum(['croissant', 'decroissant']),
-  valeurReference: z.string().min(1, 'La valeur de référence est requise.'),
+  valeurReference: champNombre('La valeur de référence est requise.'),
   dateReference: z.string().min(1, 'La date de référence est requise.'),
-  valeurIntermediaire: z.string().optional(),
+  valeurIntermediaire: champNombreFacultatif(),
   dateIntermediaire: z.string().optional(),
-  valeurCible: z.string().min(1, 'La valeur cible est requise.'),
+  valeurCible: champNombre('La valeur cible est requise.'),
   dateCible: z.string().min(1, 'La date cible est requise.'),
   frequence: z.enum(['mensuelle', 'trimestrielle', 'semestrielle', 'annuelle']),
-  source: z.string().min(1, 'La source est requise.'),
+  source: z.string().min(1, 'La source est requise.').max(160, '160 caractères au plus.'),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -94,6 +96,7 @@ export function DefinirIndicateurModale({ composantes, onFermer }: DefinirIndica
             className="rounded-[var(--radius-controle)] border border-border px-3 py-2"
             {...register('precisionLibelle')}
           />
+          {errors.precisionLibelle && <p className="text-bad text-sm">{errors.precisionLibelle.message}</p>}
         </div>
 
         <div className="flex flex-col gap-1">
@@ -153,6 +156,7 @@ export function DefinirIndicateurModale({ composantes, onFermer }: DefinirIndica
               className="chiffres rounded-[var(--radius-controle)] border border-border px-3 py-2"
               {...register('valeurIntermediaire')}
             />
+            {errors.valeurIntermediaire && <p className="text-bad text-sm">{errors.valeurIntermediaire.message}</p>}
           </div>
           <div className="flex flex-col gap-1">
             <label htmlFor="dateIntermediaire">Date intermédiaire (optionnel)</label>

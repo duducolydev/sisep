@@ -117,6 +117,13 @@ trait ApiControllerHelpersTrait
             $details[] = ['champ' => $violation->getPropertyPath(), 'message' => $violation->getMessage()];
         }
 
-        return ProblemResponseFactory::creer(422, 'Données invalides', null, ['violations' => $details]);
+        // "detail" reprend les messages : c'est lui que le front affiche —
+        // sans lui, l'utilisateur ne lisait que « Données invalides ».
+        return ProblemResponseFactory::creer(
+            422,
+            'Données invalides',
+            implode(' ', array_unique(array_column($details, 'message'))),
+            ['violations' => $details],
+        );
     }
 }

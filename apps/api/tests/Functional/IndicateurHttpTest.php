@@ -435,6 +435,118 @@ final class IndicateurHttpTest extends WebTestCase
         }
     }
 
+    /**
+     * Régression (06/11/2026) : un RSE qui saisissait « 0,5 » ou un libellé
+     * long recevait « Erreur interne » — MySQL refusait l'INSERT (erreurs
+     * 1366 et 1406) et l'exception remontait en 500.
+     */
+    public function testDefinirAccepteLaVirguleDecimaleEtLesSeparateursDeMilliers(): void
+    {
+        [$client, $fixture] = $this->demarrer();
+
+        try {
+            $this->connecter($client, $fixture['suiviEvaluation']->getEmail());
+            $client->request('POST', '/api/v1/indicateurs', server: ['CONTENT_TYPE' => 'application/json'], content: json_encode(
+                $this->definition(['valeurReference' => '0,5', 'valeurIntermediaire' => '1 000', 'valeurCible' => "2\u{202F}500,25"]),
+                \JSON_THROW_ON_ERROR,
+            ));
+
+            self::assertResponseStatusCodeSame(201);
+            $corps = $this->corps($client);
+            self::assertEqualsWithDelta(0.5, (float) $corps['valeurReference'], 1e-9);
+            self::assertEqualsWithDelta(1000.0, (float) $corps['valeurIntermediaire'], 1e-9);
+            self::assertEqualsWithDelta(2500.25, (float) $corps['valeurCible'], 1e-9);
+        } finally {
+            $this->rollback();
+        }
+    }
+
+    /** @return iterable<string, array{array<string, string>, string}> */
+    public static function definitionsInvalides(): iterable
+    {
+        yield 'unité collée à la cible' => [['valeurCible' => '100 %'], 'La valeur cible doit être un nombre'];
+        yield 'référence en texte' => [['valeurReference' => 'ND'], 'La valeur de référence doit être un nombre'];
+        yield 'intermédiaire invalide' => [['valeurIntermediaire' => 'trois'], "L'objectif intermédiaire doit être un nombre"];
+        yield 'libellé trop long' => [['libelle' => str_repeat('a', 256)], 'Le libellé ne doit pas dépasser 255 caractères.'];
+        yield 'source trop longue' => [['source' => str_repeat('a', 161)], 'La source ne doit pas dépasser 160 caractères.'];
+        yield 'unité trop longue' => [['unite' => str_repeat('a', 41)], "L'unité ne doit pas dépasser 40 caractères."];
+        yield 'précision trop longue' => [['precisionLibelle' => str_repeat('a', 256)], 'La précision ne doit pas dépasser 255 caractères.'];
+        yield 'date mal formée' => [['dateCible' => '31/12/2028'], 'La date cible est invalide.'];
+        yield 'composante inconnue' => [['composante' => '00000000-0000-0000-0000-000000000000'], 'Composante introuvable'];
+    }
+
+    /**
+     * @param array<string, string> $surcharge
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('definitionsInvalides')]
+    public function testUneDefinitionInvalideEstRefuseeEn422AvecUnMessageLisible(array $surcharge, string $message): void
+    {
+        [$client, $fixture] = $this->demarrer();
+
+        try {
+            $this->connecter($client, $fixture['suiviEvaluation']->getEmail());
+            $client->request('POST', '/api/v1/indicateurs', server: ['CONTENT_TYPE' => 'application/json'], content: json_encode(
+                $this->definition($surcharge),
+                \JSON_THROW_ON_ERROR,
+            ));
+
+            self::assertResponseStatusCodeSame(422);
+            $corps = $this->corps($client);
+            self::assertStringContainsString($message, $corps['detail'] ?? $corps['title']);
+        } finally {
+            $this->rollback();
+        }
+    }
+
+    public function testSaisirUneValeurAccepteLaVirguleEtRefuseUneUniteCollee(): void
+    {
+        [$client, $fixture] = $this->demarrer();
+
+        try {
+            $this->connecter($client, $fixture['suiviEvaluation']->getEmail());
+            $indicateurUuid = $this->creerIndicateur($client, 'IOD-VIRG', '0');
+
+            $client->request('POST', "/api/v1/indicateurs/{$indicateurUuid}/valeurs", server: ['CONTENT_TYPE' => 'application/json'], content: json_encode([
+                'periode' => '2026-01-01',
+                'delta' => '2,5',
+                'desagregations' => [['dimension' => 'Sexe', 'modalite' => 'Femmes', 'valeur' => '1,5']],
+            ], \JSON_THROW_ON_ERROR));
+            self::assertResponseStatusCodeSame(201);
+            self::assertEqualsWithDelta(2.5, (float) $this->corps($client)['valeur'], 1e-9);
+
+            $client->request('POST', "/api/v1/indicateurs/{$indicateurUuid}/valeurs", server: ['CONTENT_TYPE' => 'application/json'], content: json_encode([
+                'periode' => '2026-02-01',
+                'valeur' => '40 %',
+            ], \JSON_THROW_ON_ERROR));
+            self::assertResponseStatusCodeSame(422);
+            self::assertStringContainsString('La valeur doit être un nombre', $this->corps($client)['detail']);
+        } finally {
+            $this->rollback();
+        }
+    }
+
+    /**
+     * @param array<string, string> $surcharge
+     *
+     * @return array<string, string>
+     */
+    private function definition(array $surcharge = []): array
+    {
+        return array_merge([
+            'code' => 'IOD-DEF',
+            'libelle' => 'Indicateur de test',
+            'type' => 'IOD',
+            'unite' => '%',
+            'sens' => 'croissant',
+            'valeurReference' => '0',
+            'dateReference' => '2025-01-01',
+            'valeurCible' => '100',
+            'dateCible' => '2028-12-31',
+            'frequence' => 'annuelle',
+            'source' => 'Test',
+        ], $surcharge);
+    }
+
     /** @return array{0: KernelBrowser, 1: array<string, mixed>} */
     private function demarrer(): array
     {

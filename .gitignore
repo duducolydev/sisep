@@ -10,3 +10,6 @@ docs/comptes-acces.md
 /.env
 /.env.*
 !/.env.prod.example
+
+# Instructions de travail de Claude Code, propres à chaque poste.
+/CLAUDE.md

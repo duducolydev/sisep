@@ -7,16 +7,18 @@ import { modifierIndicateur, type Indicateur } from '@/lib/indicateurs'
 import { ApiError } from '@/lib/api-client'
 import { queryClient } from '@/lib/query-client'
 import type { LigneExecution } from '@/lib/budget'
+import { champNombre, champNombreFacultatif } from '@/lib/nombre-decimal'
 
+// Mêmes règles qu'à la définition (colonnes de la table `indicateurs`).
 const schema = z.object({
-  libelle: z.string().min(1, 'Le libellé est requis.'),
-  precisionLibelle: z.string().optional(),
-  unite: z.string().min(1, "L'unité est requise."),
-  valeurIntermediaire: z.string().optional(),
+  libelle: z.string().min(1, 'Le libellé est requis.').max(255, '255 caractères au plus.'),
+  precisionLibelle: z.string().max(255, '255 caractères au plus.').optional(),
+  unite: z.string().min(1, "L'unité est requise.").max(40, '40 caractères au plus.'),
+  valeurIntermediaire: champNombreFacultatif(),
   dateIntermediaire: z.string().optional(),
-  valeurCible: z.string().min(1, 'La valeur cible est requise.'),
+  valeurCible: champNombre('La valeur cible est requise.'),
   dateCible: z.string().min(1, 'La date cible est requise.'),
-  source: z.string().min(1, 'La source est requise.'),
+  source: z.string().min(1, 'La source est requise.').max(160, '160 caractères au plus.'),
   actif: z.boolean(),
   composante: z.string(),
 })
@@ -103,6 +105,7 @@ export function ModifierIndicateurModale({ indicateur, composantes, onFermer }: 
             className="rounded-[var(--radius-controle)] border border-border px-3 py-2"
             {...register('precisionLibelle')}
           />
+          {errors.precisionLibelle && <p className="text-bad text-sm">{errors.precisionLibelle.message}</p>}
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -126,6 +129,7 @@ export function ModifierIndicateurModale({ indicateur, composantes, onFermer }: 
               className="chiffres rounded-[var(--radius-controle)] border border-border px-3 py-2"
               {...register('valeurIntermediaire')}
             />
+            {errors.valeurIntermediaire && <p className="text-bad text-sm">{errors.valeurIntermediaire.message}</p>}
           </div>
           <div className="flex flex-col gap-1">
             <label htmlFor="dateIntermediaire">Date intermédiaire (optionnel)</label>
