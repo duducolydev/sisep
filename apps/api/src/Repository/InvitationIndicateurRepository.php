@@ -35,7 +35,11 @@ class InvitationIndicateurRepository extends ServiceEntityRepository
     {
         $invitations = $this->findBy(['utilisateur' => $utilisateur]);
 
-        return array_map(static fn (InvitationIndicateur $i) => $i->getIndicateur(), $invitations);
+        // Une invitation sur un indicateur supprimé ne donne plus rien à voir.
+        return array_values(array_filter(
+            array_map(static fn (InvitationIndicateur $i) => $i->getIndicateur(), $invitations),
+            static fn (Indicateur $i) => !$i->estSupprime(),
+        ));
     }
 
     /** @return list<InvitationIndicateur> */

@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { useParams, Link } from 'react-router'
+import { useParams, Link, useNavigate } from 'react-router'
+import { ActionsIndicateur } from '@/components/ActionsIndicateur'
 import { useQuery } from '@tanstack/react-query'
 import {
   indicateurQueryOptions,
@@ -41,6 +42,7 @@ function formaterTaille(octets: number): string {
 
 export function IndicateurDetail() {
   const { uuid } = useParams<{ uuid: string }>()
+  const navigate = useNavigate()
   const { data: indicateur, isLoading, isError } = useQuery(indicateurQueryOptions(uuid))
   const { data: valeurs } = useQuery(indicateurValeursQueryOptions(uuid))
   const peutInviter = usePeut('indicateurs.inviter')
@@ -128,7 +130,10 @@ export function IndicateurDetail() {
         </div>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <h1 className="text-2xl">{indicateur.libelle}</h1>
-          <BoutonExporter href={urlExportDonnees(`indicateurs/${indicateur.uuid}`)} libelle="Exporter la série" />
+          <div className="flex flex-wrap gap-2">
+            <ActionsIndicateur indicateur={indicateur} variante="boutons" onSupprime={() => void navigate('/indicateurs')} />
+            <BoutonExporter href={urlExportDonnees(`indicateurs/${indicateur.uuid}`)} libelle="Exporter la série" />
+          </div>
         </div>
         {indicateur.precisionLibelle && <p className="text-muted">{indicateur.precisionLibelle}</p>}
         <p className="mt-2 text-sm text-muted">

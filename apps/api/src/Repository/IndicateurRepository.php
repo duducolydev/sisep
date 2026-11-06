@@ -23,6 +23,33 @@ class IndicateurRepository extends ServiceEntityRepository
     }
 
     /**
+     * L'index unique (projet_id, code, supprime_le) ne protège pas les
+     * indicateurs actifs : supprime_le y vaut NULL, et MySQL ne compare
+     * jamais deux NULL entre eux. Le contrôle se fait donc ici, sur les seuls
+     * indicateurs non supprimés — un code libéré par une suppression peut
+     * resservir.
+     */
+    public function codeDejaUtilise(Projet $projet, string $code, ?Indicateur $saufCelui = null): bool
+    {
+        $qb = $this->createQueryBuilder('i')
+            ->select('COUNT(i.id)')
+            ->andWhere('i.projet = :projet')->setParameter('projet', $projet)
+            ->andWhere('i.code = :code')->setParameter('code', $code)
+            ->andWhere('i.supprimeLe IS NULL');
+        if (null !== $saufCelui) {
+            $qb->andWhere('i != :saufCelui')->setParameter('saufCelui', $saufCelui);
+        }
+
+        return (int) $qb->getQuery()->getSingleScalarResult() > 0;
+    }
+
+    /** Un indicateur supprimé (logiquement) n'est plus consultable ni modifiable. */
+    public function trouverNonSupprime(\Symfony\Component\Uid\Uuid $uuid): ?Indicateur
+    {
+        return $this->findOneBy(['uuid' => $uuid, 'supprimeLe' => null]);
+    }
+
+    /**
      * @param bool $objectifGeneral indicateurs sans composante seulement — les
      *                              indicateurs transversaux de l'objectif général
      *

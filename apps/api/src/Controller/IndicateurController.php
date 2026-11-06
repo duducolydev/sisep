@@ -196,6 +196,9 @@ final class IndicateurController
         if (null === $projet) {
             return ProblemResponseFactory::creer(422, 'Projet introuvable');
         }
+        if ($this->indicateurs->codeDejaUtilise($projet, $donnees->code)) {
+            return ProblemResponseFactory::creer(409, 'Code déjà utilisé', \sprintf('Un indicateur porte déjà le code « %s ».', $donnees->code));
+        }
 
         // Un rattachement inconnu était ignoré en silence : l'indicateur
         // tombait dans l'objectif général sans que personne ne le sache.
@@ -254,14 +257,57 @@ final class IndicateurController
         // Contrôles avant toute écriture — mêmes limites qu'à la création
         // (colonnes de `indicateurs`), sinon MySQL refuse au flush et l'API
         // répond « Erreur interne ».
-        foreach (['libelle' => [255, 'Le libellé'], 'precisionLibelle' => [255, 'La précision'], 'unite' => [40, "L'unité"], 'source' => [160, 'La source']] as $champ => [$max, $nom]) {
+        foreach (['code' => [20, 'Le code'], 'libelle' => [255, 'Le libellé'], 'precisionLibelle' => [255, 'La précision'], 'unite' => [40, "L'unité"], 'source' => [160, 'La source']] as $champ => [$max, $nom]) {
             if (\is_string($donnees[$champ] ?? null) && mb_strlen($donnees[$champ]) > $max) {
                 return ProblemResponseFactory::creer(422, 'Données invalides', \sprintf('%s ne doit pas dépasser %d caractères.', $nom, $max));
             }
         }
-        foreach (['dateIntermediaire' => 'La date intermédiaire', 'dateCible' => 'La date cible'] as $champ => $nom) {
+        foreach (['code' => 'Le code', 'libelle' => 'Le libellé', 'unite' => "L'unité", 'source' => 'La source'] as $champ => $nom) {
+            if (\is_string($donnees[$champ] ?? null) && '' === trim($donnees[$champ])) {
+                return ProblemResponseFactory::creer(422, 'Données invalides', $nom.' est requis.');
+            }
+        }
+        foreach (['dateReference' => 'La date de référence', 'dateIntermediaire' => 'La date intermédiaire', 'dateCible' => 'La date cible'] as $champ => $nom) {
             if (\is_string($donnees[$champ] ?? null) && false === \DateTimeImmutable::createFromFormat('!Y-m-d', $donnees[$champ])) {
                 return ProblemResponseFactory::creer(422, 'Données invalides', $nom.' est invalide.');
+            }
+        }
+
+        // Redéfinition complète (retours du 06/11/2026) : code, type, sens,
+        // référence et fréquence se corrigent aussi. Le taux d'atteinte n'est
+        // jamais stocké, il suit la nouvelle définition à la lecture suivante ;
+        // le journal garde l'état avant et après.
+        $type = null;
+        if (\array_key_exists('type', $donnees)) {
+            $type = \is_string($donnees['type']) ? TypeIndicateur::tryFrom($donnees['type']) : null;
+            if (null === $type) {
+                return ProblemResponseFactory::creer(422, 'Données invalides', 'Le type doit être IOD ou IRI.');
+            }
+        }
+        $sens = null;
+        if (\array_key_exists('sens', $donnees)) {
+            $sens = \is_string($donnees['sens']) ? SensIndicateur::tryFrom($donnees['sens']) : null;
+            if (null === $sens) {
+                return ProblemResponseFactory::creer(422, 'Données invalides', 'Le sens doit être croissant ou décroissant.');
+            }
+        }
+        $frequence = null;
+        if (\array_key_exists('frequence', $donnees)) {
+            $frequence = \is_string($donnees['frequence']) ? FrequenceIndicateur::tryFrom($donnees['frequence']) : null;
+            if (null === $frequence) {
+                return ProblemResponseFactory::creer(422, 'Données invalides', 'La fréquence doit être mensuelle, trimestrielle, semestrielle ou annuelle.');
+            }
+        }
+        $code = \is_string($donnees['code'] ?? null) ? trim($donnees['code']) : null;
+        if (null !== $code && $code !== $indicateur->getCode()
+            && $this->indicateurs->codeDejaUtilise($indicateur->getProjet(), $code, $indicateur)) {
+            return ProblemResponseFactory::creer(409, 'Code déjà utilisé', \sprintf('Un indicateur porte déjà le code « %s ».', $code));
+        }
+        $valeurReference = null;
+        if (\is_string($donnees['valeurReference'] ?? null)) {
+            $valeurReference = NombreDecimal::normaliser($donnees['valeurReference']);
+            if (null === $valeurReference) {
+                return ProblemResponseFactory::creer(422, 'Données invalides', NombreDecimal::message('La valeur de référence'));
             }
         }
         $valeurCible = null;
@@ -279,6 +325,24 @@ final class IndicateurController
             }
         }
 
+        if (null !== $code) {
+            $indicateur->setCode($code);
+        }
+        if (null !== $type) {
+            $indicateur->setType($type);
+        }
+        if (null !== $sens) {
+            $indicateur->setSens($sens);
+        }
+        if (null !== $frequence) {
+            $indicateur->setFrequence($frequence);
+        }
+        if (null !== $valeurReference) {
+            $indicateur->setValeurReference($valeurReference);
+        }
+        if (\is_string($donnees['dateReference'] ?? null)) {
+            $indicateur->setDateReference(new \DateTimeImmutable($donnees['dateReference']));
+        }
         if (\array_key_exists('libelle', $donnees) && \is_string($donnees['libelle'])) {
             $indicateur->setLibelle($donnees['libelle']);
         }
@@ -322,6 +386,25 @@ final class IndicateurController
         $this->em->flush();
 
         return new JsonResponse($this->normalizer->normaliser($indicateur));
+    }
+
+    /**
+     * Suppression logique (supprime_le) : l'indicateur disparaît des listes,
+     * du cadre de résultats, des exports et des invitations, mais ses valeurs,
+     * désagrégations et pièces restent en base — suppression physique
+     * interdite sur les valeurs d'indicateurs. Le journal retient qui a
+     * supprimé et quand ; le code redevient disponible.
+     */
+    #[Route('/{uuid}', name: 'app_indicateur_supprimer', methods: ['DELETE'], requirements: ['uuid' => '[0-9a-fA-F-]{36}'])]
+    public function supprimer(string $uuid): Response
+    {
+        $indicateur = $this->trouver($uuid);
+        $this->exigerPermissionGlobale($this->security, $this->permissionsResolver, 'indicateurs.definir');
+
+        $indicateur->supprimer();
+        $this->em->flush();
+
+        return new Response(status: 204);
     }
 
     #[Route('/{uuid}/valeurs', name: 'app_indicateur_valeurs_liste', methods: ['GET'], requirements: ['uuid' => '[0-9a-fA-F-]{36}'])]
@@ -454,7 +537,7 @@ final class IndicateurController
 
         $uuidObjet = $this->uuidOuNull($uuid);
         $valeur = null !== $uuidObjet ? $this->valeurs->findOneBy(['uuid' => $uuidObjet]) : null;
-        if (null === $valeur) {
+        if (null === $valeur || $valeur->getIndicateur()->estSupprime()) {
             throw new NotFoundHttpException("Valeur d'indicateur introuvable.");
         }
 
@@ -490,7 +573,7 @@ final class IndicateurController
     {
         $uuidObjet = $this->uuidOuNull($uuid);
         $valeur = null !== $uuidObjet ? $this->valeurs->findOneBy(['uuid' => $uuidObjet]) : null;
-        if (null === $valeur) {
+        if (null === $valeur || $valeur->getIndicateur()->estSupprime()) {
             throw new NotFoundHttpException("Valeur d'indicateur introuvable.");
         }
 
@@ -702,7 +785,9 @@ final class IndicateurController
     private function trouver(string $uuid): Indicateur
     {
         $uuidObjet = $this->uuidOuNull($uuid);
-        $indicateur = null !== $uuidObjet ? $this->indicateurs->findOneBy(['uuid' => $uuidObjet]) : null;
+        // Un indicateur supprimé est introuvable partout : fiche, valeurs,
+        // saisie, modification, invitations.
+        $indicateur = null !== $uuidObjet ? $this->indicateurs->trouverNonSupprime($uuidObjet) : null;
 
         return $indicateur ?? throw new NotFoundHttpException('Indicateur introuvable.');
     }

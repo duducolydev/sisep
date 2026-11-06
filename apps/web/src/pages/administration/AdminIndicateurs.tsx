@@ -1,14 +1,14 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router'
-import { indicateursQueryOptions, type Indicateur, type TypeIndicateur } from '@/lib/indicateurs'
+import { indicateursQueryOptions, type TypeIndicateur } from '@/lib/indicateurs'
 import { usePeut } from '@/lib/use-permissions'
 import { AdminOnglets } from '@/components/AdminOnglets'
 import { ErreurChargement } from '@/components/ErreurChargement'
 import { DefinirIndicateurModale } from '@/components/DefinirIndicateurModale'
-import { ModifierIndicateurModale } from '@/components/ModifierIndicateurModale'
+import { ActionsIndicateur } from '@/components/ActionsIndicateur'
 import { budgetExecutionQueryOptions } from '@/lib/budget'
-import { IconeBouton, IconeModifier, IconeRecherche, IconePlus } from '@/components/Icones'
+import { IconeRecherche, IconePlus } from '@/components/Icones'
 import { Pagination } from '@/components/Pagination'
 import { Squelette } from '@/components/Squelette'
 import { trancherPage } from '@/lib/pagination'
@@ -22,7 +22,6 @@ export function AdminIndicateurs() {
 
   const [searchParams, setSearchParams] = useSearchParams()
   const [modaleCreation, setModaleCreation] = useState(false)
-  const [indicateurEnEdition, setIndicateurEnEdition] = useState<Indicateur | null>(null)
 
   const recherche = searchParams.get('q') ?? ''
   const type = (searchParams.get('type') as TypeIndicateur | null) ?? ''
@@ -136,11 +135,7 @@ export function AdminIndicateurs() {
                   <td className="px-4 py-3 capitalize">{i.frequence}</td>
                   <td className="px-4 py-3 text-muted">{i.source}</td>
                   <td className="px-4 py-3 text-right">
-                    {peutDefinir && (
-                      <IconeBouton libelle={`Modifier ${i.code}`} onClick={() => setIndicateurEnEdition(i)}>
-                        <IconeModifier />
-                      </IconeBouton>
-                    )}
+                    <ActionsIndicateur indicateur={i} variante="icones" />
                   </td>
                 </tr>
               ))}
@@ -165,13 +160,6 @@ export function AdminIndicateurs() {
 
       {modaleCreation && (
         <DefinirIndicateurModale composantes={composantes?.donnees ?? []} onFermer={() => setModaleCreation(false)} />
-      )}
-      {indicateurEnEdition && (
-        <ModifierIndicateurModale
-          indicateur={indicateurEnEdition}
-          composantes={composantes?.donnees ?? []}
-          onFermer={() => setIndicateurEnEdition(null)}
-        />
       )}
     </div>
   )

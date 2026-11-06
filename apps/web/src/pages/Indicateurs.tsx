@@ -10,6 +10,7 @@ import { AtteinteGlobaleIndicateurs } from '@/components/AtteinteGlobaleIndicate
 import { formaterValeurIndicateur } from '@/lib/format'
 import { usePeut, useUtilisateurCourant } from '@/lib/use-permissions'
 import { DefinirIndicateurModale } from '@/components/DefinirIndicateurModale'
+import { ActionsIndicateur } from '@/components/ActionsIndicateur'
 import { ValeurIndicateurInline } from '@/components/ValeurIndicateurInline'
 import { BoutonExporter } from '@/components/BoutonExporter'
 import { Pagination } from '@/components/Pagination'
@@ -33,6 +34,7 @@ export function Indicateurs() {
   const mesIndicateurs = searchParams.get('mes') === '1'
   const structureUuid = mesIndicateurs ? (utilisateur?.structureUuid ?? undefined) : (searchParams.get('structure') ?? undefined)
   const page = Math.max(1, Number(searchParams.get('page') ?? '1'))
+  const nbColonnes = peutDefinir ? 6 : 5
 
   const { data: indicateurs, isLoading, isError } = useQuery(indicateursQueryOptions(type, composanteUuid, structureUuid))
   // Catalogue complet, sans filtre : sert seulement à savoir quelles
@@ -220,6 +222,11 @@ export function Indicateurs() {
                 <th className="px-4 py-3 text-right font-normal">Actuel</th>
                 <th className="px-4 py-3 text-right font-normal">Cible</th>
                 <th className="px-4 py-3 font-normal">Taux d'atteinte</th>
+                {peutDefinir && (
+                  <th className="px-4 py-3">
+                    <span className="sr-only">Actions</span>
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -227,7 +234,7 @@ export function Indicateurs() {
                 <Fragment key={i.uuid}>
                   {libelleRattachement(i) !== (index > 0 ? libelleRattachement(indicateursPage[index - 1]) : null) && (
                     <tr className="border-b border-border bg-nested">
-                      <th colSpan={5} scope="colgroup" className="px-4 py-2 text-left text-xs font-semibold tracking-wide text-muted uppercase">
+                      <th colSpan={nbColonnes} scope="colgroup" className="px-4 py-2 text-left text-xs font-semibold tracking-wide text-muted uppercase">
                         {libelleRattachement(i)}
                       </th>
                     </tr>
@@ -265,12 +272,17 @@ export function Indicateurs() {
                   <td className="px-4 py-3">
                     <BarreAtteinte taux={valeurAffichee(i).tauxAtteinte} />
                   </td>
+                  {peutDefinir && (
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                      <ActionsIndicateur indicateur={i} variante="icones" />
+                    </td>
+                  )}
                 </tr>
                 </Fragment>
               ))}
               {indicateursPage.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-muted">
+                  <td colSpan={nbColonnes} className="px-4 py-6 text-center text-muted">
                     Aucun indicateur ne correspond à ces filtres.
                   </td>
                 </tr>

@@ -526,6 +526,101 @@ final class IndicateurHttpTest extends WebTestCase
     }
 
     /**
+     * Suppression logique : l'indicateur disparaît de la liste et de la
+     * fiche, ses valeurs restent en base, le journal en garde la trace et le
+     * code peut resservir.
+     */
+    public function testSupprimerMasqueLIndicateurGardeSesValeursEtLibereLeCode(): void
+    {
+        [$client, $fixture] = $this->demarrer();
+
+        try {
+            $this->connecter($client, $fixture['suiviEvaluation']->getEmail());
+            $uuid = $this->creerIndicateur($client, 'IOD-SUP', '0');
+            $client->request('POST', "/api/v1/indicateurs/{$uuid}/valeurs", server: ['CONTENT_TYPE' => 'application/json'], content: json_encode([
+                'periode' => '2026-01-01',
+                'valeur' => '10',
+            ], \JSON_THROW_ON_ERROR));
+            self::assertResponseStatusCodeSame(201);
+            $journalAvant = $this->compterJournal('indicateur', 'modification');
+
+            $client->request('DELETE', "/api/v1/indicateurs/{$uuid}");
+            self::assertResponseStatusCodeSame(204);
+
+            $client->request('GET', "/api/v1/indicateurs/{$uuid}");
+            self::assertResponseStatusCodeSame(404);
+            $client->request('GET', '/api/v1/indicateurs');
+            self::assertNotContains('IOD-SUP', array_column($this->corps($client)['donnees'], 'code'));
+            $client->request('DELETE', "/api/v1/indicateurs/{$uuid}");
+            self::assertResponseStatusCodeSame(404, 'Une seconde suppression ne trouve plus rien.');
+
+            self::assertSame(1, (int) $this->em->createQuery(
+                'SELECT COUNT(v) FROM App\Entity\IndicateurValeur v JOIN v.indicateur i WHERE i.uuid = :uuid',
+            )->setParameter('uuid', \Symfony\Component\Uid\Uuid::fromString($uuid), 'uuid')->getSingleScalarResult(), 'Les valeurs ne sont jamais supprimées physiquement.');
+            self::assertSame($journalAvant + 1, $this->compterJournal('indicateur', 'modification'), 'La suppression est journalisée.');
+
+            $this->creerIndicateur($client, 'IOD-SUP', '0');
+        } finally {
+            $this->rollback();
+        }
+    }
+
+    public function testSupprimerExigeIndicateursDefinir(): void
+    {
+        [$client, $fixture] = $this->demarrer();
+
+        try {
+            $this->connecter($client, $fixture['suiviEvaluation']->getEmail());
+            $uuid = $this->creerIndicateur($client, 'IOD-DROIT', '0');
+
+            $this->connecter($client, $fixture['coordonnateur']->getEmail());
+            $client->request('DELETE', "/api/v1/indicateurs/{$uuid}");
+            self::assertResponseStatusCodeSame(403);
+        } finally {
+            $this->rollback();
+        }
+    }
+
+    /** Redéfinition : code, type, sens, référence et fréquence se corrigent, sous contrôle d'unicité du code. */
+    public function testRedefinirUnIndicateurEtRefuserUnCodeDejaPris(): void
+    {
+        [$client, $fixture] = $this->demarrer();
+
+        try {
+            $this->connecter($client, $fixture['suiviEvaluation']->getEmail());
+            $uuid = $this->creerIndicateur($client, 'IOD-A', '0');
+            $this->creerIndicateur($client, 'IOD-B', '0');
+
+            $client->request('PATCH', "/api/v1/indicateurs/{$uuid}", server: ['CONTENT_TYPE' => 'application/json'], content: json_encode([
+                'code' => 'IRI-A',
+                'type' => 'IRI',
+                'sens' => 'decroissant',
+                'valeurReference' => '1,5',
+                'dateReference' => '2024-06-30',
+                'frequence' => 'trimestrielle',
+            ], \JSON_THROW_ON_ERROR));
+            self::assertResponseIsSuccessful();
+            $corps = $this->corps($client);
+            self::assertSame('IRI-A', $corps['code']);
+            self::assertSame('IRI', $corps['type']);
+            self::assertSame('decroissant', $corps['sens']);
+            self::assertEqualsWithDelta(1.5, (float) $corps['valeurReference'], 1e-9);
+            self::assertSame('trimestrielle', $corps['frequence']);
+
+            $client->request('PATCH', "/api/v1/indicateurs/{$uuid}", server: ['CONTENT_TYPE' => 'application/json'], content: json_encode(['code' => 'IOD-B'], \JSON_THROW_ON_ERROR));
+            self::assertResponseStatusCodeSame(409);
+
+            $client->request('PATCH', "/api/v1/indicateurs/{$uuid}", server: ['CONTENT_TYPE' => 'application/json'], content: json_encode(['type' => 'XYZ'], \JSON_THROW_ON_ERROR));
+            self::assertResponseStatusCodeSame(422);
+
+            $client->request('POST', '/api/v1/indicateurs', server: ['CONTENT_TYPE' => 'application/json'], content: json_encode($this->definition(['code' => 'IOD-B']), \JSON_THROW_ON_ERROR));
+            self::assertResponseStatusCodeSame(409, 'Deux indicateurs actifs ne partagent pas un code.');
+        } finally {
+            $this->rollback();
+        }
+    }
+
+    /**
      * @param array<string, string> $surcharge
      *
      * @return array<string, string>

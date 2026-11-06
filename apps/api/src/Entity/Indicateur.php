@@ -139,6 +139,12 @@ class Indicateur implements PorteeParStructureInterface
         return $this->code;
     }
 
+    /** Unicité parmi les indicateurs non supprimés du projet : contrôlée par le contrôleur. */
+    public function setCode(string $code): void
+    {
+        $this->code = $code;
+    }
+
     public function getLibelle(): string
     {
         return $this->libelle;
@@ -162,6 +168,11 @@ class Indicateur implements PorteeParStructureInterface
     public function getType(): TypeIndicateur
     {
         return $this->type;
+    }
+
+    public function setType(TypeIndicateur $type): void
+    {
+        $this->type = $type;
     }
 
     public function getComposante(): ?Composante
@@ -189,6 +200,12 @@ class Indicateur implements PorteeParStructureInterface
         return $this->sens;
     }
 
+    /** Le taux d'atteinte n'est jamais stocké : il suit le nouveau sens dès la lecture suivante. */
+    public function setSens(SensIndicateur $sens): void
+    {
+        $this->sens = $sens;
+    }
+
     public function getValeurReference(): string
     {
         return $this->valeurReference;
@@ -202,6 +219,11 @@ class Indicateur implements PorteeParStructureInterface
     public function getDateReference(): \DateTimeImmutable
     {
         return $this->dateReference;
+    }
+
+    public function setDateReference(\DateTimeImmutable $dateReference): void
+    {
+        $this->dateReference = $dateReference;
     }
 
     public function getValeurIntermediaire(): ?string
@@ -247,6 +269,11 @@ class Indicateur implements PorteeParStructureInterface
     public function getFrequence(): FrequenceIndicateur
     {
         return $this->frequence;
+    }
+
+    public function setFrequence(FrequenceIndicateur $frequence): void
+    {
+        $this->frequence = $frequence;
     }
 
     public function getSource(): string

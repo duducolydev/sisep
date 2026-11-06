@@ -141,6 +141,12 @@ export function creerIndicateur(entree: CreerIndicateurEntree) {
 }
 
 export interface ModifierIndicateurEntree {
+  code?: string
+  type?: TypeIndicateur
+  sens?: SensIndicateur
+  valeurReference?: string
+  dateReference?: string
+  frequence?: string
   libelle?: string
   precisionLibelle?: string | null
   unite?: string
@@ -156,6 +162,11 @@ export interface ModifierIndicateurEntree {
 
 export function modifierIndicateur(uuid: string, entree: ModifierIndicateurEntree) {
   return apiClient.patch<Indicateur>(`/indicateurs/${uuid}`, entree)
+}
+
+/** Suppression logique : les valeurs saisies restent en base et au journal. */
+export function supprimerIndicateur(uuid: string) {
+  return apiClient.delete<void>(`/indicateurs/${uuid}`)
 }
 
 /** Exactement l'un de valeur (absolue) ou delta (ajustement +/- depuis la dernière saisie) doit être fourni. */
