@@ -85,11 +85,13 @@ final class JournalController
 
         // Un seul type demandé : on restreint ; sinon les trois, jamais tout
         // le journal — cette vue ne doit pas devenir une porte sur les
-        // écritures de droits ou de comptes.
+        // écritures de droits ou de comptes. S'y ajoute la trace d'une purge
+        // (type `budget`, sans ligne propre) : effacer des écritures sans le
+        // dire dans le fil priverait l'audit de son objet.
         $type = $request->query->get('type');
         $types = \is_string($type) && \in_array($type, ReferenceEcritureBudgetaireResolver::TYPES, true)
             ? [$type]
-            : ReferenceEcritureBudgetaireResolver::TYPES;
+            : [...ReferenceEcritureBudgetaireResolver::TYPES, 'budget'];
         $qb->andWhere('j.entiteType IN (:types)')->setParameter('types', $types);
 
         if (null !== ($erreur = $this->appliquerFiltresCommuns($qb, $request))) {

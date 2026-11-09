@@ -7,6 +7,7 @@ namespace App\Tests\Functional;
 use App\Entity\Activite;
 use App\Entity\Composante;
 use App\Entity\Exercice;
+use App\Entity\JournalActivite;
 use App\Entity\Permission;
 use App\Entity\Projet;
 use App\Entity\Role;
@@ -82,6 +83,43 @@ final class JournalBudgetHttpTest extends WebTestCase
             // Filtre par type : les dépenses seules, donc aucune ici.
             $client->request('GET', '/api/v1/journal/budget?type=depense');
             self::assertCount(0, $this->corps($client)['donnees']);
+        } finally {
+            $this->rollback();
+        }
+    }
+
+    public function testLaTraceDUnePurgeResteVisibleDansLeFil(): void
+    {
+        [$client, $fixture] = $this->demarrer();
+
+        try {
+            $this->em->persist(new JournalActivite(
+                $fixture['auditeur'],
+                'purge',
+                'budget',
+                null,
+                ['dotations' => 1, 'engagements' => 3],
+                null,
+                '0.0.0.0',
+                'console',
+            ));
+            $this->em->flush();
+
+            $this->connecter($client, $fixture['auditeur']->getEmail());
+            $client->request('GET', '/api/v1/journal/budget');
+            self::assertResponseIsSuccessful();
+
+            $entree = $this->corps($client)['donnees'][0];
+            self::assertSame('purge', $entree['action']);
+            self::assertSame('budget', $entree['entiteType']);
+            self::assertNull($entree['reference']);
+            self::assertSame(3, $entree['avant']['engagements']);
+
+            // Le filtre sur un type d'écriture ne ramène que ce type.
+            $client->request('GET', '/api/v1/journal/budget?type=dotation');
+            foreach ($this->corps($client)['donnees'] as $ligne) {
+                self::assertSame('dotation', $ligne['entiteType']);
+            }
         } finally {
             $this->rollback();
         }

@@ -17,12 +17,14 @@ const LIBELLES_ACTION: Record<string, string> = {
   creation: 'Saisie',
   modification: 'Modification',
   suppression: 'Suppression',
+  purge: 'Purge',
 }
 
 const LIBELLES_TYPE: Record<string, string> = {
   dotation: 'Dotation',
   engagement: 'Engagement',
   depense: 'Dépense',
+  budget: "Écritures d'essai",
 }
 
 /**
@@ -186,6 +188,12 @@ export function JournalBudgetaire() {
 function Reference({ entree }: { entree: EntreeJournalBudget }) {
   const type = LIBELLES_TYPE[entree.entiteType] ?? entree.entiteType
 
+  // Une purge porte sur plusieurs écritures : pas de ligne propre à désigner,
+  // le détail de l'entrée dit lesquelles.
+  if (entree.entiteId === null) {
+    return <span>{type}</span>
+  }
+
   if (entree.reference === null) {
     return (
       <span className="text-muted">
@@ -224,7 +232,7 @@ const CHAMPS_TECHNIQUES = new Set([
 ])
 
 /** Champs dont la valeur est un montant FCFA entier, à présenter comme tel. */
-const CHAMPS_MONTANT = new Set(['montant', 'q1', 'q2', 'q3', 'q4', 'montantValideCopil'])
+const CHAMPS_MONTANT = new Set(['montant', 'q1', 'q2', 'q3', 'q4', 'montantValideCopil', 'montantDotations', 'montantEngagements'])
 
 /**
  * État avant et après, champ par champ. Le journal ne stocke que les champs
