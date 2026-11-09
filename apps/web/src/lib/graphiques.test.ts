@@ -1,5 +1,31 @@
 import { describe, expect, it } from 'vitest'
-import { HAUTEUR_MINIMALE_GRAPHIQUE, hauteurGraphiqueEnBarres } from './graphiques'
+import { HAUTEUR_MINIMALE_GRAPHIQUE, hauteurGraphiqueEnBarres, lignesTauxExecution } from './graphiques'
+
+describe('lignesTauxExecution', () => {
+  it("annonce le taux exécuté, pas la part restante, quand rien n'est dépensé", () => {
+    // Régression : la barre pleine affichait « 100 % » sans aucune dépense.
+    const [ligne] = lignesTauxExecution([{ libelle: '2026', tauxExecution: 0 }])
+
+    expect(ligne?.execution).toBe(0)
+    expect(ligne?.resteADepenser).toBe(100)
+    expect(ligne?.sommet).toBe(100)
+    expect(ligne?.etiquette).toBe('0 % exécuté')
+  })
+
+  it('garde une décimale et le séparateur français', () => {
+    const [ligne] = lignesTauxExecution([{ libelle: '2026', tauxExecution: 0.1234 }])
+
+    expect(ligne?.execution).toBe(12.3)
+    expect(ligne?.resteADepenser).toBe(87.7)
+    expect(ligne?.etiquette).toBe('12,3 % exécuté')
+  })
+
+  it("n'invente pas de 0 % quand le taux est indéfini", () => {
+    const [ligne] = lignesTauxExecution([{ libelle: '2027', tauxExecution: null }])
+
+    expect(ligne).toEqual({ libelle: '2027', execution: null, resteADepenser: null, sommet: null, etiquette: null })
+  })
+})
 
 describe('hauteurGraphiqueEnBarres', () => {
   it("réserve au moins la hauteur minimale, même pour une seule ligne", () => {

@@ -76,7 +76,7 @@ export function TableauDeBord() {
           <p className="font-titre text-eyebrow uppercase tracking-wide">Tableau de bord</p>
           <h1 className="text-2xl">Synthèse du projet</h1>
           <p className="text-muted">
-            Exercice {synthese?.exercice ?? '—'} · exécution financière et physique, décaissement, engagements, structures, cadre de résultats et reporting — § 2.1.
+            Exercice {synthese?.exercice ?? '—'} · exécution financière et physique, décaissement, engagements, structures, cadre de résultats et reporting.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">

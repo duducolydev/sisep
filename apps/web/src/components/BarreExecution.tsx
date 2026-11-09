@@ -6,10 +6,12 @@ interface BarreExecutionProps {
   depense: number | null
   /** Rythme attendu (0-1) à ce jour dans l'exercice — repère vertical optionnel (§ 9.4). */
   rythmeAttendu?: number | null
+  /** Nomme le montant sous la barre, là où rien d'autre ne dit qu'il s'agit du dépensé. */
+  nommerLeDepense?: boolean
 }
 
 /** Barre superposée dépensé / engagé / disponible + repère de rythme — § 9.4 du brief. */
-export function BarreExecution({ notifie, engage, depense, rythmeAttendu }: BarreExecutionProps) {
+export function BarreExecution({ notifie, engage, depense, rythmeAttendu, nommerLeDepense = false }: BarreExecutionProps) {
   if (notifie === null || notifie === 0) {
     return <span className="text-muted chiffres">—</span>
   }
@@ -35,7 +37,10 @@ export function BarreExecution({ notifie, engage, depense, rythmeAttendu }: Barr
         )}
       </div>
       <div className="flex flex-wrap justify-between gap-x-2 text-xs text-muted">
-        <span className="chiffres truncate">{formaterFcfa(depense ?? 0)}</span>
+        <span className="truncate">
+          {nommerLeDepense && 'Dépensé '}
+          <span className="chiffres">{formaterFcfa(depense ?? 0)}</span>
+        </span>
         <span className="chiffres shrink-0">{formaterTaux(tauxExecution)}</span>
       </div>
     </div>

@@ -55,7 +55,7 @@ final class ExecutionPluriannuelleHttpTest extends WebTestCase
 
             self::assertSame(10_000_000, $parAnnee[2025]['notifie']);
             self::assertSame(8_000_000, $parAnnee[2025]['depense']);
-            self::assertSame(2_000_000, $parAnnee[2025]['disponible']);
+            self::assertSame(2_000_000, $parAnnee[2025]['resteADepenser']);
             self::assertEqualsWithDelta(0.8, $parAnnee[2025]['tauxExecution'], 0.0001);
 
             self::assertSame(5_000_000, $parAnnee[2027]['notifie']);
@@ -86,7 +86,7 @@ final class ExecutionPluriannuelleHttpTest extends WebTestCase
 
             self::assertSame(15_000_000, $corps['global']['notifie']);
             self::assertSame(8_000_000, $corps['global']['depense']);
-            self::assertSame(7_000_000, $corps['global']['disponible']);
+            self::assertSame(7_000_000, $corps['global']['resteADepenser']);
             self::assertEqualsWithDelta(8_000_000 / 15_000_000, $corps['global']['tauxExecution'], 0.0001);
         } finally {
             $this->rollback();

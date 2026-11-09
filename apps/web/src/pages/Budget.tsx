@@ -96,7 +96,7 @@ export function Budget() {
         <div>
           <h1 className="text-2xl">Budget</h1>
           <p className="text-muted">
-            Exercice {activites?.exercice ?? '—'} · notifié, engagé, dépensé, disponible, taux d'exécution — § 2.3.
+            Exercice {activites?.exercice ?? '—'} · notifié, engagé, dépensé, disponible, taux d'exécution.
           </p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
@@ -159,7 +159,9 @@ export function Budget() {
             </GraphiqueExportable>
 
             <GraphiqueExportable titre="Montants d'exécution" titreDansLeCadre className="rounded-[var(--radius-carte)] bg-surface p-4 shadow-[var(--shadow-carte)]">
-              <p className="mb-3 text-sm font-semibold">Montants d'exécution</p>
+              <p className="mb-3 text-sm font-semibold">
+                Montants d'exécution <span className="font-normal text-muted">· axe en milliards de FCFA</span>
+              </p>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_2fr]">
                 <div>
                   <p className="mb-1 text-xs text-muted">Global</p>
@@ -197,13 +199,19 @@ export function Budget() {
               key={c.uuid}
               type="button"
               onClick={() => definirComposante(composanteUuid === c.uuid ? '' : c.uuid)}
-              className={`min-w-0 rounded-[var(--radius-carte)] border bg-surface p-4 text-left shadow-[var(--shadow-carte)] transition-colors ${
+              className={`flex min-w-0 flex-col rounded-[var(--radius-carte)] border bg-surface p-4 text-left shadow-[var(--shadow-carte)] transition-colors ${
                 composanteUuid === c.uuid ? 'border-accent ring-2 ring-accent' : 'border-border hover:border-accent'
               }`}
             >
               <p className="chiffres text-sm text-muted">{c.code}</p>
-              <p className="mb-2 font-semibold">{c.libelle}</p>
-              <BarreExecution notifie={c.notifie} engage={c.engage} depense={c.depense} />
+              <p className="mb-3 font-semibold">{c.libelle}</p>
+              <div className="mt-auto flex flex-col gap-2">
+                <p className="flex flex-wrap justify-between gap-x-2 text-sm">
+                  <span className="text-muted">Budget notifié</span>
+                  <span className="chiffres font-semibold">{c.notifie === null ? '—' : formaterFcfa(c.notifie)}</span>
+                </p>
+                <BarreExecution notifie={c.notifie} engage={c.engage} depense={c.depense} nommerLeDepense />
+              </div>
             </button>
           ))}
         </div>

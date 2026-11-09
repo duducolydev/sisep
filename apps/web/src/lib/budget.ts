@@ -96,14 +96,15 @@ export interface ExecutionAnnee {
   annee: number
   notifie: number
   depense: number
-  disponible: number
+  /** Notifié moins dépensé — à ne pas confondre avec le disponible, notifié moins engagé. */
+  resteADepenser: number
   tauxExecution: number | null
 }
 
 export interface ExecutionGlobale {
   notifie: number
   depense: number
-  disponible: number
+  resteADepenser: number
   tauxExecution: number | null
 }
 

@@ -46,7 +46,7 @@ export function AdminParametres() {
 
       <h2 className="mb-2 text-lg font-semibold">Paramètres</h2>
       <p className="mb-4 text-sm text-muted">
-        Seuils de vigilance (§ 5.3) et échéance de reporting (§ 5.5). Effectifs immédiatement, sans redéploiement.
+        Seuils de vigilance et échéance de reporting. Effectifs immédiatement, sans redéploiement.
       </p>
 
       {erreur && (

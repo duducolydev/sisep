@@ -112,17 +112,17 @@ final class RevueMiParcoursXlsxExporter
                 null !== $a['avancement'] ? $a['avancement'] / 100 : null, \count($a['sousActivites'] ?? []),
                 $a['notifie'], $a['engage'], $a['depense'], TableurExport::taux(GrandeursDerivees::taux((int) $a['depense'], (int) $a['notifie'])),
                 match ($vigilance) {
-                    'en_retard' => 'En retard', 'risque_eleve' => 'Risque élevé', default => null
+                    'en_retard' => 'En retard', 'risque_eleve' => 'Risque élevé', default => null,
                 },
             ];
         }, $activites));
 
-        $lignesAnnees = array_map(static fn (array $a) => [(string) $a['annee'], $a['notifie'], $a['depense'], $a['disponible'], TableurExport::taux($a['tauxExecution'])], $pluriannuel['annees']);
+        $lignesAnnees = array_map(static fn (array $a) => [(string) $a['annee'], $a['notifie'], $a['depense'], $a['resteADepenser'], TableurExport::taux($a['tauxExecution'])], $pluriannuel['annees']);
         $global = $pluriannuel['global'];
-        $lignesAnnees[] = ['Total du projet', $global['notifie'], $global['depense'], $global['disponible'], TableurExport::taux($global['tauxExecution'])];
+        $lignesAnnees[] = ['Total du projet', $global['notifie'], $global['depense'], $global['resteADepenser'], TableurExport::taux($global['tauxExecution'])];
         $tableur->feuille('Exécution pluriannuelle', 'Exécution financière par exercice — exercices enregistrés dans SISEP', [
             ['Exercice', TableurExport::TEXTE, 16], ['Notifié (FCFA)', TableurExport::FCFA, 18], ['Dépensé (FCFA)', TableurExport::FCFA, 18],
-            ['Disponible (FCFA)', TableurExport::FCFA, 18], ['Taux d\'exécution', TableurExport::TAUX, 14],
+            ['Reste à dépenser (FCFA)', TableurExport::FCFA, 22], ['Taux d\'exécution', TableurExport::TAUX, 14],
         ], $lignesAnnees);
 
         $totalEngage = array_sum(array_column($synthese['engagementsParNature'], 'montant'));

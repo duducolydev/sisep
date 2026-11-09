@@ -146,7 +146,7 @@ export function Composantes() {
       <div className="mb-6 flex items-start justify-between">
         <div>
           <h1 className="text-2xl">Composantes</h1>
-          <p className="text-muted">Arbre composante → sous-composante → activité → sous-activité — § 2.2.</p>
+          <p className="text-muted">Arbre composante → sous-composante → activité → sous-activité.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
         {peutExporter && <BoutonExporter href={urlExportDonnees('composantes', { exercice: searchParams.get('exercice') })} libelle="Exporter" />}

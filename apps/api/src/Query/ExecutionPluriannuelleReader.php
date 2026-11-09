@@ -21,7 +21,7 @@ final class ExecutionPluriannuelleReader
     {
     }
 
-    /** @return array{annees: list<array{annee: int, notifie: int, depense: int, disponible: int, tauxExecution: float|null}>, global: array{notifie: int, depense: int, disponible: int, tauxExecution: float|null}} */
+    /** @return array{annees: list<array{annee: int, notifie: int, depense: int, resteADepenser: int, tauxExecution: float|null}>, global: array{notifie: int, depense: int, resteADepenser: int, tauxExecution: float|null}} */
     public function lire(int $projetId): array
     {
         // La dotation/dépense peut cibler l'activité elle-même ou une de ses
@@ -74,13 +74,19 @@ final class ExecutionPluriannuelleReader
         ];
     }
 
-    /** @return array{annee?: int, notifie: int, depense: int, disponible: int, tauxExecution: float|null} */
+    /**
+     * Le reste à dépenser (notifié moins dépensé) n'est pas le disponible du
+     * reste de l'application (notifié moins engagé) : ils divergent dès le
+     * premier engagement validé.
+     *
+     * @return array{annee?: int, notifie: int, depense: int, resteADepenser: int, tauxExecution: float|null}
+     */
     private function ligne(?int $annee, int $notifie, int $depense): array
     {
         $ligne = [
             'notifie' => $notifie,
             'depense' => $depense,
-            'disponible' => $notifie - $depense,
+            'resteADepenser' => $notifie - $depense,
             // Cast explicite : PHP renvoie un int (pas un float) quand la
             // division tombe juste (ex. 0 / 5 000 000), ce qui romprait le
             // contrat float|null côté API.

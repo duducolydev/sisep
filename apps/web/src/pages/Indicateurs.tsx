@@ -102,7 +102,7 @@ export function Indicateurs() {
       <div className="mb-6 flex items-start justify-between">
         <div>
           <h1 className="text-2xl">Indicateurs de performance</h1>
-          <p className="text-muted">Indicateurs de performance IOD et IRI du cadre de résultats — § 2.4.</p>
+          <p className="text-muted">Indicateurs de performance IOD et IRI du cadre de résultats.</p>
         </div>
         <div className="flex shrink-0 items-center gap-3">
           {peutExporter && <BoutonExporter href={urlExportCadreResultats()} libelle="Exporter" />}
