@@ -218,7 +218,7 @@ Quand une activité est achevée, le Coordonnateur ou le Responsable suivi-éval
 
 L'écran **Budget** consolide l'exécution financière du projet :
 
-- l'**exécution financière pluriannuelle** et le **décaissement cumulé**, en barres mois par mois (réalisé et trajectoire prévue) ;
+- l'**exécution financière pluriannuelle** et le **décaissement cumulé**, en barres mois par mois : le réalisé à côté de la trajectoire prévue, qui suit la répartition trimestrielle du PTBA (TRIM 1 à 4, partagée à parts égales entre les trois mois de chaque trimestre) ;
 - la **synthèse par composante** ;
 - les **activités les moins exécutées**, pour cibler les relances ;
 - **toutes les activités**, avec leurs montants notifiés, engagés et dépensés.

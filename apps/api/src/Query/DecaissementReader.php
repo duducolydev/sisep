@@ -4,14 +4,15 @@ declare(strict_types=1);
 
 namespace App\Query;
 
+use App\Budget\TrajectoirePrevue;
 use App\Security\PorteeBudgetaire;
 use Doctrine\DBAL\Connection;
 
 /**
  * GET /projets/:uuid/decaissement?exercice= (§ 6.2 du brief) : série
- * mensuelle cumulée réalisée comparée à une trajectoire attendue linéaire
- * sur l'exercice (même logique que le taux attendu du § 5.3 — jours écoulés
- * / jours totaux — appliquée mois par mois plutôt qu'à la date du jour).
+ * mensuelle cumulée réalisée comparée à la trajectoire prévue, qui suit la
+ * répartition trimestrielle de chaque dotation (TrajectoirePrevue, décision du
+ * 09/11/2026). Le taux attendu de la vigilance (§ 5.3) reste, lui, linéaire.
  */
 final class DecaissementReader
 {
@@ -29,8 +30,8 @@ final class DecaissementReader
         // dans tous les cas l'activité porteuse via COALESCE pour ne pas
         // silencieusement perdre les lignes chiffrées au niveau sous-activité.
         $portee = $this->portee->condition();
-        $totalNotifie = (int) $this->connection->fetchOne(
-            'SELECT COALESCE(SUM(d.montant), 0)
+        $dotations = $this->connection->fetchAllAssociative(
+            'SELECT d.montant, d.q1, d.q2, d.q3, d.q4
              FROM dotations d
              LEFT JOIN sous_activites sa ON sa.id = d.sous_activite_id
              JOIN activites a ON a.id = COALESCE(d.activite_id, sa.activite_id)
@@ -54,7 +55,7 @@ final class DecaissementReader
             [$projetId, $exerciceId, ...$portee['parametres']],
         );
 
-        $joursTotaux = max(1, $dateDebut->diff($dateFin)->days);
+        $entier = static fn (mixed $valeur): ?int => null !== $valeur ? (int) $valeur : null;
 
         $points = [];
         $cumulRealise = 0;
@@ -65,8 +66,16 @@ final class DecaissementReader
             $cumulRealise += (int) ($depensesParMois[$cle] ?? 0);
 
             $finMoisBornee = min($curseur->modify('last day of this month'), $dateFin);
-            $joursEcoules = min($joursTotaux, max(0, $dateDebut->diff($finMoisBornee)->days + 1));
-            $prevu = $totalNotifie > 0 ? (int) round($totalNotifie * $joursEcoules / $joursTotaux) : 0;
+            $prevu = 0;
+            foreach ($dotations as $d) {
+                $prevu += TrajectoirePrevue::cumul(
+                    (int) $d['montant'],
+                    [$entier($d['q1']), $entier($d['q2']), $entier($d['q3']), $entier($d['q4'])],
+                    $dateDebut,
+                    $dateFin,
+                    $finMoisBornee,
+                );
+            }
 
             $points[] = ['mois' => $cle, 'realise' => $cumulRealise, 'prevu' => $prevu];
 

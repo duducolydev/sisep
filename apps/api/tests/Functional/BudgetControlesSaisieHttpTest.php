@@ -31,6 +31,7 @@ final class BudgetControlesSaisieHttpTest extends WebTestCase
 
     private EntityManagerInterface $em;
     private KernelBrowser $client;
+    private string $projet = '';
     private string $lignes = '';
     private string $sansLigne = '';
     private string $ligne1 = '';
@@ -77,6 +78,7 @@ final class BudgetControlesSaisieHttpTest extends WebTestCase
         }
         $this->em->flush();
 
+        $this->projet = $projet->getUuid()->toRfc4122();
         $this->lignes = $activiteLignes->getUuid()->toRfc4122();
         $this->sansLigne = $activiteSansLigne->getUuid()->toRfc4122();
         $this->ligne1 = $ligne1->getUuid()->toRfc4122();
@@ -118,6 +120,35 @@ final class BudgetControlesSaisieHttpTest extends WebTestCase
         self::assertNotFalse($journal, 'Une révision est tracée au journal.');
         self::assertSame(1_000_000, json_decode((string) $journal['avant'], true)['montant']);
         self::assertSame(2_000_000, json_decode((string) $journal['apres'], true)['montant']);
+    }
+
+    public function testLaTrajectoireSuitLesTrimestresEtFinitSurLeNotifie(): void
+    {
+        $this->connecter('rse');
+        $dotation = $this->dotation(['activite' => $this->sansLigne], 1_200, ['q1' => 120, 'q2' => 660, 'q3' => 240, 'q4' => 180]);
+
+        $prevuPourMois = function (): array {
+            $this->client->request('GET', "/api/v1/projets/{$this->projet}/decaissement?exercice=2026");
+            self::assertResponseIsSuccessful();
+            $corps = json_decode((string) $this->client->getResponse()->getContent(), true, flags: \JSON_THROW_ON_ERROR);
+
+            return array_column($corps['points'], 'prevu', 'mois');
+        };
+
+        $prevu = $prevuPourMois();
+        self::assertSame(120, $prevu['2026-03']);
+        self::assertSame(780, $prevu['2026-06'], 'Pas la moitié du budget à mi-année : le T2 du PTBA pèse le plus.');
+        self::assertSame(1_020, $prevu['2026-09']);
+        self::assertSame(1_200, $prevu['2026-12']);
+
+        // Une dotation sans trimestres reste linéaire, et s'ajoute à la première.
+        $this->dotation(['sousActivite' => $this->ligne1], 12_000);
+        self::assertSame(13_200, $prevuPourMois()['2026-12']);
+
+        // Révisée, la dotation garde son rythme et la trajectoire finit sur le nouveau notifié.
+        self::assertSame(200, $this->poster("/api/v1/dotations/{$dotation}/reviser", ['montant' => 2_400, 'motif' => 'Budget doublé'])[0]);
+        $this->em->clear();
+        self::assertSame(14_400, $prevuPourMois()['2026-12']);
     }
 
     public function testUneRevisionNePeutPasDescendreSousLEngage(): void
