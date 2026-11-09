@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Query;
 
+use App\Security\PorteeBudgetaire;
 use Doctrine\DBAL\Connection;
 
 /**
@@ -13,12 +14,15 @@ use Doctrine\DBAL\Connection;
  * année (dotations notifiées vs dépenses validées, tout le projet), plus un
  * cumul global. "Objectif annuel" = somme des dotations notifiées sur
  * l'exercice ; "Exécution" = somme des dépenses validées sur l'exercice
- * (même filtre `statut = 'valide'` que partout ailleurs).
+ * (même filtre `statut = 'valide'` que partout ailleurs). Sur le périmètre de
+ * l'utilisateur (PorteeBudgetaire).
  */
 final class ExecutionPluriannuelleReader
 {
-    public function __construct(private readonly Connection $connection)
-    {
+    public function __construct(
+        private readonly Connection $connection,
+        private readonly PorteeBudgetaire $portee,
+    ) {
     }
 
     /** @return array{annees: list<array{annee: int, notifie: int, depense: int, resteADepenser: int, tauxExecution: float|null}>, global: array{notifie: int, depense: int, resteADepenser: int, tauxExecution: float|null}} */
@@ -27,6 +31,7 @@ final class ExecutionPluriannuelleReader
         // La dotation/dépense peut cibler l'activité elle-même ou une de ses
         // sous-activités (§ 6.2, alignement PTBA) : résolution par COALESCE,
         // même logique que DecaissementReader.
+        $portee = $this->portee->condition();
         $notifieParAnnee = $this->connection->fetchAllKeyValue(
             'SELECT e.annee, SUM(d.montant) AS total
              FROM dotations d
@@ -35,9 +40,9 @@ final class ExecutionPluriannuelleReader
              JOIN activites a ON a.id = COALESCE(d.activite_id, sa.activite_id)
              JOIN sous_composantes sc ON sc.id = a.sous_composante_id
              JOIN composantes c ON c.id = sc.composante_id
-             WHERE c.projet_id = ?
+             WHERE c.projet_id = ?'.$portee['sql'].'
              GROUP BY e.annee',
-            [$projetId],
+            [$projetId, ...$portee['parametres']],
         );
 
         $depenseParAnnee = $this->connection->fetchAllKeyValue(
@@ -49,9 +54,10 @@ final class ExecutionPluriannuelleReader
              JOIN activites a ON a.id = COALESCE(e.activite_id, sa.activite_id)
              JOIN sous_composantes sc ON sc.id = a.sous_composante_id
              JOIN composantes c ON c.id = sc.composante_id
-             WHERE c.projet_id = ? AND d.statut = 'valide'
-             GROUP BY ex.annee",
-            [$projetId],
+             WHERE c.projet_id = ? AND d.statut = 'valide'"
+            .$portee['sql']
+            .' GROUP BY ex.annee',
+            [$projetId, ...$portee['parametres']],
         );
 
         $annees = array_unique([...array_map('intval', array_keys($notifieParAnnee)), ...array_map('intval', array_keys($depenseParAnnee))]);

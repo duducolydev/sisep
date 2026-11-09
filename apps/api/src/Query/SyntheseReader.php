@@ -5,18 +5,21 @@ declare(strict_types=1);
 namespace App\Query;
 
 use App\Budget\GrandeursDerivees;
+use App\Security\PorteeBudgetaire;
 use Doctrine\DBAL\Connection;
 
 /**
  * GET /projets/:uuid/synthese?exercice= (§ 2.1, § 6.2 du brief) : les quatre
- * cartes du tableau de bord — notifié, engagé, exécuté, disponible —, somme
- * projet entier sans filtre de portée (comme les totaux composante de
- * l'arbre, § 4.1 point 2 : les montants agrégés restent visibles).
+ * cartes du tableau de bord — notifié, engagé, exécuté, disponible —, sur le
+ * périmètre de l'utilisateur (PorteeBudgetaire) : le projet entier pour une
+ * portée globale, ses activités sinon.
  */
 final class SyntheseReader
 {
-    public function __construct(private readonly Connection $connection)
-    {
+    public function __construct(
+        private readonly Connection $connection,
+        private readonly PorteeBudgetaire $portee,
+    ) {
     }
 
     /**
@@ -27,14 +30,17 @@ final class SyntheseReader
      */
     public function lire(int $projetId, int $exerciceId): array
     {
+        $portee = $this->portee->condition();
         $ligne = $this->connection->fetchAssociative(
             'SELECT COALESCE(SUM(v.notifie), 0) AS notifie,
                     COALESCE(SUM(v.engage), 0) AS engage,
                     COALESCE(SUM(v.depense), 0) AS depense
-             FROM composantes c
-             JOIN v_execution_composante v ON v.composante_id = c.id AND v.exercice_id = ?
-             WHERE c.projet_id = ? AND c.supprime_le IS NULL',
-            [$exerciceId, $projetId],
+             FROM activites a
+             JOIN sous_composantes sc ON sc.id = a.sous_composante_id AND sc.supprime_le IS NULL
+             JOIN composantes c ON c.id = sc.composante_id AND c.supprime_le IS NULL
+             JOIN v_execution_activite v ON v.activite_id = a.id AND v.exercice_id = ?
+             WHERE c.projet_id = ? AND a.supprime_le IS NULL'.$portee['sql'],
+            [$exerciceId, $projetId, ...$portee['parametres']],
         );
 
         $notifie = (int) ($ligne['notifie'] ?? 0);
@@ -62,6 +68,7 @@ final class SyntheseReader
      */
     private function engagementsParNature(int $projetId, int $exerciceId): array
     {
+        $portee = $this->portee->condition();
         $lignes = $this->connection->fetchAllAssociative(
             "SELECT e.nature, SUM(e.montant) AS montant, COUNT(*) AS nombre
              FROM engagements e
@@ -69,10 +76,11 @@ final class SyntheseReader
              JOIN activites a ON a.id = COALESCE(e.activite_id, sa.activite_id)
              JOIN sous_composantes sc ON sc.id = a.sous_composante_id
              JOIN composantes c ON c.id = sc.composante_id
-             WHERE c.projet_id = ? AND e.exercice_id = ? AND e.statut = 'valide' AND e.supprime_le IS NULL
-             GROUP BY e.nature
-             ORDER BY montant DESC",
-            [$projetId, $exerciceId],
+             WHERE c.projet_id = ? AND e.exercice_id = ? AND e.statut = 'valide' AND e.supprime_le IS NULL"
+            .$portee['sql']
+            .' GROUP BY e.nature
+             ORDER BY montant DESC',
+            [$projetId, $exerciceId, ...$portee['parametres']],
         );
 
         return array_map(static fn (array $l) => [

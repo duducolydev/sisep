@@ -7,6 +7,7 @@ namespace App\Query;
 use App\Entity\Utilisateur;
 use App\Security\PermissionsResolver;
 use App\Security\PorteeActiviteSql;
+use App\Security\PorteeBudgetaire;
 use Doctrine\DBAL\Connection;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Contracts\Cache\ItemInterface;
@@ -20,12 +21,10 @@ use Symfony\Contracts\Cache\TagAwareCacheInterface;
  *
  * Portée (§ 7.2) : les composantes et sous-composantes restent visibles de
  * tous (décision actée avec l'ANSD — un point focal doit pouvoir situer ses
- * activités dans l'ensemble du projet). Seules les lignes d'activités sont
- * filtrées par structure. Les totaux de composante/sous-composante viennent
- * des vues v_execution_* (§ 4.7), qui ne connaissent pas la portée : ils
- * reflètent l'exécution réelle du projet, pas seulement ce qu'un utilisateur
- * scopé peut modifier — un choix de transparence, pas une fuite : aucune
- * activité individuelle hors périmètre n'est jamais listée nommément.
+ * activités dans l'ensemble du projet). Les lignes d'activités sont filtrées
+ * par structure, et depuis la décision du 09/11/2026 les montants de composante
+ * et de sous-composante aussi (PorteeBudgetaire) : les vues v_execution_* (§ 4.7)
+ * ne connaissent pas la portée, elles ne servent donc qu'à une portée globale.
  *
  * Mis en cache côté serveur (§ 6.2 : "le mettre en cache avec invalidation
  * sur toute écriture budgétaire", cf. ArbreCacheInvalidationListener). La
@@ -39,6 +38,7 @@ final class ArbreReader
         private readonly Security $security,
         private readonly PermissionsResolver $permissionsResolver,
         private readonly TagAwareCacheInterface $arbreCache,
+        private readonly PorteeBudgetaire $porteeBudgetaire,
     ) {
     }
 
@@ -70,6 +70,32 @@ final class ArbreReader
         return 'structures-'.implode('-', $structureIds);
     }
 
+    /**
+     * Montants des seules activités du périmètre, indexés par la colonne donnée
+     * (`sc.composante_id` ou `sc.id`).
+     *
+     * @param list<mixed> $ids
+     *
+     * @return array<int|string, array<string, mixed>>
+     */
+    private function totauxDansLaPortee(string $colonne, array $ids, int $exerciceId): array
+    {
+        $portee = $this->porteeBudgetaire->condition();
+
+        return $this->indexerParCle(
+            $this->connection->fetchAllAssociative(
+                "SELECT {$colonne} AS cle, SUM(v.notifie) AS notifie, SUM(v.engage) AS engage, SUM(v.depense) AS depense
+                 FROM activites a
+                 JOIN sous_composantes sc ON sc.id = a.sous_composante_id
+                 JOIN v_execution_activite v ON v.activite_id = a.id AND v.exercice_id = ?
+                 WHERE {$colonne} IN (".$this->placeholders($ids).') AND a.supprime_le IS NULL'.$portee['sql']."
+                 GROUP BY {$colonne}",
+                [$exerciceId, ...$ids, ...$portee['parametres']],
+            ),
+            'cle',
+        );
+    }
+
     /** @return array<int, array<string, mixed>> */
     private function construire(int $projetId, int $exerciceId, int $niveaux): array
     {
@@ -82,13 +108,15 @@ final class ArbreReader
         }
         $composanteIds = array_column($composantes, 'id');
 
-        $totauxComposantes = $this->indexerParCle(
-            $this->connection->fetchAllAssociative(
-                'SELECT composante_id, notifie, engage, depense FROM v_execution_composante WHERE exercice_id = ? AND composante_id IN ('.$this->placeholders($composanteIds).')',
-                [$exerciceId, ...$composanteIds],
-            ),
-            'composante_id',
-        );
+        $totauxComposantes = $this->porteeBudgetaire->estGlobale()
+            ? $this->indexerParCle(
+                $this->connection->fetchAllAssociative(
+                    'SELECT composante_id, notifie, engage, depense FROM v_execution_composante WHERE exercice_id = ? AND composante_id IN ('.$this->placeholders($composanteIds).')',
+                    [$exerciceId, ...$composanteIds],
+                ),
+                'composante_id',
+            )
+            : $this->totauxDansLaPortee('sc.composante_id', $composanteIds, $exerciceId);
 
         $sousComposantes = $this->connection->fetchAllAssociative(
             'SELECT id, uuid, composante_id, code, libelle, ordre FROM sous_composantes WHERE composante_id IN ('.$this->placeholders($composanteIds).') AND supprime_le IS NULL ORDER BY ordre, code',
@@ -96,13 +124,17 @@ final class ArbreReader
         );
         $sousComposanteIds = array_column($sousComposantes, 'id');
 
-        $totauxSousComposantes = [] === $sousComposanteIds ? [] : $this->indexerParCle(
-            $this->connection->fetchAllAssociative(
-                'SELECT sous_composante_id, notifie, engage, depense FROM v_execution_sous_composante WHERE exercice_id = ? AND sous_composante_id IN ('.$this->placeholders($sousComposanteIds).')',
-                [$exerciceId, ...$sousComposanteIds],
+        $totauxSousComposantes = match (true) {
+            [] === $sousComposanteIds => [],
+            $this->porteeBudgetaire->estGlobale() => $this->indexerParCle(
+                $this->connection->fetchAllAssociative(
+                    'SELECT sous_composante_id, notifie, engage, depense FROM v_execution_sous_composante WHERE exercice_id = ? AND sous_composante_id IN ('.$this->placeholders($sousComposanteIds).')',
+                    [$exerciceId, ...$sousComposanteIds],
+                ),
+                'sous_composante_id',
             ),
-            'sous_composante_id',
-        );
+            default => $this->totauxDansLaPortee('sc.id', $sousComposanteIds, $exerciceId),
+        };
 
         $activites = [] === $sousComposanteIds ? [] : $this->recupererActivites($sousComposanteIds, $exerciceId);
         $activiteIds = array_column($activites, 'id');

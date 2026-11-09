@@ -223,6 +223,8 @@ L'écran **Budget** consolide l'exécution financière du projet :
 - les **activités les moins exécutées**, pour cibler les relances ;
 - **toutes les activités**, avec leurs montants notifiés, engagés et dépensés.
 
+Un utilisateur limité à une structure, comme un point focal, voit toutes les composantes pour situer ses activités, mais les montants ne portent que sur les activités de son périmètre, ici comme sur le tableau de bord. Une mention le rappelle en haut de ces écrans.
+
 ### 5.1 Importer des engagements et des dépenses
 
 Les boutons **Importer des engagements** et **Importer des dépenses** (gestionnaire budgétaire, responsable suivi-évaluation) chargent des écritures depuis Excel — un extrait de la comptabilité, par exemple. La démarche est celle de la partie 12.2 ; ce qui est propre au budget :

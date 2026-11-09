@@ -7,6 +7,7 @@ import { formaterFcfa, formaterTaux } from '@/lib/format'
 import { urlExportBudget } from '@/lib/exports'
 import { usePeut } from '@/lib/use-permissions'
 import { JournalBudgetaire } from '@/components/JournalBudgetaire'
+import { MentionPerimetre } from '@/components/MentionPerimetre'
 import { BarreExecution } from '@/components/BarreExecution'
 import { BarresDecaissement } from '@/components/BarresDecaissement'
 import { BarresMontantsExecution } from '@/components/BarresMontantsExecution'
@@ -98,6 +99,7 @@ export function Budget() {
           <p className="text-muted">
             Exercice {activites?.exercice ?? '—'} · notifié, engagé, dépensé, disponible, taux d'exécution.
           </p>
+          <MentionPerimetre />
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
           {peutImporterEngagements && (

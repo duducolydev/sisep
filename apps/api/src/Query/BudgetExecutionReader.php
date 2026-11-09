@@ -8,6 +8,7 @@ use App\Budget\GrandeursDerivees;
 use App\Entity\Utilisateur;
 use App\Security\PermissionsResolver;
 use App\Security\PorteeActiviteSql;
+use App\Security\PorteeBudgetaire;
 use Doctrine\DBAL\Connection;
 use Symfony\Bundle\SecurityBundle\Security;
 
@@ -22,6 +23,7 @@ final class BudgetExecutionReader
         private readonly Connection $connection,
         private readonly Security $security,
         private readonly PermissionsResolver $permissionsResolver,
+        private readonly PorteeBudgetaire $portee,
     ) {
     }
 
@@ -39,14 +41,20 @@ final class BudgetExecutionReader
     /** @return list<array<string, mixed>> */
     private function lireComposantes(int $projetId, int $exerciceId, ?int $composanteId): array
     {
-        $sql = 'SELECT c.uuid, c.code, c.libelle, v.notifie, v.engage, v.depense
+        // Sommé depuis les activités, et non lu dans v_execution_composante,
+        // qui ignore la portée : la composante reste listée pour situer ses
+        // activités, ses montants ne portent que sur le périmètre de l'utilisateur.
+        $portee = $this->portee->condition();
+        $sql = 'SELECT c.uuid, c.code, c.libelle, SUM(v.notifie) AS notifie, SUM(v.engage) AS engage, SUM(v.depense) AS depense
                 FROM composantes c
-                LEFT JOIN v_execution_composante v ON v.composante_id = c.id AND v.exercice_id = ?
+                LEFT JOIN sous_composantes sc ON sc.composante_id = c.id AND sc.supprime_le IS NULL
+                LEFT JOIN activites a ON a.sous_composante_id = sc.id AND a.supprime_le IS NULL'.$portee['sql'].'
+                LEFT JOIN v_execution_activite v ON v.activite_id = a.id AND v.exercice_id = ?
                 WHERE c.projet_id = ? AND c.supprime_le IS NULL'
             .(null !== $composanteId ? ' AND c.id = ?' : '')
-            .' ORDER BY c.ordre, c.code';
+            .' GROUP BY c.id, c.uuid, c.code, c.libelle, c.ordre ORDER BY c.ordre, c.code';
 
-        $params = [$exerciceId, $projetId];
+        $params = [...$portee['parametres'], $exerciceId, $projetId];
         if (null !== $composanteId) {
             $params[] = $composanteId;
         }
@@ -57,15 +65,17 @@ final class BudgetExecutionReader
     /** @return list<array<string, mixed>> */
     private function lireSousComposantes(int $projetId, int $exerciceId, ?int $composanteId): array
     {
-        $sql = 'SELECT sc.uuid, sc.code, sc.libelle, v.notifie, v.engage, v.depense
+        $portee = $this->portee->condition();
+        $sql = 'SELECT sc.uuid, sc.code, sc.libelle, SUM(v.notifie) AS notifie, SUM(v.engage) AS engage, SUM(v.depense) AS depense
                 FROM sous_composantes sc
                 JOIN composantes c ON c.id = sc.composante_id
-                LEFT JOIN v_execution_sous_composante v ON v.sous_composante_id = sc.id AND v.exercice_id = ?
+                LEFT JOIN activites a ON a.sous_composante_id = sc.id AND a.supprime_le IS NULL'.$portee['sql'].'
+                LEFT JOIN v_execution_activite v ON v.activite_id = a.id AND v.exercice_id = ?
                 WHERE c.projet_id = ? AND sc.supprime_le IS NULL'
             .(null !== $composanteId ? ' AND c.id = ?' : '')
-            .' ORDER BY sc.ordre, sc.code';
+            .' GROUP BY sc.id, sc.uuid, sc.code, sc.libelle, sc.ordre ORDER BY sc.ordre, sc.code';
 
-        $params = [$exerciceId, $projetId];
+        $params = [...$portee['parametres'], $exerciceId, $projetId];
         if (null !== $composanteId) {
             $params[] = $composanteId;
         }

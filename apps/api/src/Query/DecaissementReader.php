@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Query;
 
+use App\Security\PorteeBudgetaire;
 use Doctrine\DBAL\Connection;
 
 /**
@@ -14,8 +15,10 @@ use Doctrine\DBAL\Connection;
  */
 final class DecaissementReader
 {
-    public function __construct(private readonly Connection $connection)
-    {
+    public function __construct(
+        private readonly Connection $connection,
+        private readonly PorteeBudgetaire $portee,
+    ) {
     }
 
     /** @return list<array{mois: string, realise: int, prevu: int}> */
@@ -25,6 +28,7 @@ final class DecaissementReader
         // ses sous-activités (§ 6.2, alignement PTBA PHASAOC) : on résout
         // dans tous les cas l'activité porteuse via COALESCE pour ne pas
         // silencieusement perdre les lignes chiffrées au niveau sous-activité.
+        $portee = $this->portee->condition();
         $totalNotifie = (int) $this->connection->fetchOne(
             'SELECT COALESCE(SUM(d.montant), 0)
              FROM dotations d
@@ -32,8 +36,8 @@ final class DecaissementReader
              JOIN activites a ON a.id = COALESCE(d.activite_id, sa.activite_id)
              JOIN sous_composantes sc ON sc.id = a.sous_composante_id
              JOIN composantes c ON c.id = sc.composante_id
-             WHERE c.projet_id = ? AND d.exercice_id = ?',
-            [$projetId, $exerciceId],
+             WHERE c.projet_id = ? AND d.exercice_id = ?'.$portee['sql'],
+            [$projetId, $exerciceId, ...$portee['parametres']],
         );
 
         $depensesParMois = $this->connection->fetchAllKeyValue(
@@ -44,9 +48,10 @@ final class DecaissementReader
              JOIN activites a ON a.id = COALESCE(e.activite_id, sa.activite_id)
              JOIN sous_composantes sc ON sc.id = a.sous_composante_id
              JOIN composantes c ON c.id = sc.composante_id
-             WHERE c.projet_id = ? AND e.exercice_id = ? AND d.statut = 'valide'
-             GROUP BY mois",
-            [$projetId, $exerciceId],
+             WHERE c.projet_id = ? AND e.exercice_id = ? AND d.statut = 'valide'"
+            .$portee['sql']
+            .' GROUP BY mois',
+            [$projetId, $exerciceId, ...$portee['parametres']],
         );
 
         $joursTotaux = max(1, $dateDebut->diff($dateFin)->days);

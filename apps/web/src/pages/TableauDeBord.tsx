@@ -21,6 +21,7 @@ import { ExecutionParStructure } from '@/components/tableau-de-bord/ExecutionPar
 import { RepartitionStatutsActivites } from '@/components/tableau-de-bord/RepartitionStatutsActivites'
 import { urlExportDonnees } from '@/lib/exports'
 import { BoutonExporter } from '@/components/BoutonExporter'
+import { MentionPerimetre } from '@/components/MentionPerimetre'
 import { GraphiqueExportable } from '@/components/GraphiqueExportable'
 
 const CLASSES_EVENEMENT: Record<string, string> = {
@@ -78,6 +79,7 @@ export function TableauDeBord() {
           <p className="text-muted">
             Exercice {synthese?.exercice ?? '—'} · exécution financière et physique, décaissement, engagements, structures, cadre de résultats et reporting.
           </p>
+          <MentionPerimetre />
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <SelecteurExercice projetUuid={projet?.uuid} />
