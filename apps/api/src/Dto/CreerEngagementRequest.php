@@ -20,6 +20,7 @@ final class CreerEngagementRequest
     #[Assert\NotNull(message: "L'exercice est requis.")]
     public ?int $exercice = null;
 
+    #[Assert\Length(max: 80, maxMessage: 'La référence tient en 80 caractères au plus.')]
     public ?string $referenceMarche = null;
 
     #[Assert\NotBlank(message: 'La nature est requise.')]
@@ -30,6 +31,7 @@ final class CreerEngagementRequest
     public ?int $montant = null;
 
     #[Assert\NotBlank(message: "La date d'engagement est requise.")]
+    #[Assert\Date(message: "La date d'engagement n'est pas une date valide.")]
     public string $dateEngagement = '';
 
     public ?string $observations = null;

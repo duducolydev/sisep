@@ -193,7 +193,8 @@ L'avancement ne se saisit pas en pourcentage global : il se renseigne **étape p
 
 La rubrique **Exécution budgétaire** suit, pour chaque ligne, la chaîne dotation → engagement → dépense.
 
-1. **Notifier une dotation** : le montant notifié pour l'exercice. Une révision validée en COPIL s'affiche à côté (« Validé COPIL »).
+1. **Notifier une dotation** : le montant notifié pour l'exercice, sur la ligne d'activité (ou sur l'activité si elle n'a pas de lignes). Une activité dotée par ses lignes ne reçoit pas de dotation propre : le même budget compterait deux fois. Le montant du COPIL s'affiche à côté (« Référence COPIL ») à titre d'information : le plafond reste le montant notifié.
+   Pour corriger ou réviser un montant, le Responsable suivi-évaluation ou le Coordonnateur clique sur **Réviser**, avec un motif obligatoire. Le montant ne peut pas descendre sous le total déjà engagé et validé, et le journal garde l'ancien et le nouveau montant.
 2. **Saisir un engagement** : exercice, nature, montant en FCFA, date d'engagement et, le cas échéant, référence du marché. Les natures proposées :
    - **Travaux (construction, réaménagement…)**, fournitures, acquisition de biens, service de consultation, service courant ;
    - regroupées sous **Fonctionnement** : salaire, frais de mission, atelier, remboursement de transport, autres natures de fonctionnement.
@@ -204,6 +205,8 @@ Le serveur vérifie chaque écriture, au moment de l'enregistrer :
 
 - le total engagé ne peut pas dépasser la dotation notifiée (« Le montant engagé atteindrait …, au-delà de la dotation notifiée ») ;
 - le total décaissé ne peut pas dépasser le montant engagé ;
+- la date d'un engagement ou d'une dépense doit tomber dans son exercice ;
+- une ligne qui porte une dotation ou un engagement non annulé ne s'archive pas ;
 - la personne qui a saisi une écriture ne peut pas la valider (sauf le Responsable suivi-évaluation, dont les écritures sont validées dès la saisie, après ces mêmes contrôles) ;
 - un exercice clôturé n'accepte plus aucune écriture.
 

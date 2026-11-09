@@ -13,7 +13,7 @@ const schema = z.object({
   nature: z.string().min(1, 'La nature est requise.'),
   montant: z.coerce.number().int().positive('Le montant doit être positif.'),
   dateEngagement: z.string().min(1, "La date d'engagement est requise."),
-  referenceMarche: z.string().optional(),
+  referenceMarche: z.string().max(80, 'La référence tient en 80 caractères au plus.').optional(),
   observations: z.string().optional(),
 })
 
@@ -124,6 +124,7 @@ export function SaisirEngagementModale({ cible, activiteUuid, exerciceParDefaut,
           <label htmlFor="referenceMarche">Référence marché (optionnel)</label>
           <input
             id="referenceMarche"
+            maxLength={80}
             className="rounded-[var(--radius-controle)] border border-border px-3 py-2"
             {...register('referenceMarche')}
           />

@@ -340,11 +340,10 @@ final class ImporterPtbaCommand extends Command
             }
             ++$compteurs['dotation'];
         } else {
-            // Le montant notifié d'une dotation ne se réécrit pas : il est
-            // fixé à la saisie, et une révision s'exprime par le montant
-            // validé en COPIL, pas en effaçant ce qui a été notifié (c'est
-            // aussi pourquoi l'API n'expose aucun PATCH sur les dotations).
-            // Un écart est donc signalé, jamais appliqué en silence.
+            // L'import ne réécrit jamais le montant notifié d'une dotation :
+            // le changer est une décision, qui passe par la révision à l'écran,
+            // avec son motif et ses droits (DotationRevisionService). Un écart
+            // est donc signalé, jamais appliqué en silence.
             if ($dotation->getMontant()->versFcfa() !== $ligne->montant) {
                 $this->ecarts[] = \sprintf(
                     '%s — notifié en base %s FCFA, classeur %s FCFA',

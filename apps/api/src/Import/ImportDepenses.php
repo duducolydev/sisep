@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Import;
 
+use App\Budget\ControleDateExercice;
 use App\Classeur\Normalisation;
 use App\Entity\Depense;
 use App\Entity\Engagement;
@@ -126,6 +127,8 @@ final class ImportDepenses implements DefinitionImport
                     $erreurs[] = \sprintf('L\'exercice %d est clôturé : aucune écriture budgétaire n\'est plus acceptée.', $engagement->getExercice()->getAnnee());
                 } elseif (!$this->security->isGranted('budget.depense.saisir', $engagement->getCible())) {
                     $erreurs[] = 'Cet engagement est hors de votre périmètre de saisie.';
+                } elseif (null !== $date && null !== ($motifDate = ControleDateExercice::motif($engagement->getExercice(), $date, 'La date de paiement'))) {
+                    $erreurs[] = $motifDate;
                 }
             }
 

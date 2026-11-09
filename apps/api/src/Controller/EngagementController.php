@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Budget\ControleDateExercice;
 use App\Budget\EngagementValidationService;
 use App\Dto\CreerEngagementRequest;
 use App\Entity\Activite;
@@ -134,12 +135,18 @@ final class EngagementController
             throw new AccessDeniedException();
         }
 
+        $date = new \DateTimeImmutable($donnees->dateEngagement);
+        $motifDate = ControleDateExercice::motif($exercice, $date, "La date d'engagement");
+        if (null !== $motifDate) {
+            return ProblemResponseFactory::creer(422, $motifDate);
+        }
+
         $engagement = new Engagement(
             $cible,
             $exercice,
             $nature,
             Montant::fromFcfa((int) $donnees->montant),
-            new \DateTimeImmutable($donnees->dateEngagement),
+            $date,
             $utilisateur,
         );
         $engagement->setReferenceMarche($donnees->referenceMarche);
@@ -246,6 +253,10 @@ final class EngagementController
 
         if (!$this->security->isGranted('budget.engagement.valider', $engagement->getCible())) {
             throw new AccessDeniedException();
+        }
+
+        if (!$engagement->getExercice()->estOuvert()) {
+            throw new ContrainteBudgetaireException("Cet exercice est clôturé : aucune écriture budgétaire n'est plus acceptée.");
         }
 
         if (StatutEcriture::BROUILLON !== $engagement->getStatut()) {

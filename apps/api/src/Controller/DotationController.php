@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Budget\DotationRevisionService;
 use App\Dto\CreerDotationRequest;
+use App\Dto\ReviserDotationRequest;
 use App\Entity\Activite;
 use App\Entity\Dotation;
 use App\Entity\Utilisateur;
@@ -16,11 +18,13 @@ use App\Repository\DotationRepository;
 use App\Repository\ExerciceRepository;
 use App\Repository\SousActiviteRepository;
 use App\ValueObject\Montant;
+use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
@@ -48,6 +52,7 @@ final class DotationController
         private readonly SousActiviteRepository $sousActivites,
         private readonly ExerciceRepository $exercices,
         private readonly DotationNormalizer $normalizer,
+        private readonly DotationRevisionService $revision,
         private readonly EntityManagerInterface $em,
         private readonly Security $security,
         private readonly SerializerInterface $serializer,
@@ -85,7 +90,7 @@ final class DotationController
         }
 
         if (null !== $this->dotations->trouverPourCibleExercice($cible, $exercice)) {
-            throw new ContrainteBudgetaireException('Une dotation existe déjà pour cette cible sur cet exercice ; modifiez-la plutôt que d\'en créer une seconde.');
+            throw new ContrainteBudgetaireException('Une dotation existe déjà pour cette cible sur cet exercice : elle se corrige par une révision, pas par une seconde dotation.');
         }
 
         $utilisateur = $this->security->getUser();
@@ -101,9 +106,56 @@ final class DotationController
         $dotation->setMontantValideCopil(null !== $donnees->montantValideCopil ? Montant::fromFcfa($donnees->montantValideCopil) : null);
         $dotation->setCommentaireRevision($donnees->commentaireRevision);
 
-        $this->em->persist($dotation);
-        $this->em->flush();
+        // Les totaux additionnent l'activité et ses lignes : doter les deux
+        // compterait deux fois le même argent. Verrou sur l'activité pour que
+        // deux saisies simultanées ne passent pas ce contrôle ensemble.
+        $this->em->wrapInTransaction(function () use ($dotation, $cible, $activiteParente, $exercice): void {
+            $this->em->lock($activiteParente, LockMode::PESSIMISTIC_WRITE);
+
+            if ($cible instanceof Activite && $this->dotations->existeSurSesLignes($cible, $exercice)) {
+                throw new ContrainteBudgetaireException('Cette activité est dotée par ses lignes sur cet exercice : notifiez la dotation sur la ligne concernée.');
+            }
+            if (!$cible instanceof Activite && null !== $this->dotations->trouverPourCibleExercice($activiteParente, $exercice)) {
+                throw new ContrainteBudgetaireException('Cette activité porte sa propre dotation sur cet exercice : doter aussi une ligne compterait deux fois le même budget.');
+            }
+
+            $this->em->persist($dotation);
+        });
 
         return new JsonResponse($this->normalizer->normaliser($dotation), 201);
+    }
+
+    /**
+     * Révision du montant notifié (décision du 09/11/2026) : permission dédiée,
+     * détenue par le RSE et le coordonnateur. Le gestionnaire qui saisit les
+     * engagements ne relève pas lui-même le plafond qu'ils doivent respecter.
+     */
+    #[Route('/{uuid}/reviser', name: 'app_dotation_reviser', methods: ['POST'])]
+    public function reviser(string $uuid, Request $request): Response
+    {
+        $uuidObjet = $this->uuidOuNull($uuid);
+        $dotation = null !== $uuidObjet ? $this->dotations->findOneBy(['uuid' => $uuidObjet]) : null;
+        if (null === $dotation) {
+            throw new NotFoundHttpException('Dotation introuvable.');
+        }
+
+        if (!$this->security->isGranted('budget.dotation.reviser', $dotation->getCible())) {
+            throw new AccessDeniedException();
+        }
+
+        /** @var ReviserDotationRequest $donnees */
+        $donnees = $this->serializer->deserialize($request->getContent(), ReviserDotationRequest::class, 'json');
+        if (($erreur = $this->validerOuErreur($donnees, $this->validator)) !== null) {
+            return $erreur;
+        }
+
+        $this->revision->reviser(
+            $dotation,
+            Montant::fromFcfa((int) $donnees->montant),
+            trim($donnees->motif),
+            null !== $donnees->montantValideCopil ? Montant::fromFcfa($donnees->montantValideCopil) : null,
+        );
+
+        return new JsonResponse($this->normalizer->normaliser($dotation));
     }
 }

@@ -25,6 +25,12 @@ use Doctrine\ORM\Mapping as ORM;
  * telle que pratiquée par le PHASAOC (colonnes "Budget total amendé COPIL"
  * et "Commentaires sur les changements" du PTBA) — l'écart n'est jamais
  * stocké, toujours recalculé à l'affichage (§ 5.1).
+ *
+ * Le plafond des engagements est le montant notifié, jamais le montant COPIL
+ * (décision du 09/11/2026) : dans le PTBA 2026, le révisé de mars fait foi et
+ * la colonne COPIL n'est qu'une référence — la suivre bloquerait des lignes à
+ * 0 et en porterait d'autres au-delà du budget révisé. Le notifié se change
+ * par reviser(), jamais par un import.
  */
 #[ORM\Entity(repositoryClass: DotationRepository::class)]
 #[ORM\Table(name: 'dotations')]
@@ -115,6 +121,16 @@ class Dotation
     public function getMontant(): Montant
     {
         return $this->montant;
+    }
+
+    /** Contrôles et verrou : DotationRevisionService. Sans montant COPIL fourni, la référence existante est conservée. */
+    public function reviser(Montant $montant, string $motif, ?Montant $montantValideCopil): void
+    {
+        $this->montant = $montant;
+        $this->commentaireRevision = $motif;
+        if (null !== $montantValideCopil) {
+            $this->montantValideCopil = $montantValideCopil;
+        }
     }
 
     public function getQ1(): ?Montant

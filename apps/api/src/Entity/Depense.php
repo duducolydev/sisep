@@ -77,7 +77,9 @@ class Depense
 
     public function setReferencePaiement(?string $referencePaiement): void
     {
-        $this->referencePaiement = $referencePaiement;
+        // Même règle que Engagement::setReferenceMarche() : vide, ce n'est pas une référence.
+        $referencePaiement = null !== $referencePaiement ? trim($referencePaiement) : null;
+        $this->referencePaiement = '' !== $referencePaiement ? $referencePaiement : null;
     }
 
     public function getStatut(): StatutEcriture

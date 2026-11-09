@@ -11,7 +11,7 @@ import { usePeut } from '@/lib/use-permissions'
 const schema = z.object({
   montant: z.coerce.number().int().positive('Le montant doit être positif.'),
   dateDepense: z.string().min(1, 'La date de dépense est requise.'),
-  referencePaiement: z.string().optional(),
+  referencePaiement: z.string().max(80, 'La référence du paiement tient en 80 caractères au plus.').optional(),
 })
 
 type FormEntree = z.input<typeof schema>
@@ -86,6 +86,7 @@ export function SaisirDepenseModale({ engagementUuid, activiteUuid, onFermer }: 
           <label htmlFor="referencePaiement">Référence de paiement (optionnel)</label>
           <input
             id="referencePaiement"
+            maxLength={80}
             className="rounded-[var(--radius-controle)] border border-border px-3 py-2"
             {...register('referencePaiement')}
           />

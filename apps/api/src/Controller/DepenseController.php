@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Budget\ControleDateExercice;
 use App\Budget\DepenseValidationService;
 use App\Dto\CreerDepenseRequest;
 use App\Entity\Depense;
@@ -64,8 +65,18 @@ final class DepenseController
             throw new AccessDeniedException();
         }
 
+        if (StatutEcriture::ANNULE === $engagement->getStatut()) {
+            return ProblemResponseFactory::creer(422, "Cet engagement est annulé : aucune dépense ne s'y rattache.");
+        }
+
         if (!$engagement->getExercice()->estOuvert()) {
             return ProblemResponseFactory::creer(422, "Cet exercice est clôturé : aucune écriture budgétaire n'est plus acceptée.");
+        }
+
+        $date = new \DateTimeImmutable($donnees->dateDepense);
+        $motifDate = ControleDateExercice::motif($engagement->getExercice(), $date, 'La date de dépense');
+        if (null !== $motifDate) {
+            return ProblemResponseFactory::creer(422, $motifDate);
         }
 
         $utilisateur = $this->security->getUser();
@@ -76,7 +87,7 @@ final class DepenseController
         $depense = new Depense(
             $engagement,
             Montant::fromFcfa((int) $donnees->montant),
-            new \DateTimeImmutable($donnees->dateDepense),
+            $date,
             $utilisateur,
         );
         $depense->setReferencePaiement($donnees->referencePaiement);
@@ -194,6 +205,10 @@ final class DepenseController
 
         if (!$this->security->isGranted('budget.depense.valider', $depense->getEngagement()->getCible())) {
             throw new AccessDeniedException();
+        }
+
+        if (!$depense->getEngagement()->getExercice()->estOuvert()) {
+            throw new ContrainteBudgetaireException("Cet exercice est clôturé : aucune écriture budgétaire n'est plus acceptée.");
         }
 
         if (StatutEcriture::BROUILLON !== $depense->getStatut()) {

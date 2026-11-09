@@ -112,10 +112,10 @@ export function SaisirDotationModale({ cible, activiteUuid, exerciceParDefaut, o
         </details>
 
         <details className="rounded-[var(--radius-controle)] border border-border px-3 py-2">
-          <summary className="cursor-pointer text-sm text-muted">Révision COPIL (optionnel)</summary>
+          <summary className="cursor-pointer text-sm text-muted">Référence COPIL (optionnel)</summary>
           <div className="mt-3 flex flex-col gap-4">
             <div className="flex flex-col gap-1">
-              <label htmlFor="montantValideCopil">Montant validé par le COPIL (FCFA)</label>
+              <label htmlFor="montantValideCopil">Référence COPIL (FCFA, pour information)</label>
               <input
                 id="montantValideCopil"
                 type="number"

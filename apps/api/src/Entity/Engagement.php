@@ -139,7 +139,10 @@ class Engagement
 
     public function setReferenceMarche(?string $referenceMarche): void
     {
-        $this->referenceMarche = $referenceMarche;
+        // Un champ laissé vide n'est pas une référence : le texte vide masquait
+        // « Sans référence » à l'écran et dans le journal.
+        $referenceMarche = null !== $referenceMarche ? trim($referenceMarche) : null;
+        $this->referenceMarche = '' !== $referenceMarche ? $referenceMarche : null;
     }
 
     public function getNature(): NatureEngagement

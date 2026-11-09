@@ -147,6 +147,18 @@ final class SousActiviteController
             throw new AccessDeniedException();
         }
 
+        // Même règle que pour une activité : une ligne qui porte un budget ne
+        // s'archive pas, ses montants disparaîtraient des totaux du projet.
+        $budget = (int) $this->em->getConnection()->fetchOne(
+            'SELECT
+                (SELECT COUNT(*) FROM dotations d WHERE d.sous_activite_id = :id)
+              + (SELECT COUNT(*) FROM engagements e WHERE e.sous_activite_id = :id AND e.supprime_le IS NULL AND e.statut <> \'annule\')',
+            ['id' => $sousActivite->getId()],
+        );
+        if ($budget > 0) {
+            return ProblemResponseFactory::creer(409, 'Ligne budgétée', 'Cette ligne porte une dotation ou des engagements non annulés : elle ne peut pas être archivée.');
+        }
+
         $sousActivite->supprimer();
         $this->em->flush();
 

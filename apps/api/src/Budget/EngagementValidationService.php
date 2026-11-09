@@ -21,6 +21,13 @@ use Doctrine\ORM\EntityManagerInterface;
  * transaction avec verrou pessimiste sur la ligne de dotation — jamais
  * réalisé côté front (le front peut le rejouer pour le confort, jamais pour
  * la sécurité).
+ *
+ * La dotation se lit AVANT la transaction et le verrou est sa première
+ * instruction : en REPEATABLE READ, une lecture simple avant le verrou fige
+ * l'instantané de la transaction, et la somme calculée après l'attente ne
+ * verrait pas ce qu'un autre valideur vient de valider. Deux validations
+ * simultanées dépasseraient alors la dotation (ValidationConcurrenteTest).
+ * Le refresh rapporte aussi le montant à jour, une révision ayant pu passer.
  */
 final class EngagementValidationService
 {
@@ -46,9 +53,10 @@ final class EngagementValidationService
             throw new ContrainteBudgetaireException("Cet exercice est clôturé : aucune écriture budgétaire n'est plus acceptée.");
         }
 
-        $this->em->wrapInTransaction(function () use ($engagement, $auteur): void {
-            $dotation = $this->dotation($engagement);
-            $this->em->lock($dotation, LockMode::PESSIMISTIC_WRITE);
+        $dotation = $this->dotation($engagement);
+
+        $this->em->wrapInTransaction(function () use ($engagement, $dotation, $auteur): void {
+            $this->em->refresh($dotation, LockMode::PESSIMISTIC_WRITE);
             $this->controlerPlafond($engagement, $dotation);
 
             $engagement->valider($auteur);
@@ -65,9 +73,10 @@ final class EngagementValidationService
     {
         $this->controlerAvantVerrou($engagement, $validateur);
 
-        $this->em->wrapInTransaction(function () use ($engagement, $validateur): void {
-            $dotation = $this->dotation($engagement);
-            $this->em->lock($dotation, LockMode::PESSIMISTIC_WRITE);
+        $dotation = $this->dotation($engagement);
+
+        $this->em->wrapInTransaction(function () use ($engagement, $dotation, $validateur): void {
+            $this->em->refresh($dotation, LockMode::PESSIMISTIC_WRITE);
             $this->controlerPlafond($engagement, $dotation);
 
             $engagement->valider($validateur);

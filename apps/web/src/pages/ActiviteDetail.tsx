@@ -18,6 +18,7 @@ import { usePeut, usePeutSur, usePeutSurStructure } from '@/lib/use-permissions'
 import { BarreExecution } from '@/components/BarreExecution'
 import { Pastille } from '@/components/Pastille'
 import { SaisirDotationModale } from '@/components/SaisirDotationModale'
+import { ReviserDotationModale } from '@/components/ReviserDotationModale'
 import { SaisirEngagementModale } from '@/components/SaisirEngagementModale'
 import { SaisirDepenseModale } from '@/components/SaisirDepenseModale'
 import { CreerSousActiviteModale } from '@/components/CreerSousActiviteModale'
@@ -25,13 +26,14 @@ import { ValiderClotureBouton } from '@/components/ValiderClotureBouton'
 import { Squelette } from '@/components/Squelette'
 import { EtapesActivite } from '@/components/EtapesActivite'
 import { Bouton } from '@/components/Bouton'
-import { IconeDotation, IconeEngagement, IconeDepense, IconeValider, IconeAnnuler, IconePlus } from '@/components/Icones'
+import { IconeDotation, IconeEngagement, IconeDepense, IconeValider, IconeAnnuler, IconeModifier, IconePlus } from '@/components/Icones'
 import { urlExportDonnees } from '@/lib/exports'
 import { BoutonExporter } from '@/components/BoutonExporter'
 
 type CibleBudget = { type: 'activite' | 'sous_activite'; uuid: string }
 type Modale =
   | { type: 'dotation'; cible: CibleBudget }
+  | { type: 'revision'; dotation: Dotation }
   | { type: 'engagement'; cible: CibleBudget }
   | { type: 'depense'; engagementUuid: string }
   | { type: 'sousActivite' }
@@ -53,6 +55,7 @@ export function ActiviteDetail() {
   const peutStructurerSur = usePeutSurStructure('activites.creer')
   const peutRenseignerSur = usePeutSurStructure('activites.modifier')
   const peutSaisirEngagement = usePeut('budget.engagement.saisir')
+  const peutReviserDotation = usePeut('budget.dotation.reviser')
   const peutValiderEngagement = usePeut('budget.engagement.valider')
   const peutSaisirDepense = usePeut('budget.depense.saisir')
   const peutValiderDepense = usePeut('budget.depense.valider')
@@ -73,6 +76,9 @@ export function ActiviteDetail() {
   const exerciceCourant = new Date().getFullYear()
   // etapesTotal compte aussi les étapes des lignes : la différence donne les étapes propres.
   const etapesPropres = activite.etapesTotal - activite.sousActivites.reduce((total, sa) => total + sa.etapesTotal, 0)
+  // Une activité à lignes se budgète sur ses lignes : la doter aussi compterait deux fois le même argent.
+  const budgeteeParSesLignes = activite.sousActivites.length > 0 && activite.dotations.length === 0
+  const surReviser = peutReviserDotation ? (dotation: Dotation) => setModale({ type: 'revision', dotation }) : undefined
 
   async function executerAction(cle: string, action: () => Promise<unknown>) {
     setErreurAction(null)
@@ -146,8 +152,9 @@ export function ActiviteDetail() {
       <section>
         <div className="mb-2 flex items-center justify-between">
           <h2 className="text-lg font-semibold">Exécution budgétaire</h2>
-          <div className="flex gap-3">
-            {peutSaisirEngagement && (
+          <div className="flex items-center gap-3">
+            {budgeteeParSesLignes && <p className="text-sm text-muted">Budget porté par les lignes d'activité ci-dessous.</p>}
+            {peutSaisirEngagement && !budgeteeParSesLignes && (
               <Bouton
                 variante="secondaire"
                 icone={<IconeDotation />}
@@ -156,7 +163,7 @@ export function ActiviteDetail() {
                 Notifier une dotation
               </Bouton>
             )}
-            {peutSaisirEngagement && (
+            {peutSaisirEngagement && !budgeteeParSesLignes && (
               <Bouton
                 icone={<IconeEngagement />}
                 onClick={() => setModale({ type: 'engagement', cible: { type: 'activite', uuid: activite.uuid } })}
@@ -186,7 +193,7 @@ export function ActiviteDetail() {
         {activite.dotations.length > 0 && (
           <ul className="mt-3 flex flex-col gap-1 text-sm">
             {activite.dotations.map((d) => (
-              <LigneDotation key={d.uuid} dotation={d} />
+              <LigneDotation key={d.uuid} dotation={d} onReviser={surReviser} />
             ))}
           </ul>
         )}
@@ -288,7 +295,7 @@ export function ActiviteDetail() {
                 {sa.dotations.length > 0 && (
                   <ul className="flex flex-col gap-1 text-sm">
                     {sa.dotations.map((d) => (
-                      <LigneDotation key={d.uuid} dotation={d} />
+                      <LigneDotation key={d.uuid} dotation={d} onReviser={surReviser} />
                     ))}
                   </ul>
                 )}
@@ -319,6 +326,9 @@ export function ActiviteDetail() {
           exerciceParDefaut={exerciceCourant}
           onFermer={() => setModale(null)}
         />
+      )}
+      {modale?.type === 'revision' && (
+        <ReviserDotationModale dotation={modale.dotation} activiteUuid={activite.uuid} onFermer={() => setModale(null)} />
       )}
       {modale?.type === 'engagement' && (
         <SaisirEngagementModale
@@ -403,17 +413,29 @@ function EtapesLigne({
   )
 }
 
-/** Ligne compacte affichant une dotation, avec sa révision COPIL si renseignée (§ 5.1, alignement PTBA). */
-function LigneDotation({ dotation }: { dotation: Dotation }) {
+/**
+ * Ligne compacte affichant une dotation et, si renseignés, sa référence COPIL et
+ * le motif de sa dernière révision (§ 5.1, alignement PTBA). Le plafond des
+ * engagements est le montant notifié : le COPIL n'est qu'une information.
+ */
+function LigneDotation({ dotation, onReviser }: { dotation: Dotation; onReviser?: (dotation: Dotation) => void }) {
   return (
     <li className="flex flex-col gap-0.5">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <span className="text-muted">Dotation {dotation.exercice}</span>
-        <span className="chiffres">{formaterFcfa(dotation.montant)}</span>
+        <span className="flex items-center gap-2">
+          <span className="chiffres">{formaterFcfa(dotation.montant)}</span>
+          {onReviser && (
+            <Bouton variante="discret" taille="mini" icone={<IconeModifier />} onClick={() => onReviser(dotation)}>
+              Réviser
+            </Bouton>
+          )}
+        </span>
       </div>
+      {dotation.commentaireRevision && <p className="text-xs text-muted">{dotation.commentaireRevision}</p>}
       {dotation.montantValideCopil !== null && (
         <div className="flex items-center justify-between text-xs text-muted">
-          <span>Validé COPIL{dotation.commentaireRevision ? ` — ${dotation.commentaireRevision}` : ''}</span>
+          <span>Référence COPIL</span>
           <span className="chiffres">
             {formaterFcfa(dotation.montantValideCopil)}
             {dotation.ecartCopil !== null && dotation.ecartCopil !== 0 && (

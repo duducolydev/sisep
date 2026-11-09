@@ -130,6 +130,40 @@ final class ImportBudgetHttpTest extends WebTestCase
         }
     }
 
+    public function testUneDateHorsExerciceEstRefuseeALImport(): void
+    {
+        [$client, $f] = $this->demarrer();
+
+        try {
+            $annee = $f['annee'];
+            $this->connecter($client, 'gestion@example.test');
+
+            $engagements = $this->classeur([
+                self::ENTETES_ENGAGEMENTS,
+                ['9.1.1', 'BC-OK', 'Fournitures', '1000', "15/03/{$annee}", (string) $annee, ''],
+                ['9.1.1', 'BC-HORS', 'Fournitures', '1000', '15/03/'.($annee + 1), (string) $annee, ''],
+            ]);
+            $client->request('POST', '/api/v1/imports/engagements', parameters: ['confirmer' => '1'], files: ['fichier' => $engagements]);
+            self::assertResponseStatusCodeSame(201);
+            $apercu = $this->corps($client);
+            self::assertSame(['creation', 'erreur'], array_column($apercu['lignes'], 'statut'));
+            self::assertStringContainsString("exercice {$annee}", $apercu['lignes'][1]['messages'][0]);
+
+            $depenses = $this->classeur([
+                self::ENTETES_DEPENSES,
+                ['BC-OK', '10', "20/03/{$annee}", 'OP-OK', ''],
+                ['BC-OK', '10', '20/03/'.($annee + 1), 'OP-HORS', ''],
+            ]);
+            $client->request('POST', '/api/v1/imports/depenses', files: ['fichier' => $depenses]);
+            self::assertResponseIsSuccessful();
+            $apercu = $this->corps($client);
+            self::assertSame(['creation', 'erreur'], array_column($apercu['lignes'], 'statut'));
+            self::assertStringContainsString("exercice {$annee}", $apercu['lignes'][1]['messages'][0]);
+        } finally {
+            $this->rollback();
+        }
+    }
+
     public function testImportDesDepensesEtSeparationSaisieValidation(): void
     {
         [$client, $f] = $this->demarrer();

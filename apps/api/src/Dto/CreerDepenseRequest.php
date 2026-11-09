@@ -16,7 +16,9 @@ final class CreerDepenseRequest
     public ?int $montant = null;
 
     #[Assert\NotBlank(message: 'La date de dépense est requise.')]
+    #[Assert\Date(message: "La date de dépense n'est pas une date valide.")]
     public string $dateDepense = '';
 
+    #[Assert\Length(max: 80, maxMessage: 'La référence du paiement tient en 80 caractères au plus.')]
     public ?string $referencePaiement = null;
 }

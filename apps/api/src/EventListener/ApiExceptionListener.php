@@ -16,6 +16,7 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
+use Symfony\Component\Serializer\Exception\ExceptionInterface as ExceptionSerialiseur;
 use Symfony\Component\Validator\Exception\ValidationFailedException;
 
 /** Erreurs au format RFC 7807 (application/problem+json) sur toute l'API, § 6 du brief. */
@@ -63,6 +64,13 @@ final class ApiExceptionListener
                 Response::HTTP_CONFLICT,
                 'Conflit',
                 'Une donnée identique existe déjà (ex. une valeur a déjà été saisie pour cette période).',
+            ),
+            // Corps de requête illisible ou de mauvais type (montant décimal,
+            // texte à la place d'un nombre) : une erreur de saisie, pas une panne.
+            $exception instanceof ExceptionSerialiseur => ProblemResponseFactory::creer(
+                Response::HTTP_UNPROCESSABLE_ENTITY,
+                'Données invalides',
+                "Une valeur n'a pas le format attendu : un montant est un nombre entier de FCFA.",
             ),
             default => ProblemResponseFactory::creer(
                 Response::HTTP_INTERNAL_SERVER_ERROR,

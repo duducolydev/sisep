@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Import;
 
+use App\Budget\ControleDateExercice;
 use App\Classeur\Normalisation;
 use App\Entity\Activite;
 use App\Entity\Engagement;
@@ -133,6 +134,12 @@ final class ImportEngagements implements DefinitionImport
             $exercice = null;
             if (null !== $cible && null !== $annee) {
                 $exercice = $this->exercice($cible, $annee, $erreurs);
+            }
+            if (null !== $exercice && null !== $date) {
+                $motifDate = ControleDateExercice::motif($exercice, $date, 'La date d\'engagement');
+                if (null !== $motifDate) {
+                    $erreurs[] = $motifDate;
+                }
             }
             if (null !== $cible && !$this->security->isGranted('budget.engagement.saisir', $cible)) {
                 $erreurs[] = 'Cette ligne budgétaire est hors de votre périmètre de saisie.';

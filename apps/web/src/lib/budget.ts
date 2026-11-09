@@ -200,6 +200,10 @@ export function creerDotation(entree: {
   return apiClient.post<{ uuid: string }>('/dotations', entree)
 }
 
+export function reviserDotation(uuid: string, entree: { montant: number; motif: string; montantValideCopil?: number }) {
+  return apiClient.post<Dotation>(`/dotations/${uuid}/reviser`, entree)
+}
+
 export function creerEngagement(entree: {
   activite?: string
   sousActivite?: string

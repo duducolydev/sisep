@@ -27,4 +27,19 @@ class DotationRepository extends ServiceEntityRepository
             ? $this->findOneBy(['activite' => $cible, 'exercice' => $exercice])
             : $this->findOneBy(['sousActivite' => $cible, 'exercice' => $exercice]);
     }
+
+    /**
+     * L'activité est-elle dotée par ses lignes sur cet exercice ? En SQL direct :
+     * le filtre de portée ne doit pas masquer une ligne confiée à une autre
+     * structure, ce contrôle protège les totaux de tout le projet.
+     */
+    public function existeSurSesLignes(Activite $activite, Exercice $exercice): bool
+    {
+        return (int) $this->getEntityManager()->getConnection()->fetchOne(
+            'SELECT COUNT(*) FROM dotations d
+             JOIN sous_activites sa ON sa.id = d.sous_activite_id
+             WHERE sa.activite_id = ? AND d.exercice_id = ? AND sa.supprime_le IS NULL',
+            [$activite->getId(), $exercice->getId()],
+        ) > 0;
+    }
 }

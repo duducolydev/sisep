@@ -77,6 +77,14 @@ class Exercice
         return StatutExercice::OUVERT === $this->statut;
     }
 
+    /** Comparaison au jour : l'heure éventuelle de la date ne doit pas écarter le dernier jour de l'exercice. */
+    public function contient(\DateTimeImmutable $date): bool
+    {
+        $jour = $date->format('Y-m-d');
+
+        return $jour >= $this->dateDebut->format('Y-m-d') && $jour <= $this->dateFin->format('Y-m-d');
+    }
+
     public function cloturer(): void
     {
         $this->statut = StatutExercice::CLOTURE;

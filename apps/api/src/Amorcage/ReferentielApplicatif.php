@@ -50,6 +50,7 @@ final class ReferentielApplicatif
             ['budget.depense.saisir', 'budget', 'Saisir une dépense'],
             ['budget.depense.valider', 'budget', 'Valider une dépense'],
             ['budget.validation_directe', 'budget', 'Engagements et dépenses validés dès leur saisie, sans second contrôle'],
+            ['budget.dotation.reviser', 'budget', 'Réviser le montant notifié d\'une dotation'],
             ['indicateurs.consulter', 'indicateurs', 'Consulter le catalogue des indicateurs de performance'],
             ['indicateurs.definir', 'indicateurs', 'Définir un indicateur'],
             ['indicateurs.saisir', 'indicateurs', "Saisir une valeur d'indicateur"],
@@ -99,7 +100,7 @@ final class ReferentielApplicatif
         $coordonnateur = new Role('coordonnateur', 'Coordonnateur', true);
         $accorder($coordonnateur, $permissions, [
             'activites.consulter', 'activites.creer', 'activites.modifier', 'activites.supprimer', 'activites.valider',
-            'budget.engagement.valider', 'budget.depense.valider', 'indicateurs.consulter', 'indicateurs.valider',
+            'budget.engagement.valider', 'budget.depense.valider', 'budget.dotation.reviser', 'indicateurs.consulter', 'indicateurs.valider',
             'indicateurs.inviter', 'structures.gerer', 'points_focaux.gerer', 'parties_prenantes.consulter',
             'rapports.transmettre', 'admin.roles', 'admin.parametres',
             'admin.utilisateurs', 'journal.consulter', 'exports.generer', 'graphiques.exporter', 'initiatives.consulter', 'initiatives.gerer',
@@ -134,7 +135,7 @@ final class ReferentielApplicatif
         $accorder($suiviEvaluation, $permissions, [
             'activites.consulter', 'activites.creer', 'activites.modifier', 'activites.valider',
             'budget.engagement.saisir', 'budget.engagement.valider',
-            'budget.depense.saisir', 'budget.depense.valider', 'budget.validation_directe',
+            'budget.depense.saisir', 'budget.depense.valider', 'budget.validation_directe', 'budget.dotation.reviser',
             'indicateurs.consulter', 'indicateurs.definir', 'indicateurs.saisir', 'indicateurs.valider', 'indicateurs.validation_directe', 'indicateurs.inviter',
             'parties_prenantes.consulter', 'journal.consulter', 'exports.generer', 'graphiques.exporter', 'initiatives.consulter', 'initiatives.gerer', 'admin.parametres',
             'rh.consulter', 'rh.gerer', 'documents.gerer',
@@ -177,9 +178,11 @@ final class ReferentielApplicatif
         // Seules exceptions : budget.validation_directe et
         // indicateurs.validation_directe. L'administrateur peut saisir et
         // valider, jamais faire passer seul sa propre écriture — ce raccourci
-        // est réservé au RSE (décisions du 28/10/2026 et du 03/11/2026).
+        // est réservé au RSE (décisions du 28/10/2026 et du 03/11/2026). Et
+        // budget.dotation.reviser (décision du 09/11/2026) : relever un plafond
+        // est une décision budgétaire, réservée au RSE et au coordonnateur.
         $administrateur = new Role('administrateur', 'Administrateur', true);
-        $accorder($administrateur, $permissions, array_values(array_diff(array_keys($permissions), ['budget.validation_directe', 'indicateurs.validation_directe'])));
+        $accorder($administrateur, $permissions, array_values(array_diff(array_keys($permissions), ['budget.validation_directe', 'indicateurs.validation_directe', 'budget.dotation.reviser'])));
         $this->em->persist($administrateur);
 
         $lecteur = new Role('lecteur', 'Lecteur', true);
