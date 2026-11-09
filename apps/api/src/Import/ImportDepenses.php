@@ -192,6 +192,12 @@ final class ImportDepenses implements DefinitionImport
 
             return null;
         }
+        // Une référence reprise après annulation désigne l'engagement en vigueur.
+        // Seul, un engagement annulé reste trouvé : son refus le dit plus clairement.
+        $vivants = array_values(array_filter($candidats, static fn (Engagement $e) => StatutEcriture::ANNULE !== $e->getStatut()));
+        if ([] !== $vivants) {
+            $candidats = $vivants;
+        }
         $annee ??= \count($candidats) > 1 && null !== $date ? (int) $date->format('Y') : null;
         if (null !== $annee) {
             $candidats = array_values(array_filter($candidats, static fn (Engagement $e) => $e->getExercice()->getAnnee() === $annee));

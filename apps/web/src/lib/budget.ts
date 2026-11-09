@@ -127,6 +127,8 @@ export interface Depense {
   dateDepense: string
   referencePaiement: string | null
   statut: string
+  /** Renseigné quand une dépense déjà validée a été annulée pour correction. */
+  motifAnnulation: string | null
 }
 
 /** Cible budgétaire : une dotation/un engagement porte sur une activité OU une de ses sous-activités, jamais les deux (§ 5.1, alignement PTBA). */
@@ -158,6 +160,8 @@ export interface Engagement {
   montant: number
   dateEngagement: string
   statut: string
+  /** Renseigné quand un engagement déjà validé a été annulé pour correction. */
+  motifAnnulation: string | null
   cible: CibleBudgetaire
   depenses: Depense[]
 }
@@ -202,6 +206,14 @@ export function creerDotation(entree: {
 
 export function reviserDotation(uuid: string, entree: { montant: number; motif: string; montantValideCopil?: number }) {
   return apiClient.post<Dotation>(`/dotations/${uuid}/reviser`, entree)
+}
+
+export function annulerEngagementValide(uuid: string, motif: string) {
+  return apiClient.post<Engagement>(`/engagements/${uuid}/annuler-validee`, { motif })
+}
+
+export function annulerDepenseValidee(uuid: string, motif: string) {
+  return apiClient.post<Depense>(`/depenses/${uuid}/annuler-validee`, { motif })
 }
 
 export function creerEngagement(entree: {

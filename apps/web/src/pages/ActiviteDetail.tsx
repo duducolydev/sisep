@@ -19,6 +19,7 @@ import { BarreExecution } from '@/components/BarreExecution'
 import { Pastille } from '@/components/Pastille'
 import { SaisirDotationModale } from '@/components/SaisirDotationModale'
 import { ReviserDotationModale } from '@/components/ReviserDotationModale'
+import { AnnulerEcritureValideeModale, type EcritureAAnnuler } from '@/components/AnnulerEcritureValideeModale'
 import { SaisirEngagementModale } from '@/components/SaisirEngagementModale'
 import { SaisirDepenseModale } from '@/components/SaisirDepenseModale'
 import { CreerSousActiviteModale } from '@/components/CreerSousActiviteModale'
@@ -34,6 +35,7 @@ type CibleBudget = { type: 'activite' | 'sous_activite'; uuid: string }
 type Modale =
   | { type: 'dotation'; cible: CibleBudget }
   | { type: 'revision'; dotation: Dotation }
+  | { type: 'annulationValidee'; ecriture: EcritureAAnnuler }
   | { type: 'engagement'; cible: CibleBudget }
   | { type: 'depense'; engagementUuid: string }
   | { type: 'sousActivite' }
@@ -56,6 +58,7 @@ export function ActiviteDetail() {
   const peutRenseignerSur = usePeutSurStructure('activites.modifier')
   const peutSaisirEngagement = usePeut('budget.engagement.saisir')
   const peutReviserDotation = usePeut('budget.dotation.reviser')
+  const peutCorrigerEcriture = usePeut('budget.ecriture.corriger')
   const peutValiderEngagement = usePeut('budget.engagement.valider')
   const peutSaisirDepense = usePeut('budget.depense.saisir')
   const peutValiderDepense = usePeut('budget.depense.valider')
@@ -79,6 +82,7 @@ export function ActiviteDetail() {
   // Une activité à lignes se budgète sur ses lignes : la doter aussi compterait deux fois le même argent.
   const budgeteeParSesLignes = activite.sousActivites.length > 0 && activite.dotations.length === 0
   const surReviser = peutReviserDotation ? (dotation: Dotation) => setModale({ type: 'revision', dotation }) : undefined
+  const surAnnulerValidee = peutCorrigerEcriture ? (ecriture: EcritureAAnnuler) => setModale({ type: 'annulationValidee', ecriture }) : undefined
 
   async function executerAction(cle: string, action: () => Promise<unknown>) {
     setErreurAction(null)
@@ -207,6 +211,7 @@ export function ActiviteDetail() {
               actionEnCours={actionEnCours}
               executerAction={executerAction}
               onSaisirDepense={(engagementUuid) => setModale({ type: 'depense', engagementUuid })}
+              onAnnulerValidee={surAnnulerValidee}
             />
           </div>
         )}
@@ -309,6 +314,7 @@ export function ActiviteDetail() {
                     actionEnCours={actionEnCours}
                     executerAction={executerAction}
                     onSaisirDepense={(engagementUuid) => setModale({ type: 'depense', engagementUuid })}
+                    onAnnulerValidee={surAnnulerValidee}
                   />
                 )}
               </li>
@@ -329,6 +335,9 @@ export function ActiviteDetail() {
       )}
       {modale?.type === 'revision' && (
         <ReviserDotationModale dotation={modale.dotation} activiteUuid={activite.uuid} onFermer={() => setModale(null)} />
+      )}
+      {modale?.type === 'annulationValidee' && (
+        <AnnulerEcritureValideeModale ecriture={modale.ecriture} activiteUuid={activite.uuid} onFermer={() => setModale(null)} />
       )}
       {modale?.type === 'engagement' && (
         <SaisirEngagementModale
@@ -456,6 +465,8 @@ interface ListeEngagementsProps {
   actionEnCours: string | null
   executerAction: (cle: string, action: () => Promise<unknown>) => Promise<void>
   onSaisirDepense: (engagementUuid: string) => void
+  /** Absent sans le droit budget.ecriture.corriger. */
+  onAnnulerValidee?: (ecriture: EcritureAAnnuler) => void
 }
 
 function ListeEngagements({
@@ -466,6 +477,7 @@ function ListeEngagements({
   actionEnCours,
   executerAction,
   onSaisirDepense,
+  onAnnulerValidee,
 }: ListeEngagementsProps) {
   return (
     <ul className="flex flex-col gap-3">
@@ -509,14 +521,26 @@ function ListeEngagements({
                   Saisir une dépense
                 </Bouton>
               )}
+              {e.statut === 'valide' && onAnnulerValidee && (
+                <Bouton
+                  variante="discret"
+                  taille="mini"
+                  icone={<IconeAnnuler />}
+                  onClick={() => onAnnulerValidee({ type: 'engagement', uuid: e.uuid, montant: e.montant, reference: e.referenceMarche })}
+                >
+                  Annuler pour corriger
+                </Bouton>
+              )}
             </div>
           </div>
+          {e.motifAnnulation && <p className="mt-1 text-xs text-muted">Motif de l'annulation : {e.motifAnnulation}</p>}
           {e.depenses.length > 0 && (
             <ul className="mt-2 ml-4 flex flex-col gap-1 border-l border-border pl-3">
               {e.depenses.map((d) => (
-                <li key={d.uuid} className="flex items-center justify-between text-sm">
+                <li key={d.uuid} className="flex items-center justify-between gap-3 text-sm">
                   <span>
                     {d.referencePaiement ?? 'Dépense'} — {formaterDate(d.dateDepense)} · <Pastille statut={d.statut} />
+                    {d.motifAnnulation && <span className="block text-xs text-muted">Motif de l'annulation : {d.motifAnnulation}</span>}
                   </span>
                   <span className="flex items-center gap-2">
                     <span className="chiffres">{formaterFcfa(d.montant)}</span>
@@ -540,6 +564,16 @@ function ListeEngagements({
                         onClick={() => executerAction(`annuler-dep-${d.uuid}`, () => annulerDepense(d.uuid))}
                       >
                         Annuler
+                      </Bouton>
+                    )}
+                    {d.statut === 'valide' && onAnnulerValidee && (
+                      <Bouton
+                        variante="discret"
+                        taille="mini"
+                        icone={<IconeAnnuler />}
+                        onClick={() => onAnnulerValidee({ type: 'depense', uuid: d.uuid, montant: d.montant, reference: d.referencePaiement })}
+                      >
+                        Annuler pour corriger
                       </Bouton>
                     )}
                   </span>

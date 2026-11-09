@@ -46,6 +46,10 @@ class Depense
     #[ORM\Column(type: 'datetime_immutable', columnDefinition: 'DATETIME', nullable: true)]
     private ?\DateTimeImmutable $valideLe = null;
 
+    /** Pourquoi une dépense déjà validée a été annulée ; null dans tous les autres cas. */
+    #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $motifAnnulation = null;
+
     public function __construct(Engagement $engagement, Montant $montant, \DateTimeImmutable $dateDepense, Utilisateur $creePar)
     {
         $this->initialiserUuid();
@@ -112,5 +116,17 @@ class Depense
     public function annuler(): void
     {
         $this->statut = StatutEcriture::ANNULE;
+    }
+
+    /** Contrôles et verrou : AnnulationEcritureValideeService. La trace de la validation reste. */
+    public function annulerValidee(string $motif): void
+    {
+        $this->statut = StatutEcriture::ANNULE;
+        $this->motifAnnulation = $motif;
+    }
+
+    public function getMotifAnnulation(): ?string
+    {
+        return $this->motifAnnulation;
     }
 }

@@ -49,6 +49,20 @@ class DepenseRepository extends ServiceEntityRepository
         return $resultat;
     }
 
+    /** Dépenses de l'engagement ni annulées ni supprimées : tant qu'il en porte, il ne s'annule pas. */
+    public function compterVivantes(Engagement $engagement): int
+    {
+        return (int) $this->createQueryBuilder('d')
+            ->select('COUNT(d.id)')
+            ->andWhere('d.engagement = :engagement')
+            ->andWhere('d.statut <> :annule')
+            ->andWhere('d.supprimeLe IS NULL')
+            ->setParameter('engagement', $engagement)
+            ->setParameter('annule', StatutEcriture::ANNULE)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
     /** Somme des dépenses déjà validées pour l'engagement (§ 5.1). */
     public function sommeValidee(Engagement $engagement): Montant
     {

@@ -62,6 +62,10 @@ class Engagement
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $observations = null;
 
+    /** Pourquoi un engagement déjà validé a été annulé ; null dans tous les autres cas. */
+    #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $motifAnnulation = null;
+
     #[ORM\ManyToOne(targetEntity: Utilisateur::class)]
     #[ORM\JoinColumn(nullable: false)]
     private Utilisateur $creePar;
@@ -200,5 +204,17 @@ class Engagement
     public function annuler(): void
     {
         $this->statut = StatutEcriture::ANNULE;
+    }
+
+    /** Contrôles et verrou : AnnulationEcritureValideeService. La trace de la validation reste. */
+    public function annulerValide(string $motif): void
+    {
+        $this->statut = StatutEcriture::ANNULE;
+        $this->motifAnnulation = $motif;
+    }
+
+    public function getMotifAnnulation(): ?string
+    {
+        return $this->motifAnnulation;
     }
 }

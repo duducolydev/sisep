@@ -130,6 +130,47 @@ final class ImportBudgetHttpTest extends WebTestCase
         }
     }
 
+    public function testUneReferenceAnnuleeSeReimporteEtDesigneLeNouvelEngagement(): void
+    {
+        [$client, $f] = $this->demarrer();
+
+        try {
+            $annee = $f['annee'];
+            $this->connecter($client, 'rse@example.test');
+
+            $importer = function (string $montant) use ($client, $annee): void {
+                $client->request('POST', '/api/v1/imports/engagements', parameters: ['confirmer' => '1'], files: ['fichier' => $this->classeur([
+                    self::ENTETES_ENGAGEMENTS,
+                    ['9.1.1', 'BC-REF', 'Fournitures', $montant, "15/03/{$annee}", '', ''],
+                ])]);
+                self::assertResponseStatusCodeSame(201);
+            };
+
+            // Importé, validé, puis annulé pour correction.
+            $importer('1000');
+            $premier = $this->em->getRepository(Engagement::class)->findOneBy(['referenceMarche' => 'BC-REF']);
+            self::assertNotNull($premier);
+            $client->request('POST', "/api/v1/engagements/{$premier->getUuid()->toRfc4122()}/valider");
+            self::assertResponseIsSuccessful();
+            $client->request('POST', "/api/v1/engagements/{$premier->getUuid()->toRfc4122()}/annuler-validee", server: ['CONTENT_TYPE' => 'application/json'], content: json_encode(['motif' => 'Mauvais montant'], \JSON_THROW_ON_ERROR));
+            self::assertResponseIsSuccessful();
+
+            // La référence est de nouveau libre.
+            $importer('2000');
+            self::assertSame(1, $this->corps($client)['resume']['creations'], 'Un engagement annulé libère sa référence.');
+
+            // Et la dépense importée va au nouvel engagement, sans ambiguïté.
+            $client->request('POST', '/api/v1/imports/depenses', files: ['fichier' => $this->classeur([
+                self::ENTETES_DEPENSES,
+                ['BC-REF', '10', "20/03/{$annee}", 'OP-REF', ''],
+            ])]);
+            self::assertResponseIsSuccessful();
+            self::assertSame('creation', $this->corps($client)['lignes'][0]['statut']);
+        } finally {
+            $this->rollback();
+        }
+    }
+
     public function testUneDateHorsExerciceEstRefuseeALImport(): void
     {
         [$client, $f] = $this->demarrer();

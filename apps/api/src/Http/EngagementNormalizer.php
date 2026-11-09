@@ -31,6 +31,7 @@ final class EngagementNormalizer
             'montant' => $engagement->getMontant()->versFcfa(),
             'dateEngagement' => $engagement->getDateEngagement()->format('Y-m-d'),
             'statut' => $engagement->getStatut()->value,
+            'motifAnnulation' => $engagement->getMotifAnnulation(),
             'depenses' => array_map(
                 $this->depenseNormalizer->normaliser(...),
                 $engagement->getDepenses()->toArray(),

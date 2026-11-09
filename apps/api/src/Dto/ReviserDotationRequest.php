@@ -13,7 +13,7 @@ final class ReviserDotationRequest
     #[Assert\PositiveOrZero(message: 'Le montant ne peut pas être négatif.')]
     public ?int $montant = null;
 
-    #[Assert\NotBlank(message: 'Le motif de la révision est requis.')]
+    #[Assert\NotBlank(message: 'Le motif de la révision est requis.', normalizer: 'trim')]
     #[Assert\Length(max: 1000, maxMessage: 'Le motif tient en 1000 caractères au plus.')]
     public string $motif = '';
 

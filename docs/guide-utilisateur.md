@@ -64,7 +64,7 @@ Chaque compte reçoit un ou plusieurs rôles. Un rôle peut valoir pour tout le 
 
 **Séparation de la saisie et de la validation.** Une écriture budgétaire (engagement, dépense) ou une valeur d'indicateur est saisie par une personne et validée par une autre : le Gestionnaire budgétaire saisit sans valider, le Coordonnateur valide sans saisir. Les profils Administrateur et Responsable suivi-évaluation peuvent faire les deux, mais **jamais sur la même écriture** : l'application refuse que la personne qui a saisi un engagement, une dépense ou une valeur la valide elle-même.
 
-**Exception, décidée le 28 octobre 2026** : les engagements et les dépenses saisis par le Responsable suivi-évaluation n'attendent aucune validation. Ils sont validés dès l'enregistrement, après les mêmes contrôles (plafond de la dotation ou de l'engagement, exercice ouvert). Un engagement ou une dépense validé ne s'annule plus : relisez le montant avant d'enregistrer. Ses valeurs d'indicateurs, elles, restent validées par une autre personne, et l'Administrateur ne bénéficie pas de l'exception.
+**Exception, décidée le 28 octobre 2026** : les engagements et les dépenses saisis par le Responsable suivi-évaluation n'attendent aucune validation. Ils sont validés dès l'enregistrement, après les mêmes contrôles (plafond de la dotation ou de l'engagement, exercice ouvert). Relisez le montant avant d'enregistrer : une erreur se corrige ensuite par une annulation motivée suivie d'une nouvelle saisie (partie 4.3). Ses valeurs d'indicateurs, elles, restent validées par une autre personne, et l'Administrateur ne bénéficie pas de l'exception.
 
 Toute écriture est enregistrée dans le journal, avec son état avant et après ; le fil des écritures budgétaires se consulte depuis la page Budget.
 
@@ -198,8 +198,10 @@ La rubrique **Exécution budgétaire** suit, pour chaque ligne, la chaîne dotat
 2. **Saisir un engagement** : exercice, nature, montant en FCFA, date d'engagement et, le cas échéant, référence du marché. Les natures proposées :
    - **Travaux (construction, réaménagement…)**, fournitures, acquisition de biens, service de consultation, service courant ;
    - regroupées sous **Fonctionnement** : salaire, frais de mission, atelier, remboursement de transport, autres natures de fonctionnement.
-3. **Valider** ou **Annuler** l'engagement, tant qu'il est en brouillon. Un engagement validé ne s'annule plus et ne se supprime jamais. Un engagement saisi par le Responsable suivi-évaluation est validé dès l'enregistrement : la fenêtre de saisie le signale.
+3. **Valider** ou **Annuler** l'engagement, tant qu'il est en brouillon. Un engagement saisi par le Responsable suivi-évaluation est validé dès l'enregistrement : la fenêtre de saisie le signale.
 4. Sur un engagement validé, **Saisir une dépense**, puis la faire valider de la même façon.
+
+**Corriger une écriture validée.** Un montant validé ne se modifie pas et une écriture ne se supprime jamais. Le Responsable suivi-évaluation ou le Coordonnateur clique sur **Annuler pour corriger**, indique un motif obligatoire, puis saisit la bonne écriture. L'annulation est définitive : le montant sort des totaux, l'écriture reste visible avec son motif, et le journal garde l'état avant et après. Les dépenses d'un engagement s'annulent avant lui.
 
 Le serveur vérifie chaque écriture, au moment de l'enregistrer :
 
@@ -233,7 +235,7 @@ Les boutons **Importer des engagements** et **Importer des dépenses** (gestionn
 - **Dépenses** : pour chacune, la **référence de l'engagement** payé, le montant, la date de paiement et, de préférence, la référence du paiement (n° d'ordre de paiement ou de virement), qui évite les doublons. Importez donc les engagements **avant** les dépenses.
 - Les écritures arrivent **en brouillon**, au nom de la personne qui importe — y compris pour le Responsable suivi-évaluation : un import se relit avant d'être validé. Elles se valident ensuite dans **Écritures à valider** (partie 5.2), **par une autre personne**, sauf pour le Responsable suivi-évaluation, qui valide lui-même ce qu'il a importé.
 - L'aperçu signale déjà ce que la validation refusera : une ligne sans dotation sur l'exercice (ligne refusée), un total engagé au-delà de la dotation ou un total payé au-delà de l'engagé (ligne acceptée, avec un avertissement).
-- Une écriture déjà présente (même référence) n'est pas réimportée : elle se corrige ou s'annule dans SISEP.
+- Une écriture déjà présente (même référence) n'est pas réimportée : elle se corrige ou s'annule dans SISEP. Un engagement annulé libère sa référence, qui peut alors être réimportée.
 
 ### 5.2 Écritures à valider
 
@@ -434,7 +436,7 @@ Votre profil ne permet pas cette action, ou pas sur cette structure. Demandez à
 Vous l'avez saisi vous-même : une autre personne habilitée doit le valider. C'est voulu.
 
 **Mon engagement est validé sans être passé par « Écritures à valider ».**
-Vous avez le profil Responsable suivi-évaluation : vos engagements et vos dépenses sont validés dès l'enregistrement (partie 1.4). Ils ne s'annulent plus ensuite : relisez le montant avant d'enregistrer.
+Vous avez le profil Responsable suivi-évaluation : vos engagements et vos dépenses sont validés dès l'enregistrement (partie 1.4). Relisez le montant avant d'enregistrer : en cas d'erreur, utilisez **Annuler pour corriger**, avec un motif, puis saisissez la bonne écriture (partie 4.3).
 
 **Mon engagement est refusé pour dépassement.**
 Le total engagé sur la ligne dépasserait la dotation notifiée. Vérifiez le disponible de la ligne, ou faites d'abord notifier la révision du budget.

@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Budget\AnnulationEcritureValideeService;
 use App\Budget\ControleDateExercice;
 use App\Budget\EngagementValidationService;
+use App\Dto\AnnulerEcritureValideeRequest;
 use App\Dto\CreerEngagementRequest;
 use App\Entity\Activite;
 use App\Entity\Engagement;
@@ -45,6 +47,7 @@ final class EngagementController
         private readonly ExerciceRepository $exercices,
         private readonly EngagementNormalizer $normalizer,
         private readonly EngagementValidationService $validationService,
+        private readonly AnnulationEcritureValideeService $annulationValidee,
         private readonly EntityManagerInterface $em,
         private readonly Security $security,
         private readonly SerializerInterface $serializer,
@@ -265,6 +268,30 @@ final class EngagementController
 
         $engagement->annuler();
         $this->em->flush();
+
+        return new JsonResponse($this->normalizer->normaliser($engagement));
+    }
+
+    /**
+     * Correction d'un engagement validé : annulation motivée, puis nouvelle
+     * saisie (décision du 09/11/2026). Permission dédiée, RSE et coordonnateur.
+     */
+    #[Route('/{uuid}/annuler-validee', name: 'app_engagement_annuler_validee', methods: ['POST'])]
+    public function annulerValidee(string $uuid, Request $request): Response
+    {
+        $engagement = $this->trouver($uuid);
+
+        if (!$this->security->isGranted('budget.ecriture.corriger', $engagement->getCible())) {
+            throw new AccessDeniedException();
+        }
+
+        /** @var AnnulerEcritureValideeRequest $donnees */
+        $donnees = $this->serializer->deserialize($request->getContent(), AnnulerEcritureValideeRequest::class, 'json');
+        if (($erreur = $this->validerOuErreur($donnees, $this->validator)) !== null) {
+            return $erreur;
+        }
+
+        $this->annulationValidee->annulerEngagement($engagement, trim($donnees->motif));
 
         return new JsonResponse($this->normalizer->normaliser($engagement));
     }

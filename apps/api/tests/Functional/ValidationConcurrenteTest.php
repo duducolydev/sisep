@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Budget\AnnulationEcritureValideeService;
 use App\Budget\DepenseValidationService;
 use App\Budget\DotationRevisionService;
 use App\Budget\EngagementValidationService;
@@ -148,6 +149,25 @@ final class ValidationConcurrenteTest extends KernelTestCase
 
         self::assertNotNull($refus, 'La révision passerait sous ce qui vient d\'être engagé.');
         self::assertSame(100_000, (int) $this->connexion->fetchOne('SELECT montant FROM dotations WHERE id = ?', [$this->ids['dotation']]));
+    }
+
+    public function testUnEngagementNeSAnnulePasPendantQuUneDepenseSeValide(): void
+    {
+        $engagement = $this->engagement(100_000);
+        $engagement->valider($this->valideur);
+        $enCours = new Depense($engagement, Montant::fromFcfa(10_000), new \DateTimeImmutable('2026-04-02'), $this->saisie);
+        $this->em->persist($enCours);
+        $this->em->flush();
+
+        // Vue d'avant le verrou, l'engagement ne porte encore aucune dépense
+        // vivante : l'autre personne fait passer celle-ci à validée pendant l'attente.
+        $this->connexion->executeStatement("UPDATE depenses SET statut = 'annule' WHERE id = ?", [$enCours->getId()]);
+        $autre = $this->autreValideurTient('engagements', (int) $engagement->getId(), 'depenses', (int) $enCours->getId());
+        $refus = $this->refusDe(fn () => static::getContainer()->get(AnnulationEcritureValideeService::class)->annulerEngagement($engagement, 'Erreur'));
+        proc_close($autre);
+
+        self::assertNotNull($refus, 'L\'engagement porte maintenant une dépense validée : il ne s\'annule pas.');
+        self::assertSame('valide', $this->connexion->fetchOne('SELECT statut FROM engagements WHERE id = ?', [$engagement->getId()]));
     }
 
     private function dotation(int $montant): Dotation

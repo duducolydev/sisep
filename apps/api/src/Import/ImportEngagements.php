@@ -11,6 +11,7 @@ use App\Entity\Engagement;
 use App\Entity\Exercice;
 use App\Entity\SousActivite;
 use App\Entity\Utilisateur;
+use App\Enum\StatutEcriture;
 use App\Repository\DotationRepository;
 use App\Repository\EngagementRepository;
 use App\Repository\ExerciceRepository;
@@ -88,7 +89,9 @@ final class ImportEngagements implements DefinitionImport
     {
         $existants = [];
         foreach ($this->engagements->findBy(['supprimeLe' => null]) as $engagement) {
-            if (null !== $engagement->getReferenceMarche()) {
+            // Un engagement annulé libère sa référence : corriger une écriture,
+            // c'est l'annuler puis la saisir ou l'importer de nouveau.
+            if (null !== $engagement->getReferenceMarche() && StatutEcriture::ANNULE !== $engagement->getStatut()) {
                 $existants[$this->cle($engagement->getExercice(), $engagement->getReferenceMarche())] = $engagement;
             }
         }

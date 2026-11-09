@@ -17,6 +17,7 @@ final class DepenseNormalizer
             'dateDepense' => $depense->getDateDepense()->format('Y-m-d'),
             'referencePaiement' => $depense->getReferencePaiement(),
             'statut' => $depense->getStatut()->value,
+            'motifAnnulation' => $depense->getMotifAnnulation(),
         ];
     }
 }

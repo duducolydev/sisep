@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Budget\AnnulationEcritureValideeService;
 use App\Budget\ControleDateExercice;
 use App\Budget\DepenseValidationService;
+use App\Dto\AnnulerEcritureValideeRequest;
 use App\Dto\CreerDepenseRequest;
 use App\Entity\Depense;
 use App\Entity\Utilisateur;
@@ -39,6 +41,7 @@ final class DepenseController
         private readonly EngagementRepository $engagements,
         private readonly DepenseNormalizer $normalizer,
         private readonly DepenseValidationService $validationService,
+        private readonly AnnulationEcritureValideeService $annulationValidee,
         private readonly EntityManagerInterface $em,
         private readonly Security $security,
         private readonly SerializerInterface $serializer,
@@ -217,6 +220,30 @@ final class DepenseController
 
         $depense->annuler();
         $this->em->flush();
+
+        return new JsonResponse($this->normalizer->normaliser($depense));
+    }
+
+    /**
+     * Correction d'une dépense validée : annulation motivée, puis nouvelle
+     * saisie (décision du 09/11/2026). Permission dédiée, RSE et coordonnateur.
+     */
+    #[Route('/{uuid}/annuler-validee', name: 'app_depense_annuler_validee', methods: ['POST'])]
+    public function annulerValidee(string $uuid, Request $request): Response
+    {
+        $depense = $this->trouver($uuid);
+
+        if (!$this->security->isGranted('budget.ecriture.corriger', $depense->getEngagement()->getCible())) {
+            throw new AccessDeniedException();
+        }
+
+        /** @var AnnulerEcritureValideeRequest $donnees */
+        $donnees = $this->serializer->deserialize($request->getContent(), AnnulerEcritureValideeRequest::class, 'json');
+        if (($erreur = $this->validerOuErreur($donnees, $this->validator)) !== null) {
+            return $erreur;
+        }
+
+        $this->annulationValidee->annulerDepense($depense, trim($donnees->motif));
 
         return new JsonResponse($this->normalizer->normaliser($depense));
     }

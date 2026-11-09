@@ -170,6 +170,7 @@ final class BudgetControlesSaisieHttpTest extends WebTestCase
         $dotation = $this->dotation(['activite' => $this->sansLigne], 1_000_000);
 
         self::assertSame(422, $this->poster("/api/v1/dotations/{$dotation}/reviser", ['montant' => 5, 'motif' => ''])[0], 'Motif vide.');
+        self::assertSame(422, $this->poster("/api/v1/dotations/{$dotation}/reviser", ['montant' => 5, 'motif' => '   '])[0], 'Des espaces ne sont pas un motif.');
         self::assertSame(422, $this->poster("/api/v1/dotations/{$dotation}/reviser", ['montant' => 5])[0], 'Motif absent.');
         self::assertSame(422, $this->poster("/api/v1/dotations/{$dotation}/reviser", ['montant' => -5, 'motif' => 'x'])[0], 'Montant négatif.');
 
