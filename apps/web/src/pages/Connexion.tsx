@@ -8,6 +8,7 @@ import { ApiError } from '@/lib/api-client'
 import { queryClient } from '@/lib/query-client'
 import { BandeauAnsd } from '@/components/BandeauAnsd'
 import logoAnsd from '@/assets/ansd/logo-ansd.png'
+import logoPhasaoc from '@/assets/phasaoc/logo-phasaoc.png'
 
 const schema = z.object({
   email: z.string().min(1, "L'adresse e-mail est requise.").email('Adresse e-mail invalide.'),
@@ -199,7 +200,7 @@ export function PanneauMarque() {
 
       <div className="relative flex items-center gap-4 rounded-2xl border border-white/15 bg-white/[.06] p-4 backdrop-blur-sm">
         <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-0.5">
-          <img src={logoAnsd} alt="" className="h-full w-full object-contain" />
+          <img src={logoPhasaoc} alt="PHASAOC" className="h-full w-full object-contain" />
         </span>
         <p className="flex-1 text-[11px] leading-relaxed font-semibold tracking-[.12em] text-white/75">
           HARMONISATION ET AMÉLIORATION DES STATISTIQUES
