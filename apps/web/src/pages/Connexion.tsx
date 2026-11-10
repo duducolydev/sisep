@@ -192,7 +192,7 @@ export function PanneauMarque() {
         <div className="rounded-[1.75rem] bg-white p-5 shadow-[0_18px_40px_-18px_rgb(0_0_0/0.5)]">
           <img src={logoAnsd} alt="ANSD" className="h-28 w-auto xl:h-32" />
         </div>
-        <p className="mt-8 max-w-sm font-titre text-3xl leading-tight font-extrabold xl:text-[2rem]">
+        <p className="mt-8 max-w-3xl font-titre text-3xl leading-tight font-extrabold 2xl:text-[2rem]">
           Agence Nationale de la Statistique et de la Démographie
         </p>
         <p className="mt-4 text-sm tracking-[.18em] text-white/60">PROJET PHASAOC</p>
