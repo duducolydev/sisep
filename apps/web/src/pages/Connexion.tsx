@@ -202,7 +202,7 @@ export function PanneauMarque() {
         <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-0.5">
           <img src={logoPhasaoc} alt="PHASAOC" className="h-full w-full object-contain" />
         </span>
-        <p className="flex-1 text-[11px] leading-relaxed font-semibold tracking-[.12em] text-center text-white/75">
+        <p className="flex-1 text-center text-[11px] leading-relaxed font-semibold tracking-[.12em] text-white/75">
           HARMONISATION ET AMÉLIORATION DES STATISTIQUES
           <br />
           EN AFRIQUE DE L'OUEST ET DU CENTRE
